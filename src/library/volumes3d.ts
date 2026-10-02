@@ -5,7 +5,10 @@ import { uid } from '../model/geometry';
 /* Volumes de l'atelier : valeurs par défaut, encombrement, et construction en 3D.
    Repère du meuble : x et y au sol (y = profondeur), z vers le haut ; en 3D : (x, z, y). */
 
-export const VOLUME_LABEL: Record<VolumeType, string> = { boite: 'Boîte', cylindre: 'Cylindre', plan: 'Plan', arche: 'Arche' };
+export const VOLUME_LABEL: Record<VolumeType, string> = {
+  boite: 'Boîte', cylindre: 'Cylindre', plan: 'Plan', arche: 'Arche', boule: 'Boule', cone: 'Cône', tube: 'Tube', demirond: 'Demi-rond', prisme: 'Prisme',
+};
+export const VOLUME_TYPES = Object.keys(VOLUME_LABEL) as VolumeType[];
 
 export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volume {
   const base = { id: uid(), type, name: `${VOLUME_LABEL[type]} ${n}`, x: 0, y: 0, z: 0, t: 0.03, turned: false, rot: 0, color };
@@ -14,14 +17,22 @@ export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volum
     case 'cylindre': return { ...base, w: 0.4, d: 0.4, h: 0.6 };
     case 'plan': return { ...base, w: 1, d: 0.5, h: 0.03, t: 0.03 };
     case 'arche': return { ...base, w: 1, d: 0.3, h: 1.4, t: 0.12 };
+    case 'boule': return { ...base, w: 0.4, d: 0.4, h: 0.4 };
+    case 'cone': return { ...base, w: 0.4, d: 0, h: 0.6 };
+    case 'tube': return { ...base, w: 0.4, d: 0.4, h: 0.6, t: 0.03 };
+    case 'demirond': return { ...base, w: 0.8, d: 0.4, h: 1 };
+    case 'prisme': return { ...base, w: 1, d: 0.4, h: 0.5 };
   }
 }
 
 /** Encombrement du volume avant rotation : largeur (x), profondeur (y), hauteur (z). */
 export function volumeBox(v: Volume): { bw: number; bd: number; bh: number } {
   switch (v.type) {
-    case 'boite': case 'arche': return { bw: v.w, bd: v.d, bh: v.h };
-    case 'cylindre': return v.turned ? { bw: v.h, bd: v.w, bh: v.w } : { bw: v.w, bd: v.w, bh: v.h };
+    case 'boite': case 'arche': case 'prisme': return { bw: v.w, bd: v.d, bh: v.h };
+    case 'cylindre': case 'tube': return v.turned ? { bw: v.h, bd: v.w, bh: v.w } : { bw: v.w, bd: v.w, bh: v.h };
+    case 'boule': return { bw: v.w, bd: v.w, bh: v.w };
+    case 'cone': { const m = Math.max(v.w, v.d); return { bw: m, bd: m, bh: v.h }; }
+    case 'demirond': return v.turned ? { bw: v.h, bd: v.w, bh: v.w / 2 } : { bw: v.w, bd: v.w / 2, bh: v.h };
     case 'plan': return v.turned ? { bw: v.w, bd: v.t, bh: v.d } : { bw: v.w, bd: v.d, bh: v.t };
   }
 }
@@ -48,10 +59,16 @@ export function volumeMesh(v: Volume): THREE.Mesh {
   let g: THREE.BufferGeometry;
   switch (v.type) {
     case 'boite': g = new THREE.BoxGeometry(v.w, v.h, v.d); break;
-    case 'cylindre': g = new THREE.CylinderGeometry(v.w / 2, v.w / 2, v.h, Math.max(16, Math.min(48, Math.round(v.w * 120)))); if (v.turned) g.rotateZ(Math.PI / 2); break;
+    case 'cylindre': g = new THREE.CylinderGeometry(v.w / 2, v.w / 2, v.h, seg(v.w)); if (v.turned) g.rotateZ(Math.PI / 2); break;
     case 'plan': g = new THREE.BoxGeometry(bw, bh, bd); break;
     case 'arche': g = archGeometry(v.w, v.h, v.d, Math.min(v.t, v.w / 2 - 0.005)); break;
+    case 'boule': g = new THREE.SphereGeometry(v.w / 2, 32, 20); break;
+    case 'cone': g = new THREE.CylinderGeometry(Math.max(v.d, 0) / 2, v.w / 2, v.h, seg(Math.max(v.w, v.d))); break;
+    case 'tube': g = tubeGeometry(v.w / 2, Math.min(v.t, v.w / 2 - 0.003), v.h); if (v.turned) g.rotateZ(Math.PI / 2); break;
+    case 'demirond': g = halfRoundGeometry(v.w / 2, v.h, v.turned); break;
+    case 'prisme': g = prismGeometry(v.w, v.d, v.h, v.turned); break;
   }
+  centerGeometry(g);
   const m = new THREE.Mesh(g, mat(v.color));
   m.position.set(v.x + bw / 2, v.z + bh / 2, v.y + bd / 2);
   m.rotation.y = -THREE.MathUtils.degToRad(v.rot);
@@ -73,4 +90,32 @@ export function totalSize(vols: Volume[]) {
   const b = new THREE.Box3().setFromObject(buildVolumes(vols));
   const s = b.getSize(new THREE.Vector3());
   return { w: s.x, d: s.z, h: s.y };
+}
+
+const seg = (diam: number) => Math.max(16, Math.min(48, Math.round(diam * 120)));
+/** Recentre une géométrie sur son encombrement (le placement se fait ensuite par le coin). */
+function centerGeometry(g: THREE.BufferGeometry) {
+  g.computeBoundingBox();
+  const c = g.boundingBox!.getCenter(new THREE.Vector3());
+  g.translate(-c.x, -c.y, -c.z);
+}
+/** Cylindre creux, debout. */
+function tubeGeometry(r: number, t: number, h: number) {
+  const s = new THREE.Shape(); s.absarc(0, 0, r, 0, Math.PI * 2, false);
+  const hole = new THREE.Path(); hole.absarc(0, 0, Math.max(r - t, 0.001), 0, Math.PI * 2, true); s.holes.push(hole);
+  const g = new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false, curveSegments: seg(2 * r) });
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+/** Demi-cylindre : debout (côté plat à l'arrière) ou couché (côté plat au sol). */
+function halfRoundGeometry(r: number, len: number, lying: boolean) {
+  const s = new THREE.Shape(); s.moveTo(-r, 0); s.absarc(0, 0, r, Math.PI, 0, true); s.lineTo(-r, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: len, bevelEnabled: false, curveSegments: seg(2 * r) });
+  if (lying) g.rotateY(Math.PI / 2); else g.rotateX(-Math.PI / 2);
+  return g;
+}
+/** Prisme à section triangulaire (toit), ou triangle rectangle (coin) si `corner`. */
+function prismGeometry(w: number, d: number, h: number, corner: boolean) {
+  const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(w, 0); s.lineTo(corner ? 0 : w / 2, h); s.lineTo(0, 0);
+  return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
 }

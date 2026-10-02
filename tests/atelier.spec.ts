@@ -139,3 +139,41 @@ test('supprimer une création retire aussi les meubles posés (avec confirmation
   expect(d.creations).toHaveLength(0);
   expect(d.objects).toHaveLength(0);
 });
+
+test('placer un volume par rapport à un autre, et les nouvelles formes', async ({ page }) => {
+  await openSample(page);
+  await page.getByTestId('library').getByRole('button', { name: 'Créer un meuble' }).click();
+  const panel = page.getByTestId('atelier-panel');
+  // Un socle de 80 × 80 × 10 cm, puis une colonne (tube) de Ø40 × 70 cm
+  await page.getByRole('button', { name: 'Ajouter : Boîte' }).click();
+  await setField(page, 'Longueur', 80); await setField(page, 'Profondeur', 80); await setField(page, 'Hauteur', 10);
+  await page.getByRole('button', { name: 'Ajouter : Tube' }).click();
+  await setField(page, 'Diamètre', 40); await setField(page, 'Hauteur', 70);
+  // La référence par défaut est le volume choisi juste avant : le socle
+  const ref = panel.getByLabel('Volume de référence', { exact: true });
+  expect(await ref.evaluate((s: HTMLSelectElement) => s.selectedOptions[0].textContent)).toBe('Boîte 1');
+  await panel.getByRole('button', { name: 'Centrer sur le volume de référence (vu de dessus)' }).click();
+  await panel.getByRole('button', { name: 'Poser sur le dessus du volume de référence' }).click();
+  await expect(panel.getByLabel('X', { exact: true })).toHaveValue('20');
+  await expect(panel.getByLabel('Y', { exact: true })).toHaveValue('20');
+  await expect(panel.getByLabel('Z (hauteur)', { exact: true })).toHaveValue('10');
+  // Coller à droite du socle, puis remettre au sol
+  await panel.getByRole('button', { name: 'Coller sur le côté droit de la référence' }).click();
+  await expect(panel.getByLabel('X', { exact: true })).toHaveValue('80');
+  await panel.getByRole('button', { name: 'Poser au sol (hauteur 0)' }).click();
+  await expect(panel.getByLabel('Z (hauteur)', { exact: true })).toHaveValue('0');
+  await expect(page.locator('.at-total')).toHaveText('Total : 120 × 80 × 70 cm');
+  // Les nouvelles formes
+  for (const s of ['Boule', 'Cône', 'Demi-rond', 'Prisme']) await page.getByRole('button', { name: 'Ajouter : ' + s }).click();
+  await setField(page, 'Hauteur', 50); // prisme sélectionné
+  await panel.getByRole('button', { name: 'En coin (triangle droit)' }).click();
+  const types = await page.evaluate(() => {
+    const vols = Array.from(document.querySelectorAll('.at-row .at-name')).map(e => e.textContent);
+    return vols;
+  });
+  expect(types).toEqual(['Boîte 1', 'Tube 1', 'Boule 1', 'Cône 1', 'Demi-rond 1', 'Prisme 1']);
+  await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
+  const d = await doc(page);
+  expect(d.creations[0].volumes.map((v: any) => v.type)).toEqual(['boite', 'tube', 'boule', 'cone', 'demirond', 'prisme']);
+  expect(d.creations[0].volumes[5].turned).toBe(true);
+});

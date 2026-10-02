@@ -308,8 +308,8 @@
 
 /* ---------- Atelier de création (maquette 05) ---------- */
 .at-left { width: 264px; flex: none; background: #fff; border-right: 1px solid var(--border); padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
-.at-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.at-tile { height: 84px; border: none; border-radius: 14px; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+.at-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.at-tile { height: 72px; font-size: 12px !important; border: none; border-radius: 14px; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   font: 700 13px var(--font); color: var(--ink); cursor: pointer; transition: background-color .14s ease-out; }
 .at-tile:hover { background: var(--accent-soft); color: var(--accent-hover); }
 .at-pic { display: flex; }
@@ -339,3 +339,10 @@
 .lib-tabbar { display: flex; gap: 8px; padding: 12px 20px 0 8px; grid-column: 1 / -1; }
 .at-import { white-space: normal; font-size: 13px; line-height: 1.2; padding: 0 12px; }
 .at-cat { border: none; outline: none; background: transparent; font: 800 15px var(--font); color: var(--ink); cursor: pointer; }
+.at-tile svg { width: 32px; height: 32px; }
+.algn-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.algn { height: 54px; border: 1.5px solid var(--field-border); border-radius: 10px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; font: 700 12px var(--font); color: var(--ink); cursor: pointer; padding: 0 2px; white-space: nowrap; }
+.algn .ic { font-size: 20px; color: var(--text-2); }
+.algn:hover { background: var(--sel-bg); border-color: var(--accent); }
+.algn:hover .ic { color: var(--accent); }

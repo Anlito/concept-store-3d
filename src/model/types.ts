@@ -74,7 +74,7 @@ export interface PlacedObject {
 }
 
 /* ---------- Atelier de création (niveau B) ---------- */
-export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche';
+export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'cone' | 'tube' | 'demirond' | 'prisme';
 
 /** Volume simple d'une création. Longueurs en mètres, repère du meuble : x et y au sol, z vers le haut. */
 export interface Volume {
@@ -83,12 +83,13 @@ export interface Volume {
   name: string;
   /** Coin du volume (avant rotation), depuis le coin du meuble. */
   x: number; y: number; z: number;
-  /** Boîte et arche : longueur, profondeur, hauteur. Cylindre : w = diamètre, h = hauteur.
+  /** Boîte, arche, prisme : longueur, profondeur, hauteur. Cylindre, tube, demi-rond : w = diamètre, h = hauteur.
+      Boule : w = diamètre. Cône : w = diamètre du bas, d = diamètre du haut (0 = pointe), h = hauteur.
       Plan : w = longueur, d = largeur (h inutilisé). */
   w: number; d: number; h: number;
-  /** Épaisseur du plan ou de l'arche. */
+  /** Épaisseur du plan, de l'arche ou du tube. */
   t: number;
-  /** Cylindre couché / plan debout. */
+  /** Cylindre, tube ou demi-rond couché ; plan debout ; prisme en coin (triangle rectangle). */
   turned: boolean;
   /** Rotation autour de la verticale (degrés). */
   rot: number;

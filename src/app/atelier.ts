@@ -7,7 +7,7 @@ import { uid } from '../model/geometry';
 import { h, icon } from '../ui/dom';
 import { type Bound, button, choose, numberField, section, swatches, toast, toggle } from '../ui/components';
 import { CATEGORIES } from '../library/library';
-import { VOLUME_LABEL, buildVolumes, newVolume, totalSize, volumeBox } from '../library/volumes3d';
+import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh } from '../library/volumes3d';
 import { saveCreation } from './creations';
 
 /* Atelier de création de mobilier (maquette 05) : l'élève assemble des volumes simples (boîte, cylindre,
@@ -24,6 +24,11 @@ const PICTO: Record<VolumeType, string> = {
   cylindre: '<ellipse cx="24" cy="12" rx="12" ry="5"/><path d="M12 12v22c0 3 5 5 12 5s12-2 12-5V12"/>',
   plan: '<path d="M5 26 24 17l19 9-19 9z M5 26v3l19 9 19-9v-3"/>',
   arche: '<path d="M10 42V22a14 14 0 0 1 28 0v20h-7V22a7 7 0 0 0-14 0v20z"/>',
+  boule: '<circle cx="24" cy="24" r="15"/><path d="M9 24c0 4 7 7 15 7s15-3 15-7"/>',
+  cone: '<path d="M24 7 11 36c0 3 6 5 13 5s13-2 13-5z"/><path d="M11 36c0-3 6-5 13-5s13 2 13 5"/>',
+  tube: '<ellipse cx="24" cy="12" rx="12" ry="5"/><ellipse cx="24" cy="12" rx="6" ry="2.5"/><path d="M12 12v22c0 3 5 5 12 5s12-2 12-5V12"/>',
+  demirond: '<path d="M8 14h32c0 7-7 11-16 11S8 21 8 14z"/><path d="M8 14v20c0 7 7 9 16 9s16-2 16-9V14"/>',
+  prisme: '<path d="M6 38 20 12l22 6-14 26z"/><path d="M20 12l8 32"/>',
 };
 const cmStr = (m: number) => String(Math.round(m * 100));
 
@@ -32,6 +37,8 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   const st = new Store<Creation>(opts.creation ? structuredClone(opts.creation)
     : { id: 'c-' + uid(), name: 'Mon meuble', cat: 'decor', team: ctx.store.doc.team.name, volumes: [], updated: 0 });
   let sel: string | null = st.doc.volumes[0]?.id ?? null;
+  // Volume de référence pour « Placer par rapport à » : par défaut, le volume choisi juste avant.
+  let refId: string | null = null, prevSel: string | null = null;
   const vol = () => st.doc.volumes.find(v => v.id === sel);
   const edit = (fn: (v: Volume) => void) => st.update(d => { const v = d.volumes.find(x => x.id === sel); if (v) fn(v); });
 
@@ -46,7 +53,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     return h('button', { class: 'at-tile', type: 'button', title: 'Ajouter : ' + VOLUME_LABEL[t], 'aria-label': 'Ajouter : ' + VOLUME_LABEL[t], onclick: () => addVolume(t) }, pic, VOLUME_LABEL[t]);
   };
   const left = h('aside', { class: 'at-left' },
-    section('Ajouter un volume', h('div', { class: 'at-tiles' }, ...(['boite', 'cylindre', 'plan', 'arche'] as VolumeType[]).map(addTile))),
+    section('Ajouter un volume', h('div', { class: 'at-tiles' }, ...VOLUME_TYPES.map(addTile))),
     h('div', { class: 'p-sec', style: { flex: '1', minHeight: '0' } }, listTitle, list),
     h('div', { class: 'p-sec' },
       h('button', { class: 'btn at-import', type: 'button', onclick: () => toast('L’import des fichiers Tinkercad (OBJ) arrive à la prochaine étape.') }, icon('upload_file'), 'Importer un fichier Tinkercad (OBJ)'),
@@ -75,10 +82,12 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   const saveBtn = h('button', { class: 'btn btn-primary btn-xl', type: 'button', onclick: () => void save() }, icon('bookmark_add'), editing ? 'Enregistrer le meuble' : 'Ajouter à Mes créations');
   function renderPanel() {
     const v = vol();
-    const key = v ? `${v.id}|${v.type}|${v.turned}` : 'meuble';
+    const key = v ? `${v.id}|${v.type}|${v.turned}|${st.doc.volumes.map(x => x.id + x.name).join()}` : 'meuble';
     saveBtn.disabled = !st.doc.volumes.length;
     if (key === panelKey) { binds.forEach(b => b.refresh()); return; }
     panelKey = key; binds = [];
+    if (v && prevSel && prevSel !== v.id && st.doc.volumes.some(x => x.id === prevSel)) refId = prevSel;
+    if (v) prevSel = v.id;
     const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
     const nf = (label: string, k: 'w' | 'd' | 'h' | 't' | 'x' | 'y' | 'z', min = 1, max = 400) => b(numberField({ label, unit: 'cm', min, max,
       get: () => (vol()?.[k] ?? 0) * 100, set: val => edit(x => { x[k] = val / 100; fixArch(x); }) }));
@@ -89,19 +98,26 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         cylindre: () => h('div', { class: 'g2' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h')),
         plan: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Largeur', 'd'), nf('Épaisseur', 't', 1, 50)),
         arche: () => h('div', { class: 'g2' }, nf('Largeur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h'), nf('Épaisseur', 't', 1, 100)),
+        boule: () => h('div', { class: 'g2' }, nf('Diamètre', 'w')),
+        cone: () => h('div', { class: 'g3' }, nf('Diamètre bas', 'w'), nf('Diamètre haut', 'd', 0), nf('Hauteur', 'h')),
+        tube: () => h('div', { class: 'g3' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h'), nf('Épaisseur', 't', 1, 100)),
+        demirond: () => h('div', { class: 'g2' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h')),
+        prisme: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')),
       };
       const nameIn = h('input', { value: v.name, 'aria-label': 'Nom du volume', maxLength: 40 });
       nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') nameIn.blur(); });
       nameIn.addEventListener('change', () => edit(x => { x.name = nameIn.value.trim() || x.name; }));
       const rotVal = h('span', { style: { color: 'var(--ink)' } });
       binds.push({ el: rotVal, refresh: () => { rotVal.textContent = `${Math.round(vol()?.rot ?? 0)}°`; } });
-      const turn = v.type === 'cylindre' ? toggle('Couché', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
-        : v.type === 'plan' ? toggle('Debout', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
+      const turn = v.type === 'cylindre' || v.type === 'tube' || v.type === 'demirond' ? toggle('Couché', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'plan' ? toggle('Debout', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'prisme' ? toggle('En coin (triangle droit)', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
       body = [
         h('label', { class: 'tf' }, 'Nom du volume', nameIn),
         section('Dimensions', dims[v.type]()),
         turn ? b(turn) : null,
         section('Position (depuis le coin du meuble)', h('div', { class: 'g3' }, nf('X', 'x', -500, 500), nf('Y', 'y', -500, 500), nf('Z (hauteur)', 'z', 0, 500))),
+        placeRelative(v),
         section(h('span', { style: { display: 'flex', justifyContent: 'space-between', width: '100%' } }, 'Rotation', rotVal), h('div', { class: 'rot-row' },
           h('button', { class: 'sq', type: 'button', title: '−15°', onclick: () => edit(x => { x.rot = ((x.rot - 15) % 360 + 360) % 360; }) }, icon('rotate_left')),
           h('button', { class: 'sq', type: 'button', title: '+15°', onclick: () => edit(x => { x.rot = (x.rot + 15) % 360; }) }, icon('rotate_right')))),
@@ -127,6 +143,48 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
       h('div', { class: 'pn-b' }, ...body),
       h('div', { class: 'pn-f' }, saveBtn)));
     binds.forEach(x => x.refresh());
+  }
+  /** « Placer par rapport à » : centrer, poser dessus, coller à côté d'un autre volume. */
+  function placeRelative(v: Volume): HTMLElement {
+    const others = st.doc.volumes.filter(x => x.id !== v.id);
+    if (!others.length) return section('Placer par rapport à…', h('p', { class: 'p-help' }, 'Ajoute un deuxième volume pour le placer par rapport au premier (centrer, poser dessus, coller à côté).'));
+    const size = (x: Volume) => { const s = bbox(x).getSize(new THREE.Vector3()); return s.x * s.y * s.z; };
+    if (!refId || !others.some(x => x.id === refId)) refId = [...others].sort((a, b) => size(b) - size(a))[0].id;
+    const ref = h('select', { class: 'at-select', 'aria-label': 'Volume de référence', onchange: (e: Event) => { refId = (e.target as HTMLSelectElement).value; } },
+      ...others.map(x => h('option', { value: x.id, selected: x.id === refId }, x.name)));
+    const act = (ic: string, label: string, kind: Align, title: string) =>
+      h('button', { class: 'algn', type: 'button', title, 'aria-label': title, onclick: () => align(kind) }, icon(ic), label);
+    return section('Placer par rapport à…', ref,
+      h('div', { class: 'algn-g' },
+        act('filter_center_focus', 'Au centre', 'centre', 'Centrer sur le volume de référence (vu de dessus)'),
+        act('align_horizontal_center', 'Centrer ↔', 'centreX', 'Centrer de gauche à droite'),
+        act('align_vertical_center', 'Centrer ↕', 'centreY', 'Centrer de l’avant à l’arrière'),
+        act('vertical_align_top', 'Dessus', 'dessus', 'Poser sur le dessus du volume de référence'),
+        act('vertical_align_bottom', 'Au sol', 'sol', 'Poser au sol (hauteur 0)'),
+        act('align_vertical_bottom', 'Même bas', 'bas', 'Mettre à la même hauteur de bas que la référence'),
+        act('west', 'À gauche', 'gauche', 'Coller sur le côté gauche de la référence'),
+        act('east', 'À droite', 'droite', 'Coller sur le côté droit de la référence'),
+        act('south', 'Devant', 'devant', 'Coller devant la référence'),
+        act('north', 'Derrière', 'derriere', 'Coller derrière la référence')));
+  }
+  function align(kind: Align) {
+    const v = vol(), r = st.doc.volumes.find(x => x.id === refId);
+    if (!v || !r) return;
+    const A = bbox(v), B = bbox(r), ca = A.getCenter(new THREE.Vector3()), cb = B.getCenter(new THREE.Vector3());
+    let dx = 0, dy = 0, dz = 0; // dy = profondeur (axe z en 3D), dz = hauteur (axe y en 3D)
+    switch (kind) {
+      case 'centre': dx = cb.x - ca.x; dy = cb.z - ca.z; break;
+      case 'centreX': dx = cb.x - ca.x; break;
+      case 'centreY': dy = cb.z - ca.z; break;
+      case 'dessus': dz = B.max.y - A.min.y; break;
+      case 'sol': dz = -A.min.y; break;
+      case 'bas': dz = B.min.y - A.min.y; break;
+      case 'gauche': dx = B.min.x - A.max.x; break;
+      case 'droite': dx = B.max.x - A.min.x; break;
+      case 'devant': dy = B.max.z - A.min.z; break;
+      case 'derriere': dy = B.min.z - A.max.z; break;
+    }
+    edit(x => { x.x = r3(x.x + dx); x.y = r3(x.y + dy); x.z = Math.max(0, r3(x.z + dz)); });
   }
   /** Une arche garde une hauteur au moins égale à sa demi-largeur et une épaisseur raisonnable. */
   function fixArch(v: Volume) {
@@ -224,6 +282,9 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   return el;
 }
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
+type Align = 'centre' | 'centreX' | 'centreY' | 'dessus' | 'sol' | 'bas' | 'gauche' | 'droite' | 'devant' | 'derriere';
+/** Encombrement réel d'un volume (rotation comprise), dans le repère 3D. */
+const bbox = (v: Volume) => new THREE.Box3().setFromObject(volumeMesh(v));
 
 /** Vue 3D de l'atelier : plateau quadrillé (25 cm, 1 m marqué), volumes, sélection, glisser au sol. */
 class AtelierView {
