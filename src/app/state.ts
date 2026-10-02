@@ -68,4 +68,6 @@ export interface Ctx {
   ui: UIStore;
   /** Va à l'accueil. */
   home(): void;
+  /** Ouvre l'écran « Plan A3 à imprimer ». */
+  exportPlan(): void;
 }

@@ -47,7 +47,7 @@ export class Editor {
         h('div', { class: 'tb-title' }, name, status)),
       h('div', { class: 'tb-c' }, h('div', { class: 'vsw' }, b2d, b3d)),
       h('div', { class: 'tb-r' }, undo, redo, h('div', { class: 'tb-sep' }),
-        h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => toast('L’export du plan A3 arrive à la prochaine étape.') }, icon('print'), 'Plan A3'),
+        h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.exportPlan() }, icon('print'), 'Plan A3'),
         h('button', { class: 'btn btn-primary', type: 'button', onclick: () => toast('L’enregistrement arrive à une prochaine étape.') }, icon('save'), 'Enregistrer')));
 
     // --- Barre d'outils

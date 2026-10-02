@@ -250,3 +250,18 @@
 .sw.orig { background: conic-gradient(#BF4E36 0 25%, #6E8B6B 0 50%, #C9A97E 0 75%, #5B6B7A 0) !important; }
 .chk { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); cursor: pointer; }
 .chk input { accent-color: var(--accent); width: 18px; height: 18px; }
+
+/* ---------- Export du plan A3 (maquette 07) ---------- */
+.ex-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; background: var(--bg-export); }
+.ex-sheet { width: min(100%, 980px, calc((100vh - 64px - 100px) * 420 / 297)); aspect-ratio: 420 / 297; flex: none; background: #fff; border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.10); display: flex; align-items: center; justify-content: center; }
+.ex-sheet.too-big { box-shadow: 0 0 0 3px var(--warn), 0 12px 32px rgba(0,0,0,.10); }
+.ex-chip { height: 28px; padding: 0 12px; border-radius: 999px; background: #fff; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--text-2); }
+.ex-chip .ic { font-size: 16px; }
+.ex-legs { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 700; }
+.ex-leg { display: flex; align-items: center; gap: 12px; }
+.ex-sample { display: flex; }
+.seg-lg .seg-b { height: 44px; font-size: 16px; font-weight: 800; color: var(--text-2); }
+.seg-lg .seg-b.on { color: var(--accent-hover); }
+.alert-btn { align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 10px; border: none; background: var(--warn-text-2); color: #fff; font: 800 13px var(--font); cursor: pointer; margin-top: 2px; }
+.tf input::placeholder { color: var(--disabled); font-weight: 600; }

@@ -5,6 +5,7 @@ import { newProject, sampleProject } from './model/project';
 import { UIStore, defaultUI, type Ctx } from './app/state';
 import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
+import { exportScreen } from './app/exportScreen';
 import { toast } from './ui/components';
 
 /* Point d'entrée : accueil puis éditeur. Un seul fichier HTML, aucun accès réseau. */
@@ -14,7 +15,11 @@ const store = new Store(newProject());
 const ui = new UIStore(defaultUI());
 let editor: Editor | null = null;
 
-const ctx: Ctx = { store, ui, home: () => showHome() };
+const ctx: Ctx = {
+  store, ui,
+  home: () => showHome(),
+  exportPlan: () => app.replaceChildren(exportScreen(ctx, () => { if (editor) app.replaceChildren(editor.el); })),
+};
 
 function showHome() {
   app.replaceChildren(homeScreen({
