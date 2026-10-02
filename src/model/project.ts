@@ -1,5 +1,5 @@
 import type { Floor, Opening, OpeningType, Project, Vec2, WallStyle } from './types';
-import { dist, edges, normalizeWinding, projectOnSegment, round3, uid } from './geometry';
+import { bounds, dist, edges, normalizeWinding, projectOnSegment, round3, uid } from './geometry';
 
 export const DEFAULT_WALL: WallStyle = { material: 'peinture', color: '#FCFBF9' };
 export const WALL_LIMITS = { height: [2, 6], thickness: [0.05, 0.5] } as const;
@@ -144,3 +144,12 @@ export function sanitizeProject(raw: unknown): Project {
   clampAllOpenings(p);
   return p;
 }
+
+/** Plus grande boutique autorisée (surface au sol) : 10 m × 7 m, dans un sens ou dans l'autre.
+    C'est ce qui permet d'imprimer le plan à 1 m = 3 cm sur une feuille A3. */
+export const MAX_SHOP = { long: 10, short: 7 };
+export function shopExtent(pts: Vec2[]) {
+  const b = bounds(pts);
+  return { w: b.w, h: b.h, ok: Math.max(b.w, b.h) <= MAX_SHOP.long + 1e-6 && Math.min(b.w, b.h) <= MAX_SHOP.short + 1e-6 };
+}
+export const MAX_SHOP_MSG = 'La boutique ne doit pas dépasser 10 × 7 m.';

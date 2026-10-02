@@ -165,3 +165,24 @@ test('régler les murs et basculer en 3D', async ({ page }) => {
   expect(painted).toBeGreaterThan(10); // pas une image unie
   await expect(page.getByRole('button', { name: 'Plan 2D' })).toBeVisible();
 });
+
+test('la boutique ne dépasse pas 10 × 7 m', async ({ page }) => {
+  // Rectangle trop profond : refusé
+  await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
+  const fields = page.getByTestId('panel').locator('input');
+  await fields.nth(0).fill('10'); await fields.nth(0).press('Enter');
+  await fields.nth(1).fill('8'); await fields.nth(1).press('Enter');
+  await page.getByRole('button', { name: 'Créer ce rectangle' }).click();
+  await expect(page.getByText('La boutique ne doit pas dépasser 10 × 7 m.')).toBeVisible();
+  expect((await doc(page)).floor).toBeNull();
+  // 7 × 10 (dans l'autre sens) est accepté
+  await fields.nth(0).fill('7'); await fields.nth(0).press('Enter');
+  await fields.nth(1).fill('10'); await fields.nth(1).press('Enter');
+  await page.getByRole('button', { name: 'Créer ce rectangle' }).click();
+  expect((await doc(page)).floor.points).toHaveLength(4);
+  // Glisser un sommet au-delà de la limite : le sommet s'arrête
+  const a = await screen(page, { x: 7, y: 10 }), b = await screen(page, { x: 8.5, y: 10 });
+  await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(b.x, b.y, { steps: 10 }); await page.mouse.up();
+  const pts = (await doc(page)).floor.points;
+  expect(Math.max(...pts.map((p: P) => p.x))).toBeLessThanOrEqual(7);
+});

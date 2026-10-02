@@ -1,7 +1,7 @@
 import type { Ctx } from './state';
 import type { Pick } from '../view3d/build';
 import type { Vec2 } from '../model/types';
-import { OPENING_DEFAULTS, deleteVertex, findFreeT, setFloorPoints, wallLength } from '../model/project';
+import { MAX_SHOP_MSG, OPENING_DEFAULTS, deleteVertex, findFreeT, setFloorPoints, shopExtent, wallLength } from '../model/project';
 import { deleteObjects } from './objectActions';
 import { dist, isSimplePolygon, uid } from '../model/geometry';
 import { toast } from '../ui/components';
@@ -70,6 +70,11 @@ export function closeDraft(ctx: Ctx, pts?: Vec2[]) {
   if (clean.length > 3 && dist(clean[0], clean[clean.length - 1]) < 0.005) clean.pop();
   if (clean.length < 3) { toast('Il faut au moins 3 points pour fermer le sol.', undefined, 'warning'); return false; }
   if (!isSimplePolygon(clean)) { toast('Les côtés se croisent : retire ou déplace un point.', undefined, 'warning'); return false; }
+  const ext = shopExtent(clean);
+  if (!ext.ok) {
+    toast(`${MAX_SHOP_MSG} Ici : ${ext.w.toFixed(2).replace('.', ',')} × ${ext.h.toFixed(2).replace('.', ',')} m.`, undefined, 'warning');
+    return false;
+  }
   store.update(d => setFloorPoints(d, clean));
   ui.set({ draft: [], cursor: null, sel: null });
   toast('Sol fermé : les murs sont créés.');

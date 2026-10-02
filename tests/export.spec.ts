@@ -45,40 +45,63 @@ test.afterEach(() => expect(errors).toEqual([]));
 
 test('le PDF est un A3 paysage, à l’échelle exacte, avec le cartouche', async ({ page }, info) => {
   await openExport(page);
-  // L'outil propose la plus grande échelle qui tient : 1:20 est trop grand pour 10 × 7 m, donc 1:50
-  await expect(page.getByRole('button', { name: '1:50', exact: true })).toHaveClass(/on/);
+  // La boutique exemple fait 10 × 7 m (le maximum) : elle tient à 1 m = 3 cm
+  await expect(page.getByRole('button', { name: '1 m = 3 cm', exact: true })).toHaveClass(/on/);
   await expect(page.getByText('Le plan tient sur la feuille')).toBeVisible();
   await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await page.getByLabel('Prénoms').fill('Léa, Malik');
   await page.getByLabel('Classe').fill('4e B');
   await page.getByLabel('Classe').press('Tab');
-  await expect(page.getByTestId('sheet')).toContainText('Équipe : Les Bâtisseurs');
+  await expect(page.getByTestId('sheet')).toContainText('ÉQUIPELes Bâtisseurs');
   const file = info.outputPath('plan.pdf');
-  expect(await download(page, file)).toBe('plan-A3-boutique-exemple-1-50.pdf');
+  expect(await download(page, file)).toBe('plan-A3-boutique-exemple-1m-3cm.pdf');
   const pdf = readPdf(file);
   expect(pdf.header).toBe('%PDF-');
   expect(pdf.w).toBeCloseTo(420, 1);
   expect(pdf.h).toBeCloseTo(297, 1);
-  // Mur de 10 m → 200 mm à 1:50 ; mur de 7 m → 140 mm ; barre d'échelle de 10 cm = 10 cases de 10 mm
-  expect(pdf.segs.some(l => Math.abs(l - 200) < 0.05)).toBe(true);
-  expect(pdf.segs.some(l => Math.abs(l - 140) < 0.05)).toBe(true);
+  // 1 m = 3 cm : mur de 10 m → 300 mm, mur de 7 m → 210 mm
+  expect(pdf.segs.some(l => Math.abs(l - 300) < 0.05)).toBe(true);
+  expect(pdf.segs.some(l => Math.abs(l - 210) < 0.05)).toBe(true);
   expect(pdf.texts.join(' ')).toContain('Les Bâtisseurs');
-  expect(pdf.texts.join(' ')).toContain('Échelle 1:50');
+  expect(pdf.texts.join(' ')).toContain('Échelle : 1 m = 3 cm');
   // Le cartouche est enregistré dans le projet
   const team = await page.evaluate(() => (window as any).cs3d.store.doc.team);
   expect(team).toMatchObject({ name: 'Les Bâtisseurs', members: 'Léa, Malik', klass: '4e B' });
 });
 
-test('échelle trop grande : avertissement, téléchargement bloqué, correction en un clic', async ({ page }) => {
+test('plan trop grand : avertissement, téléchargement bloqué, corrections proposées', async ({ page }) => {
+  // Murs de 50 cm : la boutique de 10 × 7 m dépasse à 1 m = 3 cm avec les cotes
+  await page.evaluate(() => (window as any).cs3d.store.update((d: any) => { d.walls.thickness = 0.5; }));
   await openExport(page);
-  await page.getByRole('button', { name: '1:20', exact: true }).click();
+  // L'outil a déjà choisi 1 m = 2 cm ; on force 1 m = 3 cm
+  await expect(page.getByRole('button', { name: '1 m = 2 cm', exact: true })).toHaveClass(/on/);
+  await page.getByRole('button', { name: '1 m = 3 cm', exact: true }).click();
   await expect(page.getByText('Boutique trop grande pour cette échelle')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeDisabled();
-  await page.getByRole('button', { name: 'Passer à 1:50' }).click();
+  // Sans les cotes, elle tient
+  await page.getByRole('button', { name: 'Masquer les cotes' }).click();
   await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
-  // 1:100 tient aussi : la barre d'échelle indique 10 m pour 10 cm
-  await page.getByRole('button', { name: '1:100', exact: true }).click();
-  await expect(page.getByTestId('sheet')).toContainText('10 cm sur la feuille = 10 m dans la boutique');
+  // Ou bien à une échelle plus petite
+  await page.getByRole('button', { name: 'Cotes des murs' }).click();
+  await page.getByRole('button', { name: 'Passer à 1 m = 2 cm' }).click();
+  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
+  // 1 m = 1 cm : la barre d'échelle mesure 10 cm pour 10 m
+  await page.getByRole('button', { name: '1 m = 1 cm', exact: true }).click();
+  await expect(page.getByTestId('sheet')).toContainText('cette barre mesure exactement 10 cm (= 10 m dans la boutique)');
+});
+
+test('une boutique plus profonde que large est tournée sur la feuille', async ({ page }, info) => {
+  await page.evaluate(() => (window as any).cs3d.store.update((d: any) => {
+    d.floor.points = [{ x: 0, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 10 }, { x: 0, y: 10 }];
+    d.openings = [];
+  }));
+  await openExport(page);
+  await expect(page.getByTestId('sheet')).toContainText('Plan tourné d’un quart de tour');
+  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
+  const f = info.outputPath('p.pdf'); await download(page, f);
+  const pdf = readPdf(f);
+  expect(pdf.segs.some(l => Math.abs(l - 300) < 0.05)).toBe(true);
+  expect(pdf.segs.some(l => Math.abs(l - 210) < 0.05)).toBe(true);
 });
 
 test('le plan ne contient que les murs : pas de mobilier', async ({ page }, info) => {
@@ -102,8 +125,8 @@ test('portes et fenêtres : le trait du mur devient pointillé sur la largeur ex
     Math.hypot(+l.getAttribute('x2')! - +l.getAttribute('x1')!, +l.getAttribute('y2')! - +l.getAttribute('y1')!)]));
   const door = dashes.filter(d => d[0] === '5 2.5').map(d => +(d[1] as number).toFixed(2));
   const win = dashes.filter(d => d[0] === '0.9 0.9').map(d => +(d[1] as number).toFixed(2));
-  // Boutique exemple : portes de 1,20 m et 0,90 m → 24 mm et 18 mm à 1:50 (sur les deux faces du mur), + légende
-  expect(door).toEqual(expect.arrayContaining([24, 24, 18, 18]));
-  // Fenêtre de 2,50 m et vitrines de 2,80 m → 50 mm et 56 mm
-  expect(win).toEqual(expect.arrayContaining([50, 50, 56, 56, 56, 56]));
+  // Boutique exemple à 1 m = 3 cm : portes de 1,20 m et 0,90 m → 36 mm et 27 mm (sur les deux faces du mur)
+  expect(door).toEqual(expect.arrayContaining([36, 36, 27, 27]));
+  // Fenêtre de 2,50 m et vitrines de 2,80 m → 75 mm et 84 mm
+  expect(win).toEqual(expect.arrayContaining([75, 75, 84, 84, 84, 84]));
 });

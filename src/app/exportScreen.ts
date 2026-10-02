@@ -1,7 +1,7 @@
 import type { Ctx } from './state';
 import { h, icon } from '../ui/dom';
 import { alert, segmented, toast, toggle } from '../ui/components';
-import { SCALES, bestScale, layoutSheet, planSize, type Scale } from '../export/sheet';
+import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
 
 /* Écran « Plan A3 à imprimer » (maquette 07) : aperçu de la feuille, échelle, cartouche, téléchargement. */
@@ -12,7 +12,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   const { store } = ctx;
   const d = store.doc;
   let cotes = true;
-  let scale: Scale = d.floor ? bestScale(d, cotes) : 50;
+  let scale: Scale = d.floor ? bestScale(d, cotes) : 30;
   const team = { ...d.team };
 
   const sheetBox = h('div', { class: 'ex-sheet' });
@@ -20,7 +20,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   const dl = h('button', { class: 'btn btn-primary btn-xl', type: 'button', onclick: () => download() }, icon('download'), 'Télécharger le PDF');
   const perM = h('div', { class: 'p-help' });
 
-  const scaleSeg = segmented(SCALES.map(s => ({ value: s, label: '1:' + s })), () => scale, s => { scale = s; render(); }, 'seg-lg');
+  const scaleSeg = segmented(SCALES.map(s => ({ value: s.k as Scale, label: s.label })), () => scale, s => { scale = s; render(); }, 'seg-lg');
   const cotesTg = toggle('Cotes des murs', 'straighten', () => cotes, v => { cotes = v; render(); });
   const field = (label: string, key: keyof typeof team, ph: string) => {
     const input = h('input', { value: team[key], placeholder: ph, 'aria-label': label, maxLength: 80 });
@@ -69,14 +69,17 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
     sheetBox.innerHTML = sheetSvg(lay);
     sheetBox.classList.toggle('too-big', !lay.fits);
-    perM.replaceChildren('1 m dans la boutique = ', h('b', null, cm(1000 / scale) + ' cm'), ' sur la feuille');
+    perM.replaceChildren('1 m dans la boutique = ', h('b', null, cm(scale) + ' cm'), ' sur la feuille (', scaleInfo(scale).ratio, ')', lay.rotated ? ' · plan tourné d’un quart de tour pour tenir sur la feuille' : '');
     const size = `${cm(lay.planW)} × ${cm(lay.planH)} cm`;
     if (lay.fits) status.replaceChildren(alert('success', `Le plan tient sur la feuille : ${size}`));
     else {
-      const next = SCALES.find(s => s > scale && planSize(doc, s, cotes).fits);
-      const a = alert('warning', 'Boutique trop grande pour cette échelle', `Le plan mesure ${size}. La place disponible sur la feuille A3 est de 39 × 22 cm.`);
-      if (next) a.querySelector('.alert-txt')!.appendChild(h('button', { class: 'alert-btn', type: 'button', onclick: () => { scale = next; render(); } }, `Passer à 1:${next}`));
-      else a.querySelector('.alert-txt')!.appendChild(h('span', null, 'Même à 1:100 la boutique ne tient pas : réduis la surface au sol.'));
+      const next = SCALES.find(s => s.k < scale && planSize(doc, s.k, cotes).fits);
+      const fitsWithoutCotes = cotes && planSize(doc, scale, false).fits;
+      const a = alert('warning', 'Boutique trop grande pour cette échelle', `Le plan mesure ${size}. La place disponible sur la feuille A3 est de ${cm(ZONE_SIZE.w)} × ${cm(ZONE_SIZE.h)} cm.`);
+      const box = a.querySelector('.alert-txt')!;
+      if (fitsWithoutCotes) box.appendChild(h('button', { class: 'alert-btn', type: 'button', onclick: () => { cotes = false; render(); } }, 'Masquer les cotes'));
+      if (next) box.appendChild(h('button', { class: 'alert-btn', type: 'button', onclick: () => { scale = next.k; render(); } }, `Passer à ${next.label}`));
+      if (!next && !fitsWithoutCotes) box.appendChild(h('span', null, 'La boutique ne tient pas sur la feuille : réduis la surface au sol.'));
       status.replaceChildren(a);
     }
     dl.disabled = !lay.fits;
@@ -88,7 +91,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
     if (!lay.fits) return;
     const safe = (doc.name || 'boutique').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
-    sheetPdf(lay, `${doc.name} · plan des murs`).save(`plan-A3-${safe || 'boutique'}-1-${scale}.pdf`);
+    sheetPdf(lay, `${doc.name} · plan des murs`).save(`plan-A3-${safe || 'boutique'}-1m-${scale / 10}cm.pdf`);
     toast('PDF téléchargé : imprime-le en taille réelle (100 %).');
   }
 

@@ -265,3 +265,5 @@
 .seg-lg .seg-b.on { color: var(--accent-hover); }
 .alert-btn { align-self: flex-start; height: 36px; padding: 0 14px; border-radius: 10px; border: none; background: var(--warn-text-2); color: #fff; font: 800 13px var(--font); cursor: pointer; margin-top: 2px; }
 .tf input::placeholder { color: var(--disabled); font-weight: 600; }
+.mr.bad { background: var(--warn-bg); }
+.mr.bad .mr-k, .mr.bad .mr-v { color: var(--warn-text); }

@@ -4,15 +4,29 @@ import { add, bounds, dot, edges, mul, offsetPolygon, sub } from '../model/geome
 /* Mise en page de la feuille A3 paysage (420 × 297 mm), en millimètres, origine en haut à gauche.
    La même liste de tracés sert à l'aperçu (SVG) et au PDF (jsPDF) : ce qu'on voit est ce qu'on imprime.
    Contenu : les murs seulement (deux traits = épaisseur réelle), ouvertures en pointillés, cotes extérieures,
-   légende, barre d'échelle de 10 cm, cartouche de l'équipe. Ni mobilier, ni texture, ni cote intérieure. */
+   légende, barre d'échelle, cartouche de l'équipe. Ni mobilier, ni texture, ni cote intérieure.
+
+   Disposition prévue pour la plus grande boutique autorisée (10 × 7 m) à l'échelle 1 m = 3 cm :
+   le plan occupe la gauche de la feuille, le titre, le cartouche et la légende une colonne à droite,
+   la barre d'échelle une bande en bas. Une boutique plus profonde que large est tournée d'un quart de tour. */
 
 export const SHEET = { w: 420, h: 297 };
-export const SCALES = [20, 50, 100] as const;
-export type Scale = (typeof SCALES)[number];
-/** Zone réservée au plan (hors titre, légende et cartouche). */
-export const ZONE = { x0: 14, y0: 26, x1: 406, y1: 250 };
-const COTE_MM = 7;          // décalage des cotes à l'extérieur des murs
-const COTE_MARGIN = 12;     // place prise par les cotes autour du plan
+
+/** Échelles proposées, exprimées comme en classe : 1 m dans la boutique = k mm sur la feuille. */
+export const SCALES = [
+  { k: 30, label: '1 m = 3 cm', ratio: '1:33' },
+  { k: 20, label: '1 m = 2 cm', ratio: '1:50' },
+  { k: 10, label: '1 m = 1 cm', ratio: '1:100' },
+] as const;
+export type Scale = (typeof SCALES)[number]['k'];
+export const scaleInfo = (k: Scale) => SCALES.find(s => s.k === k)!;
+
+/** Zone réservée au plan (cotes comprises). */
+export const ZONE = { x0: 14, y0: 14, x1: 348, y1: 264 };
+/** Colonne de droite : titre, cartouche, légende. */
+const COL = { x0: 354, x1: 406 };
+const COTE_MM = 6;          // décalage des cotes à l'extérieur des murs
+const COTE_MARGIN = 10;     // place prise par les cotes autour du plan
 
 export const DASH = { porte: [5, 2.5], fenetre: [0.9, 0.9] } as const;
 export const WALL_W = 0.6, THIN_W = 0.25;
@@ -29,33 +43,54 @@ export interface Layout {
   /** Taille du plan sur la feuille (mm), cotes comprises si affichées. */
   planW: number; planH: number;
   fits: boolean;
+  /** Le plan a été tourné d'un quart de tour pour mieux tenir sur la feuille. */
+  rotated: boolean;
   /** Millimètres sur la feuille pour 1 m dans la boutique. */
   k: number;
 }
 
 const fmtLen = (m: number) => m.toFixed(2).replace('.', ',') + ' m';
+export const ZONE_SIZE = { w: ZONE.x1 - ZONE.x0, h: ZONE.y1 - ZONE.y0 };
+
+/** Une boutique plus profonde que large est tournée d'un quart de tour (les murs et ouvertures restent identiques). */
+function oriented(p: Project): { p: Project; rotated: boolean } {
+  const b = bounds(p.floor!.points);
+  if (b.h <= b.w + 1e-9) return { p, rotated: false };
+  return { p: { ...p, floor: { ...p.floor!, points: p.floor!.points.map(q => ({ x: -q.y, y: q.x })) } }, rotated: true };
+}
 
 /** Taille du plan (murs compris) pour une échelle donnée, et si elle tient dans la zone. */
-export function planSize(p: Project, scale: Scale, cotes: boolean) {
-  const k = 1000 / scale;
+export function planSize(p0: Project, k: Scale, cotes: boolean) {
+  const { p, rotated } = oriented(p0);
   const outer = offsetPolygon(p.floor!.points, p.walls.thickness);
   const b = bounds(outer);
   const m = cotes ? 2 * COTE_MARGIN : 0;
   const w = b.w * k + m, h = b.h * k + m;
-  return { w, h, fits: w <= ZONE.x1 - ZONE.x0 && h <= ZONE.y1 - ZONE.y0, b, k };
+  return { w, h, fits: w <= ZONE_SIZE.w + 1e-6 && h <= ZONE_SIZE.h + 1e-6, b, p, rotated };
 }
 /** La plus grande échelle (plan le plus grand) qui fait tenir la boutique sur la feuille. */
 export function bestScale(p: Project, cotes: boolean): Scale {
-  for (const s of SCALES) if (planSize(p, s, cotes).fits) return s;
-  return 100;
+  for (const s of SCALES) if (planSize(p, s.k, cotes).fits) return s.k;
+  return 10;
 }
 
-export function layoutSheet(p: Project, o: SheetOptions): Layout {
+/** Coupe un texte en lignes d'au plus `max` caractères (approximation suffisante pour le cartouche). */
+function wrap(s: string, max: number): string[] {
+  const out: string[] = []; let line = '';
+  for (const w of s.split(/\s+/).filter(Boolean)) {
+    if ((line + ' ' + w).trim().length > max && line) { out.push(line); line = w; } else line = (line + ' ' + w).trim();
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+export function layoutSheet(p0: Project, o: SheetOptions): Layout {
   const prims: Prim[] = [];
   const L = (x1: number, y1: number, x2: number, y2: number, w = WALL_W, dash?: readonly number[], plan = false) => prims.push({ t: 'line', x1, y1, x2, y2, w, dash, plan });
   const T = (x: number, y: number, size: number, str: string, extra: Partial<Extract<Prim, { t: 'text' }>> = {}) => prims.push({ t: 'text', x, y, size, str, ...extra });
+  const k = o.scale, sc = scaleInfo(k);
 
-  const { w: planW, h: planH, fits, b, k } = planSize(p, o.scale, o.cotes);
+  const { w: planW, h: planH, fits, b, p, rotated } = planSize(p0, k, o.cotes);
   // Centre du plan dans la zone
   const cx = (ZONE.x0 + ZONE.x1) / 2, cy = (ZONE.y0 + ZONE.y1) / 2;
   const ox = cx - ((b.x0 + b.x1) / 2) * k, oy = cy - ((b.y0 + b.y1) / 2) * k;
@@ -68,7 +103,7 @@ export function layoutSheet(p: Project, o: SheetOptions): Layout {
     const ops = p.openings.filter(q => q.wall === i).sort((a, c) => a.t - c.t);
     const oa = outer[i], ob = outer[(i + 1) % pts.length];
     const uOa = dot(sub(oa, e.a), e.u), uOb = dot(sub(ob, e.a), e.u);
-    // Ligne le long du mur, de u0 à u1, à la distance s vers l'extérieur
+    // Point du mur à la position u (le long du mur) et à la distance s vers l'extérieur
     const at = (u: number, s: number) => add(add(e.a, mul(e.u, u)), mul(e.n, s));
     const run = (u0: number, u1: number, s: number) => {
       let cur = u0;
@@ -91,8 +126,7 @@ export function layoutSheet(p: Project, o: SheetOptions): Layout {
       const A = P(at(0, s)), B = P(at(e.length, s));
       L(A.x, A.y, B.x, B.y, THIN_W, undefined, true);
       for (const u of [0, e.length]) { const q0 = P(at(u, Tk + 1.2 / k)), q1 = P(at(u, s + 1.5 / k)); L(q0.x, q0.y, q1.x, q1.y, THIN_W, undefined, true); }
-      // petits traits obliques aux extrémités
-      for (const q of [A, B]) {
+      for (const q of [A, B]) { // petits traits obliques aux extrémités
         const d = 1.2, ux = e.u.x + e.n.x, uy = e.u.y + e.n.y, l = Math.hypot(ux, uy) || 1;
         L(q.x - (ux / l) * d, q.y - (uy / l) * d, q.x + (ux / l) * d, q.y + (uy / l) * d, 0.35, undefined, true);
       }
@@ -103,36 +137,47 @@ export function layoutSheet(p: Project, o: SheetOptions): Layout {
     }
   });
 
-  // ---- Cadre, titre
+  // ---- Cadre et séparations
   prims.push({ t: 'rect', x: 10, y: 10, w: 400, h: 277, lw: 0.35, stroke: true });
-  T(16, 18.5, 5.2, `${p.name || 'Ma boutique'} · plan des murs`, { bold: true });
+  L(351, 10, 351, 287, THIN_W);
+  L(10, 268, 351, 268, THIN_W);
 
-  // ---- Légende (en bas à gauche)
-  const ly = 258;
-  T(16, ly - 6, 3.4, 'Légende', { bold: true });
-  ([['Mur', undefined], ['Porte', DASH.porte], ['Fenêtre ou vitrine', DASH.fenetre]] as const).forEach(([lab, dash], j) => {
-    const x = 16 + j * 42;
-    L(x, ly, x + 14, ly, WALL_W, dash);
-    T(x + 17, ly, 3.6, lab);
+  // ---- Colonne de droite : titre, cartouche, légende
+  let y = 18;
+  for (const line of wrap(p0.name || 'Ma boutique', 18)) { T(COL.x0, y, 4.6, line, { bold: true }); y += 5.6; }
+  T(COL.x0, y, 3.4, 'Plan des murs', { color: '#444444' }); y += 9;
+
+  L(COL.x0, y, COL.x1, y, THIN_W); y += 6;
+  T(COL.x0, y, 3, 'ÉQUIPE', { bold: true, color: '#444444' }); y += 5.2;
+  for (const line of wrap(o.team.name || '…', 20)) { T(COL.x0, y, 4, line, { bold: true }); y += 5; }
+  y += 2;
+  T(COL.x0, y, 3, 'ÉLÈVES', { bold: true, color: '#444444' }); y += 5;
+  for (const line of wrap(o.team.members || '…', 26)) { T(COL.x0, y, 3.4, line); y += 4.4; }
+  y += 2;
+  if (o.team.klass) { T(COL.x0, y, 3, 'CLASSE', { bold: true, color: '#444444' }); y += 5; T(COL.x0, y, 3.4, o.team.klass); y += 6.4; }
+  T(COL.x0, y, 3, 'ÉCHELLE', { bold: true, color: '#444444' }); y += 5;
+  T(COL.x0, y, 3.8, sc.label, { bold: true }); y += 4.6;
+  T(COL.x0, y, 3, `soit ${sc.ratio}`, { color: '#444444' }); y += 6.4;
+  T(COL.x0, y, 3, new Date().toLocaleDateString('fr-FR') + ' · Concept Store 3D', { color: '#444444' }); y += 6;
+  L(COL.x0, y, COL.x1, y, THIN_W);
+
+  // Légende (bas de la colonne)
+  let ly = 236;
+  T(COL.x0, ly, 3, 'LÉGENDE', { bold: true, color: '#444444' }); ly += 7;
+  ([['Mur', undefined], ['Porte', DASH.porte], ['Fenêtre, vitrine', DASH.fenetre]] as const).forEach(([lab, dash]) => {
+    L(COL.x0, ly, COL.x0 + 12, ly, WALL_W, dash);
+    T(COL.x0 + 15, ly, 3.2, lab);
+    ly += 6.5;
   });
+  if (rotated) T(COL.x0, 276, 2.8, 'Plan tourné d’un quart de tour', { color: '#444444' });
 
-  // ---- Barre d'échelle : exactement 10 cm sur la feuille
-  const sx = 16, sy = 270, real = (100 / k);
-  for (let j = 0; j < 10; j++) prims.push({ t: 'rect', x: sx + j * 10, y: sy, w: 10, h: 2.4, lw: 0.25, fill: j % 2 ? '#FFFFFF' : '#111111', stroke: true });
-  T(sx, sy + 6, 3, '0', { align: 'center' });
-  T(sx + 50, sy + 6, 3, '5 cm', { align: 'center' });
-  T(sx + 100, sy + 6, 3, '10 cm', { align: 'center' });
-  T(sx + 106, sy + 1.2, 3.6, `Échelle 1:${o.scale} · 10 cm sur la feuille = ${fmtLen(real).replace(',00', '')} dans la boutique`, { bold: true });
-  T(sx + 106, sy + 6.5, 3, 'Vérifie à la règle : la barre doit mesurer exactement 10 cm.', { color: '#444444' });
+  // ---- Barre d'échelle (bande du bas) : un nombre entier de mètres, environ 10 cm sur la feuille
+  const n = Math.max(1, Math.floor(100 / k)), sx = 16, sy = 274;
+  for (let j = 0; j < n; j++) prims.push({ t: 'rect', x: sx + j * k, y: sy, w: k, h: 2.6, lw: 0.25, fill: j % 2 ? '#FFFFFF' : '#111111', stroke: true });
+  for (let j = 0; j <= n; j++) T(sx + j * k, sy + 6.6, 3, j === n ? `${j} m` : String(j), { align: 'center' });
+  const bx = sx + n * k + 10;
+  T(bx, sy + 0.4, 3.6, `Échelle : ${sc.label} (${sc.ratio})`, { bold: true });
+  T(bx, sy + 6, 3, `Vérifie à la règle : cette barre mesure exactement ${((n * k) / 10).toString().replace('.', ',')} cm (= ${n} m dans la boutique).`, { color: '#444444' });
 
-  // ---- Cartouche (en bas à droite)
-  const kx = 286, ky = 256;
-  prims.push({ t: 'rect', x: kx, y: ky, w: 124, h: 31, lw: 0.35, stroke: true, fill: '#FFFFFF' });
-  L(kx, ky + 11, kx + 124, ky + 11, THIN_W);
-  T(kx + 4, ky + 5.5, 4.4, 'Équipe : ' + (o.team.name || '…'), { bold: true });
-  T(kx + 4, ky + 17, 3.8, o.team.members || 'Prénoms des élèves');
-  const date = new Date().toLocaleDateString('fr-FR');
-  T(kx + 4, ky + 25, 3.2, [o.team.klass, 'Concept Store 3D', `échelle 1:${o.scale}`, date].filter(Boolean).join(' · '), { color: '#444444' });
-
-  return { prims, planW, planH, fits, k };
+  return { prims, planW, planH, fits, rotated, k };
 }

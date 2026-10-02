@@ -1,7 +1,7 @@
 import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
 import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, snapTo, sub, v, area, cross } from '../model/geometry';
-import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, wallLength } from '../model/project';
+import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, shopExtent, wallLength } from '../model/project';
 import { closeDraft, placeOpening, selectPick } from "../app/actions";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
@@ -10,7 +10,7 @@ import { ICONS } from "../ui/icons.gen";
 
 /* Plan 2D vu de dessus (SVG). Écran = (m − origine) × k, k en pixels par mètre. */
 
-const A = '#BF4E36', INK = '#22211F', BG = '#FBFAF8';
+const A = '#BF4E36', INK = '#22211F', BG = '#FBFAF8', WARN = '#D99A2B';
 const SNAP_PX = 12, ALIGN_PX = 8;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
@@ -228,7 +228,7 @@ export class Plan2D {
       if (d?.kind === 'vertex') {
         const sn = this.snap(p, { excludeVertex: d.index }); this.snapInfo = sn;
         const pts = store.doc.floor!.points.map((q, i) => i === d.index ? sn.p : q);
-        if (isSimplePolygon(pts)) store.live(doc => moveVertex(doc, d.index, sn.p));
+        if (isSimplePolygon(pts) && shopExtent(pts).ok) store.live(doc => moveVertex(doc, d.index, sn.p));
         d.moved = true; this.schedule(); return;
       }
       if (d?.kind === "objects" || d?.kind === "rotate" || d?.kind === "band") { this.objectDrag(d, p, e.shiftKey); return; }
@@ -507,11 +507,15 @@ export class Plan2D {
     // Tracé en cours
     if (this.drawing) {
       const dr = s.draft, cur = s.cursor;
+      // Au-delà de 10 × 7 m, le tracé passe en orange et un message apparaît près du curseur.
+      const tooBig = !!cur && dr.length > 0 && !shopExtent([...dr, cur]).ok;
+      const AC = tooBig ? WARN : A;
+      if (tooBig && cur) pill(X(cur.x), Y(cur.y) + 34, 'Maximum 10 × 7 m', WARN, '#fff', 13);
       if (s.floorShape === 'rectangle' && dr.length && cur) {
         const a = dr[0], r = [a, v(cur.x, a.y), cur, v(a.x, cur.y)];
-        o.push(`<path d="${path(r)}" style="fill:rgba(191,78,54,.07);stroke:${A};stroke-width:4;stroke-linejoin:round"/>`);
-        pill((X(a.x) + X(cur.x)) / 2, Math.min(Y(a.y), Y(cur.y)) - 26, fmtM(Math.abs(cur.x - a.x)), A, '#fff', 16);
-        pill(Math.max(X(a.x), X(cur.x)) + 50, (Y(a.y) + Y(cur.y)) / 2, fmtM(Math.abs(cur.y - a.y)), A, '#fff', 16);
+        o.push(`<path d="${path(r)}" style="fill:rgba(191,78,54,.07);stroke:${AC};stroke-width:4;stroke-linejoin:round"/>`);
+        pill((X(a.x) + X(cur.x)) / 2, Math.min(Y(a.y), Y(cur.y)) - 26, fmtM(Math.abs(cur.x - a.x)), AC, '#fff', 16);
+        pill(Math.max(X(a.x), X(cur.x)) + 50, (Y(a.y) + Y(cur.y)) / 2, fmtM(Math.abs(cur.y - a.y)), AC, '#fff', 16);
       } else if (dr.length) {
         const all = cur ? [...dr, cur] : dr;
         if (all.length >= 3) o.push(`<path d="${path(all)}" style="fill:rgba(191,78,54,.07)"/>`);
@@ -524,11 +528,11 @@ export class Plan2D {
         }
         if (cur) {
           const last = dr[dr.length - 1];
-          line(last, cur, `stroke:${A};stroke-width:5;stroke-linecap:round`);
+          line(last, cur, `stroke:${AC};stroke-width:5;stroke-linecap:round`);
           const l = dist(last, cur);
           if (l > 0.01) {
             const n = norm(v(-(cur.y - last.y), cur.x - last.x)), m = add(mul(add(last, cur), 0.5), mul(n, 34 / k));
-            pill(X(m.x), Y(m.y), fmtM(l), A, '#fff', 18);
+            pill(X(m.x), Y(m.y), fmtM(l), AC, '#fff', 18);
           }
         }
         dr.forEach((q, i) => o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="${i ? 7 : 10}" style="fill:#fff;stroke:${i ? INK : A};stroke-width:${i ? 3 : 4}"/>`));

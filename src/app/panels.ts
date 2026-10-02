@@ -3,7 +3,7 @@ import type { FloorMaterial, OpeningType, WallMaterial } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, measureRow, numberField, section, segmented, swatches, tiles, toast } from '../ui/components';
 import { area, edges, fmtArea, fmtM, isSimplePolygon, perimeter } from '../model/geometry';
-import { OPENING_DEFAULTS, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, moveVertex, wallLength } from '../model/project';
+import { MAX_SHOP_MSG, OPENING_DEFAULTS, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, moveVertex, shopExtent, wallLength } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
 import { clearFloor, closeDraft, deleteSelection, duplicateOpening } from './actions';
 import type { Plan2D } from '../view2d/plan';
@@ -64,13 +64,14 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
       h('div', { class: 'mrs' },
         b(measureRow(libre ? 'Segment en cours' : 'Plus grand côté', () => fmtM(stats().seg), true)),
         b(measureRow(libre ? 'Longueur tracée' : 'Périmètre', () => fmtM(stats().total))),
-        b(measureRow('Surface', () => fmtArea(stats().surface)))),
+        b(measureRow('Surface', () => fmtArea(stats().surface))),
+        b(extentRow(() => [...ui.s.draft, ...(ui.s.cursor ? [ui.s.cursor] : [])]))),
       libre
         ? section('Au clavier', b(lenField), h('p', { class: 'p-help' }, 'Après le premier point, tape une longueur puis ', h('b', null, 'Entrée'), '.'))
         : section('Dimensions exactes',
           h('div', { class: 'g2' },
-            numberField({ label: 'Largeur', unit: 'm', decimals: 2, min: 1, max: 60, get: () => rect.w, set: v => { rect.w = v; } }).el,
-            numberField({ label: 'Profondeur', unit: 'm', decimals: 2, min: 1, max: 60, get: () => rect.d, set: v => { rect.d = v; } }).el),
+            numberField({ label: 'Largeur', unit: 'm', decimals: 2, min: 1, max: 10, get: () => rect.w, set: v => { rect.w = v; } }).el,
+            numberField({ label: 'Profondeur', unit: 'm', decimals: 2, min: 1, max: 10, get: () => rect.d, set: v => { rect.d = v; } }).el),
           button('Créer ce rectangle', 'rectangle', 'btn-secondary', () => closeDraft(ctx, [{ x: 0, y: 0 }, { x: rect.w, y: 0 }, { x: rect.w, y: rect.d }, { x: 0, y: rect.d }])),
           h('p', { class: 'p-help' }, 'Ou dessine-le sur le plan : un clic pour un coin, un clic pour le coin opposé.')),
       section('Revêtement', b(floorTiles())),
@@ -94,12 +95,14 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
     const q = { ...f().points[sel] }; if (x !== null) q.x = x; if (y !== null) q.y = y;
     const pts = f().points.map((p, i) => i === sel ? q : p);
     if (!isSimplePolygon(pts)) { toast('Impossible : les côtés se croiseraient.', undefined, 'warning'); return; }
+    if (!shopExtent(pts).ok) { toast(MAX_SHOP_MSG, undefined, 'warning'); return; }
     store.update(d => moveVertex(d, sel, q));
   }
   const p = shell('grid_on', 'Sol', () => `${f().points.length} côtés · ${fmtArea(area(f().points))}`, [
     h('div', { class: 'mrs' },
       b(measureRow('Surface', () => fmtArea(area(f().points)), true)),
-      b(measureRow('Périmètre', () => fmtM(perimeter(f().points))))),
+      b(measureRow('Périmètre', () => fmtM(perimeter(f().points)))),
+      b(extentRow(() => f().points))),
     vertexBlock ?? h('p', { class: 'p-help' }, h('b', null, 'Glisse un point'), ' pour le déplacer, clique sur un ', h('b', null, '+'), ' pour ajouter un point, puis ', h('b', null, 'Suppr'), ' pour retirer le point choisi.'),
     section('Revêtement', b(floorTiles())),
     floorTints(f().material) ? section('Couleur', b(swatches(FLOOR_COLORS, () => f().color, c => store.update(d => { d.floor!.color = c; })))) : null,
@@ -279,4 +282,17 @@ export function objectPanel(ctx: Ctx): Panel {
       button('Supprimer', 'delete', 'btn-danger', () => deleteObjects(ctx))));
   if (one) p.el.querySelector('.pn-ic')!.replaceWith(thumb);
   return finish(p, binds);
+}
+
+/** Ligne « Encombrement » : largeur × profondeur du sol, en orange au-delà de 10 × 7 m. */
+function extentRow(pts: () => import('../model/types').Vec2[]): Bound {
+  const r = measureRow('Encombrement (max 10 × 7 m)', () => {
+    const p = pts(); if (p.length < 2) return '—';
+    const e = shopExtent(p);
+    return `${e.w.toFixed(2).replace('.', ',')} × ${e.h.toFixed(2).replace('.', ',')} m`;
+  });
+  const base = r.refresh;
+  r.refresh = () => { base(); const p = pts(); r.el.classList.toggle('bad', p.length >= 2 && !shopExtent(p).ok); };
+  r.refresh();
+  return r;
 }
