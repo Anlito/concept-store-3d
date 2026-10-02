@@ -3,7 +3,9 @@ import { h, icon } from '../ui/dom';
 import { toast, toggle } from '../ui/components';
 import { View3D } from '../view3d/view3d';
 import { Plan2D } from '../view2d/plan';
-import { type Panel, emptyPanel, floorPanel, openingsPanel, wallsPanel } from './panels';
+import { type Panel, emptyPanel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
+import { libraryDrawer } from './libraryDrawer';
+import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection } from './actions';
 import { floorTints, wallTints } from '../view3d/materials';
 
@@ -11,7 +13,7 @@ const TOOLS: { id: Tool; icon: string; label: string; soon?: boolean }[] = [
   { id: 'sol', icon: 'grid_on', label: 'Sol' },
   { id: 'murs', icon: 'border_outer', label: 'Murs' },
   { id: 'ouvertures', icon: 'door_front', label: 'Portes / fenêtres' },
-  { id: 'mobilier', icon: 'chair', label: 'Mobilier', soon: true },
+  { id: 'mobilier', icon: 'chair', label: 'Mobilier' },
   { id: 'images', icon: 'image', label: 'Images', soon: true },
 ];
 
@@ -50,13 +52,14 @@ export class Editor {
 
     // --- Barre d'outils
     const toolBtns = TOOLS.map(t => h('button', { type: 'button', class: t.soon ? 'soon' : '', 'data-tool': t.id, title: t.soon ? 'Bientôt disponible' : t.label,
-      onclick: () => ui.set({ tool: t.id, sel: null }) }, icon(t.icon), t.label));
+      onclick: () => ui.set({ tool: t.id, sel: null, libraryOpen: t.id === 'mobilier' }) }, icon(t.icon), t.label));
     const rail = h('nav', { class: 'tr' }, toolBtns);
 
     // --- Vue
     this.vp = h('main', { class: 'vp' }, this.view3d.el, this.plan.el);
     const ov3d = this.overlay3d(), ov2d = this.overlay2d();
-    this.vp.append(ov3d, ov2d);
+    const drawer = libraryDrawer(ctx);
+    this.vp.append(ov3d, ov2d, drawer);
 
     this.panelHost = h('div', { style: { display: 'contents' } });
     this.el = h('div', { class: 'ed' }, topbar, h('div', { class: 'ed-body' }, rail, this.vp, this.panelHost));
@@ -74,6 +77,8 @@ export class Editor {
       status.className = 'tb-status ' + st;
       status.replaceChildren(...(st === 'saved' ? [icon('check_circle', true), 'Enregistré'] : st === 'saving' ? [icon('progress_activity'), 'Enregistrement…'] : ['Non enregistré']));
       this.vp.classList.toggle('v2d', s.view === '2d');
+      this.vp.classList.toggle('lib-open', s.libraryOpen);
+      drawer.style.display = s.libraryOpen ? '' : 'none';
       this.view3d.el.style.display = ov3d.style.display = s.view === '3d' ? '' : 'none';
       this.plan.el.style.display = ov2d.style.display = s.view === '2d' ? '' : 'none';
       this.view3d.setActive(s.view === '3d');
@@ -97,6 +102,10 @@ export class Editor {
     if (!s) return;
     const n = d.floor?.points.length ?? 0;
     if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || ((s.kind === 'wall' || s.kind === 'vertex') && s.index >= n)) ui.set({ sel: null });
+    if (s.kind === 'objects') {
+      const ids = s.ids.filter(id => d.objects.some(o => o.id === id));
+      if (ids.length !== s.ids.length) ui.set({ sel: ids.length ? { kind: 'objects', ids } : null });
+    }
   }
 
   /** Le panneau est reconstruit seulement si sa structure change ; sinon il est rafraîchi. */
@@ -118,7 +127,7 @@ export class Editor {
       case 'sol': return floorPanel(this.ctx, this.plan);
       case 'murs': return wallsPanel(this.ctx);
       case 'ouvertures': return openingsPanel(this.ctx);
-      case 'mobilier': return emptyPanel('chair', 'Mobilier', 'La bibliothèque de mobilier (assises, rangements, comptoirs, plantes…) arrive à la prochaine étape.', this.ctx, true);
+      case 'mobilier': return this.ctx.ui.s.sel?.kind === 'objects' ? objectPanel(this.ctx) : furniturePanel(this.ctx);
       case 'images': return emptyPanel('image', 'Images', 'Cadres, tapisseries, tapis et vitrophanies à partir de tes images PNG ou JPG.', this.ctx, true);
     }
   }
@@ -179,6 +188,7 @@ export class Editor {
         : [H('left_click', 'Clic : poser un point'), H('ads_click', 'Double-clic : terminer'), H(null, 'annuler', 'Échap')];
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
       else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('open_with', 'Glisser : déplacer')];
+      else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
       else parts = [H('left_click', 'Clic sur un mur : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
       hint.replaceChildren(...parts);
     };
@@ -198,13 +208,25 @@ export class Editor {
       if (ctrl && key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); return; }
       if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); return; }
       if (e.key === 'Escape') {
-        if (this.plan.cancelDrag()) return;
-        if (ui.s.draft.length) ui.set({ draft: [] }); else ui.set({ sel: null });
+        if (this.plan.cancelDrag() || this.view3d.objects.cancel()) return;
+        if (ui.s.libraryOpen) ui.set({ libraryOpen: false });
+        else if (ui.s.draft.length) ui.set({ draft: [] }); else ui.set({ sel: null });
         return;
       }
       if (drawing && e.key === 'Backspace') { e.preventDefault(); ui.set({ draft: ui.s.draft.slice(0, -1) }); return; }
       if (drawing && e.key === 'Enter' && ui.s.floorShape === 'libre' && ui.s.draft.length >= 3) { closeDraft(this.ctx); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(this.ctx); return; }
+      // Objets : copier, coller, dupliquer, tourner, déplacer au clavier
+      const objSel = selectedIds(this.ctx).length > 0;
+      if (ctrl && key === 'c' && objSel) { e.preventDefault(); copyObjects(this.ctx); return; }
+      if (ctrl && key === 'v') { e.preventDefault(); pasteObjects(this.ctx); return; }
+      if (ctrl && key === 'd' && objSel) { e.preventDefault(); duplicateObjects(this.ctx); return; }
+      if (!ctrl && key === 'r' && objSel) { e.preventDefault(); rotateObjects(this.ctx, e.shiftKey ? -15 : 15); return; }
+      if (objSel && e.key.startsWith('Arrow')) {
+        e.preventDefault();
+        const s = e.shiftKey ? 0.01 : ui.s.step, dx = e.key === 'ArrowLeft' ? -s : e.key === 'ArrowRight' ? s : 0, dy = e.key === 'ArrowUp' ? -s : e.key === 'ArrowDown' ? s : 0;
+        nudgeObjects(this.ctx, dx, dy); return;
+      }
       // Saisie d'une longueur au clavier pendant le tracé
       if (drawing && ui.s.floorShape === 'libre' && ui.s.draft.length && /^[0-9]$/.test(e.key) && !ctrl) {
         const input = this.panelHost.querySelector<HTMLInputElement>('input[aria-label="Longueur du côté suivant"]');

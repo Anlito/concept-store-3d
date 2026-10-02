@@ -26,3 +26,13 @@ npm run dev       # serveur de développement Vite
 Pile : TypeScript, Three.js, jsPDF, Vite + vite-plugin-singlefile. Pas de framework d'interface.
 Icônes : Material Symbols Rounded (Apache 2.0), embarquées par `scripts/build-icons.mjs`.
 Police : Nunito (SIL OFL), embarquée.
+
+## Bibliothèque de mobilier (niveau A)
+
+- `library/catalogue.json` : sélection des modèles (nom, catégorie, taille réelle, objets muraux…).
+- `library/modeles/*.glb` : modèles retenus (CC0), regroupés en GLB par `scripts/import-packs.mjs`
+  à partir des packs téléchargés dans `.tools/packs/`.
+- `library/inventaire.json` : source, auteur et licence de chaque modèle (règle : CC0 ou CC-BY uniquement).
+- `scripts/build-library.mjs` intègre les modèles dans le HTML (base64), lancé par `npm run build`.
+
+Crédits : Kenney « Furniture Kit » (CC0, kenney.nl) · Kay Lousberg « KayKit Furniture Bits » (CC0, kaylousberg.com).

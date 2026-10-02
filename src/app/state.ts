@@ -7,7 +7,8 @@ export type Selection =
   | null
   | { kind: 'wall'; index: number }
   | { kind: 'opening'; id: string }
-  | { kind: 'vertex'; index: number };
+  | { kind: 'vertex'; index: number }
+  | { kind: 'objects'; ids: string[] };
 export type ShadowQuality = 'off' | 'low' | 'high';
 export type SaveStatus = 'saved' | 'unsaved' | 'saving';
 
@@ -31,6 +32,10 @@ export interface UIState {
   /** Abaisse automatiquement les murs entre la caméra et la boutique. */
   cutaway: boolean;
   saveStatus: SaveStatus;
+  /** Tiroir de la bibliothèque de mobilier ouvert. */
+  libraryOpen: boolean;
+  /** Redimensionnement proportionnel des objets. */
+  keepRatio: boolean;
 }
 
 type UIListener = (changed: (keyof UIState)[]) => void;
@@ -53,7 +58,7 @@ export function defaultUI(): UIState {
   try { shadows = (localStorage.getItem('cs3d-shadows') as ShadowQuality) || 'low'; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
-    grid: true, snap: true, dims: true, step: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved',
+    grid: true, snap: true, dims: true, step: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true,
   };
 }
 

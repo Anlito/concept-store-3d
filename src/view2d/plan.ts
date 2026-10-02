@@ -2,7 +2,11 @@ import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
 import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, snapTo, sub, v, area, cross } from '../model/geometry';
 import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, wallLength } from '../model/project';
-import { closeDraft, placeOpening, selectPick } from '../app/actions';
+import { closeDraft, placeOpening, selectPick } from "../app/actions";
+import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
+import { selectObjects, selectedIds } from "../app/objectActions";
+import { getItem } from "../library/library";
+import { ICONS } from "../ui/icons.gen";
 
 /* Plan 2D vu de dessus (SVG). Écran = (m − origine) × k, k en pixels par mètre. */
 
@@ -14,7 +18,10 @@ interface Snapped { p: Vec2; kind: 'point' | 'grid' | 'free'; guides: { x?: numb
 type Drag =
   | { kind: 'pan'; x: number; y: number; ox: number; oy: number; moved: boolean; click: boolean }
   | { kind: 'vertex'; index: number; moved: boolean }
-  | { kind: 'opening'; id: string; dt: number };
+  | { kind: "opening"; id: string; dt: number }
+  | { kind: "objects"; start: Vec2; orig: Map<string, Vec2>; primary: string }
+  | { kind: "rotate"; c: Vec2; a0: number; orig: Map<string, number> }
+  | { kind: "band"; a: Vec2; b: Vec2; additive: boolean };
 
 export class Plan2D {
   readonly el: HTMLElement;
@@ -186,6 +193,7 @@ export class Plan2D {
           return;
         }
       }
+      if (s.tool !== "ouvertures" && this.objectDown(e, p)) return;
       const op = this.hitOpening(p);
       if (op) {
         selectPick(this.ctx, { kind: 'opening', id: op.id });
@@ -197,9 +205,11 @@ export class Plan2D {
       const w = this.hitWall(p);
       if (w) {
         if (s.tool === 'ouvertures') placeOpening(this.ctx, w.wall, w.t);
-        else selectPick(this.ctx, { kind: 'wall', index: w.wall });
+        else selectPick(this.ctx, { kind: "wall", index: w.wall });
         return;
       }
+      if (s.tool === "ouvertures" && this.objectDown(e, p)) return;
+      if (s.tool === "mobilier") { this.drag = { kind: "band", a: p, b: p, additive: e.shiftKey }; return; }
       pan(true);
     });
 
@@ -221,7 +231,8 @@ export class Plan2D {
         if (isSimplePolygon(pts)) store.live(doc => moveVertex(doc, d.index, sn.p));
         d.moved = true; this.schedule(); return;
       }
-      if (d?.kind === 'opening') {
+      if (d?.kind === "objects" || d?.kind === "rotate" || d?.kind === "band") { this.objectDrag(d, p, e.shiftKey); return; }
+      if (d?.kind === "opening") {
         const o = store.doc.openings.find(q => q.id === d.id); if (!o) return;
         const e0 = edges(store.doc.floor!.points)[o.wall];
         let t = dot(sub(p, e0.a), e0.u) + d.dt;
@@ -245,9 +256,11 @@ export class Plan2D {
         if (this.hitVertex(p) >= 0) cursor = 'move';
         else { const mi = this.hitMid(p); if (mi >= 0) { this.hoverMid = mi; cursor = 'copy'; } }
       }
+      if (!cursor && this.rotHandleHit(p)) cursor = "alias";
+      if (!cursor && this.topObject(p)) cursor = this.topObject(p)!.locked ? "not-allowed" : "move";
       if (!cursor) {
         const op = this.hitOpening(p);
-        if (op) cursor = 'grab';
+        if (op) cursor = "grab";
         else {
           const w = this.hitWall(p);
           if (w && s.tool === 'ouvertures') {
@@ -265,7 +278,13 @@ export class Plan2D {
     const up = (e: PointerEvent) => {
       const d = this.drag; this.drag = null;
       if (!d) return;
-      if (d.kind === 'pan') { svg.style.cursor = ''; if (d.click && !d.moved) this.ctx.ui.set({ sel: null }); }
+      if (d.kind === "pan") { svg.style.cursor = ""; if (d.click && !d.moved) this.ctx.ui.set({ sel: null }); }
+      else if (d.kind === "band") {
+        const x0 = Math.min(d.a.x, d.b.x), x1 = Math.max(d.a.x, d.b.x), y0 = Math.min(d.a.y, d.b.y), y1 = Math.max(d.a.y, d.b.y);
+        const ids = this.ctx.store.doc.objects.filter(o => o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1).map(o => o.id);
+        if (dist(d.a, d.b) * this.k < 4) { if (!d.additive) this.ctx.ui.set({ sel: null }); }
+        else selectObjects(this.ctx, ids, d.additive);
+      }
       else this.ctx.store.end();
       this.snapInfo = null;
       void e; this.schedule();
@@ -273,6 +292,71 @@ export class Plan2D {
     svg.addEventListener('pointerup', up);
     svg.addEventListener('pointercancel', up);
     svg.addEventListener('pointerleave', () => { if (this.drawing) this.ctx.ui.set({ cursor: null }); this.hoverGhost = null; this.schedule(); });
+  }
+
+  /* ---------- Objets ---------- */
+  /** Objet le plus haut (dessiné en dernier) sous le point. */
+  private topObject(p: Vec2) {
+    const objs = this.sortedObjects();
+    for (let i = objs.length - 1; i >= 0; i--) if (hitObject(objs[i], p)) return objs[i];
+    return null;
+  }
+  private sortedObjects() { return [...this.ctx.store.doc.objects].sort((a, b) => b.size.w * b.size.d - a.size.w * a.size.d); }
+  /** Poignée de rotation (devant l'objet sélectionné, s'il est seul et non verrouillé). */
+  private rotHandle() {
+    const ids = selectedIds(this.ctx);
+    if (ids.length !== 1) return null;
+    const o = this.ctx.store.doc.objects.find(x => x.id === ids[0]);
+    if (!o || o.locked) return null;
+    return { o, p: toPlan(o, 0, o.size.d / 2 + 28 / this.k) };
+  }
+  private rotHandleHit(p: Vec2) { const r = this.rotHandle(); return r && dist(r.p, p) < 13 / this.k ? r : null; }
+
+  private objectDown(e: PointerEvent, p: Vec2) {
+    const { store, ui } = this.ctx;
+    const rh = this.rotHandleHit(p);
+    if (rh) {
+      store.begin();
+      this.drag = { kind: 'rotate', c: v(rh.o.x, rh.o.y), a0: Math.atan2(p.y - rh.o.y, p.x - rh.o.x), orig: new Map([[rh.o.id, rh.o.rot]]) };
+      return true;
+    }
+    const o = this.topObject(p);
+    if (!o) return false;
+    if (e.shiftKey) { selectObjects(this.ctx, [o.id], true); return true; }
+    if (!selectedIds(this.ctx).includes(o.id)) selectObjects(this.ctx, [o.id]);
+    else if (ui.s.tool !== 'mobilier') ui.set({ tool: 'mobilier' });
+    const ids = selectedIds(this.ctx);
+    const movable = store.doc.objects.filter(x => ids.includes(x.id) && !x.locked);
+    if (movable.some(x => x.id === o.id)) {
+      store.begin();
+      this.drag = { kind: 'objects', start: p, orig: new Map(movable.map(x => [x.id, v(x.x, x.y)])), primary: o.id };
+    }
+    return true;
+  }
+
+  private objectDrag(d: Extract<Drag, { kind: 'objects' | 'rotate' | 'band' }>, p: Vec2, shift: boolean) {
+    const { store, ui } = this.ctx;
+    if (d.kind === 'band') { d.b = p; this.schedule(); return; }
+    if (d.kind === 'objects') {
+      let dx = p.x - d.start.x, dy = p.y - d.start.y;
+      const o0 = d.orig.get(d.primary)!;
+      if (ui.s.snap) { dx = snapTo(o0.x + dx, ui.s.step) - o0.x; dy = snapTo(o0.y + dy, ui.s.step) - o0.y; }
+      store.live(doc => {
+        for (const o of doc.objects) {
+          const s = d.orig.get(o.id); if (!s) continue;
+          o.x = Math.round((s.x + dx) * 1000) / 1000; o.y = Math.round((s.y + dy) * 1000) / 1000;
+          if (d.orig.size === 1 && getItem(o.model)?.mural) snapToWall(doc, o);
+        }
+      });
+    } else {
+      const a = Math.atan2(p.y - d.c.y, p.x - d.c.x), delta = ((a - d.a0) * 180) / Math.PI;
+      store.live(doc => {
+        for (const o of doc.objects) {
+          const r0 = d.orig.get(o.id); if (r0 === undefined) continue;
+          o.rot = normRot(shift ? r0 + delta : Math.round((r0 + delta) / 15) * 15);
+        }
+      });
+    }
   }
 
   /** Annule le glisser en cours (Échap). */
@@ -333,6 +417,34 @@ export class Plan2D {
       };
       d.openings.forEach(op => opening(op));
       if (this.hoverGhost) opening(this.hoverGhost, true);
+
+      // Objets (les plus grands d'abord, pour que les petits restent visibles)
+      const selIds = selectedIds(this.ctx);
+      for (const ob of this.sortedObjects()) {
+        const fp = footprint(ob), on = selIds.includes(ob.id), flat = ob.size.h < 0.05;
+        o.push(`<path d="${path(fp)}" data-object="${ob.id}" style="fill:${on ? '#FBF1ED' : flat ? 'rgba(255,255,255,.55)' : '#FFFFFF'};stroke:${on ? A : '#8A8782'};stroke-width:${on ? 2.5 : 1.5};stroke-linejoin:round${flat ? ';stroke-dasharray:5 4' : ''}"/>`);
+        line(fp[3], fp[2], `stroke:${on ? A : '#6A6863'};stroke-width:3.5;stroke-linecap:round`); // face avant
+        if (ob.locked) o.push(`<path d="${ICONS.lock}" transform="translate(${(X(ob.x) - 8).toFixed(1)} ${(Y(ob.y) + 2).toFixed(1)}) scale(${16 / 960})" style="fill:#6A6863"/>`);
+        const wpx = Math.min(ob.size.w, ob.size.d) * k;
+        if (wpx > 26 && Math.max(ob.size.w, ob.size.d) * k > 60) {
+          const name = getItem(ob.model)?.name ?? '';
+          text(X(ob.x), Y(ob.y) + (ob.locked ? 9 : 0), name, `font-size:${Math.min(13, Math.max(10, wpx / 4))}px;font-weight:700;fill:${on ? '#A8432D' : '#4A4945'}`);
+        }
+      }
+      const rh = this.rotHandle();
+      if (rh) {
+        const f = toPlan(rh.o, 0, rh.o.size.d / 2);
+        line(f, rh.p, `stroke:${A};stroke-width:2`);
+        const cx = X(rh.p.x), cy = Y(rh.p.y);
+        o.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="12" style="fill:#fff;stroke:${A};stroke-width:2" data-testid="rotate-handle"/>`);
+        o.push(`<path d="${ICONS.rotate_right}" transform="translate(${(cx - 9).toFixed(1)} ${(cy + 9).toFixed(1)}) scale(${18 / 960})" style="fill:${A}"/>`);
+        if (s.dims) pill(cx + 52, cy, `${Math.round(rh.o.rot)}°`, INK, '#fff', 12);
+      }
+      if (this.drag?.kind === 'band') {
+        const b = this.drag;
+        const r = [b.a, v(b.b.x, b.a.y), b.b, v(b.a.x, b.b.y)];
+        o.push(`<path d="${path(r)}" style="fill:rgba(191,78,54,.08);stroke:${A};stroke-width:1.5;stroke-dasharray:5 4"/>`);
+      }
 
       // Sélection
       const sel = s.sel;

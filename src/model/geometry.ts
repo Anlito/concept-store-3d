@@ -99,3 +99,12 @@ export const fmtM = (x: number) => x.toFixed(2).replace('.', ',') + ' m';
 export const fmtCm = (x: number) => Math.round(x * 100) + ' cm';
 export const fmtArea = (a: number) => (a >= 100 ? Math.round(a).toString() : a.toFixed(1).replace('.', ',').replace(/,0$/, '')) + ' m²';
 export const parseNum = (s: string) => { const n = parseFloat(s.replace(',', '.').replace(/\s/g, '')); return Number.isFinite(n) ? n : NaN; };
+
+/** Centre de gravité d'un polygone (repli : moyenne des sommets). */
+export function centroidOf(p: Vec2[]): Vec2 {
+  const A = signedArea(p);
+  if (Math.abs(A) < 1e-9) return v(p.reduce((s, q) => s + q.x, 0) / p.length, p.reduce((s, q) => s + q.y, 0) / p.length);
+  let cx = 0, cy = 0;
+  for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length], f = a.x * b.y - b.x * a.y; cx += (a.x + b.x) * f; cy += (a.y + b.y) * f; }
+  return v(cx / (6 * A), cy / (6 * A));
+}

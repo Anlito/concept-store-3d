@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-icons.mjs && tsc --noEmit && vite build && vite build --mode diagnostic",
+    "build": "node scripts/build-icons.mjs && node scripts/build-library.mjs && tsc --noEmit && vite build && vite build --mode diagnostic",
     "serve": "node scripts/serve.mjs dist",
     "test": "playwright test"
   },

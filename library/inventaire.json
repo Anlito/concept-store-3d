@@ -1,0 +1,655 @@
+{
+  "_lisezmoi": "Inventaire des modèles intégrés à la bibliothèque de base. Seuls des modèles CC0 ou CC-BY sont autorisés. Licence vérifiée sur la fiche (License.txt) de chaque pack avant intégration.",
+  "modeles": [
+    {
+      "id": "chaise",
+      "nom": "Chaise",
+      "fichier_origine": "chair",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "chaise-coussin",
+      "nom": "Chaise à coussin",
+      "fichier_origine": "chairCushion",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "chaise-moderne",
+      "nom": "Chaise moderne",
+      "fichier_origine": "chairModernCushion",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "chaise-ronde",
+      "nom": "Chaise ronde",
+      "fichier_origine": "chairRounded",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "chaise-bois",
+      "nom": "Chaise en bois",
+      "fichier_origine": "chair_A_wood",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tabouret-bar",
+      "nom": "Tabouret de bar",
+      "fichier_origine": "stoolBar",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tabouret-carre",
+      "nom": "Tabouret carré",
+      "fichier_origine": "stoolBarSquare",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tabouret-bois",
+      "nom": "Tabouret bas",
+      "fichier_origine": "chair_stool_wood",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "banc",
+      "nom": "Banc",
+      "fichier_origine": "bench",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "banc-coussin",
+      "nom": "Banc à coussin",
+      "fichier_origine": "benchCushion",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "fauteuil",
+      "nom": "Fauteuil",
+      "fichier_origine": "loungeChair",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "fauteuil-design",
+      "nom": "Fauteuil design",
+      "fichier_origine": "loungeDesignChair",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "fauteuil-coussins",
+      "nom": "Fauteuil à coussins",
+      "fichier_origine": "armchair_pillows",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "canape",
+      "nom": "Canapé",
+      "fichier_origine": "loungeSofa",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "canape-design",
+      "nom": "Canapé design",
+      "fichier_origine": "loungeDesignSofa",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "pouf",
+      "nom": "Pouf",
+      "fichier_origine": "loungeSofaOttoman",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "etagere-ouverte",
+      "nom": "Étagère ouverte",
+      "fichier_origine": "bookcaseOpen",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "etagere-basse",
+      "nom": "Étagère basse",
+      "fichier_origine": "bookcaseOpenLow",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "bibliotheque",
+      "nom": "Bibliothèque fermée",
+      "fichier_origine": "bookcaseClosedWide",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "meuble-bas",
+      "nom": "Meuble bas",
+      "fichier_origine": "cabinetTelevisionDoors",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "commode",
+      "nom": "Commode",
+      "fichier_origine": "sideTableDrawers",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "etagere-murale",
+      "nom": "Étagère murale",
+      "fichier_origine": "shelf_A_big",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "etageres-deco",
+      "nom": "Étagères décorées",
+      "fichier_origine": "shelf_B_large_decorated",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "buffet",
+      "nom": "Buffet décoré",
+      "fichier_origine": "cabinet_medium_decorated",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "caisson",
+      "nom": "Caisson",
+      "fichier_origine": "cabinet_small",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "comptoir-bar",
+      "nom": "Comptoir bar",
+      "fichier_origine": "kitchenBar",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "comptoir-bar-fin",
+      "nom": "Bout de comptoir",
+      "fichier_origine": "kitchenBarEnd",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "bureau",
+      "nom": "Bureau",
+      "fichier_origine": "desk",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "bureau-angle",
+      "nom": "Bureau d’angle",
+      "fichier_origine": "deskCorner",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table",
+      "nom": "Table",
+      "fichier_origine": "table",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-ronde-k",
+      "nom": "Table ronde",
+      "fichier_origine": "tableRound",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-verre",
+      "nom": "Table en verre",
+      "fichier_origine": "tableGlass",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-basse-k",
+      "nom": "Table basse",
+      "fichier_origine": "tableCoffee",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-basse-verre",
+      "nom": "Table basse en verre",
+      "fichier_origine": "tableCoffeeGlass",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-appoint",
+      "nom": "Table d’appoint",
+      "fichier_origine": "sideTable",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-bois",
+      "nom": "Table en bois",
+      "fichier_origine": "table_medium_long",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "table-basse-bois",
+      "nom": "Table basse en bois",
+      "fichier_origine": "table_low",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "porte-manteau",
+      "nom": "Porte-manteau",
+      "fichier_origine": "coatRackStanding",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "plante-pot",
+      "nom": "Plante en pot",
+      "fichier_origine": "pottedPlant",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "plante-petite-1",
+      "nom": "Petite plante",
+      "fichier_origine": "plantSmall1",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "plante-petite-2",
+      "nom": "Petite plante ronde",
+      "fichier_origine": "plantSmall2",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "plante-petite-3",
+      "nom": "Plante grasse",
+      "fichier_origine": "plantSmall3",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "cactus-grand",
+      "nom": "Grand cactus",
+      "fichier_origine": "cactus_medium_A",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "cactus-moyen",
+      "nom": "Cactus",
+      "fichier_origine": "cactus_medium_B",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "cactus-petit",
+      "nom": "Petit cactus",
+      "fichier_origine": "cactus_small_A",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "lampadaire-rond",
+      "nom": "Lampadaire rond",
+      "fichier_origine": "lampRoundFloor",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "lampadaire-carre",
+      "nom": "Lampadaire carré",
+      "fichier_origine": "lampSquareFloor",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "lampe-table",
+      "nom": "Lampe à poser",
+      "fichier_origine": "lampRoundTable",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "plafonnier",
+      "nom": "Plafonnier",
+      "fichier_origine": "lampSquareCeiling",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "applique",
+      "nom": "Applique murale",
+      "fichier_origine": "lampWall",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "lampadaire-bois",
+      "nom": "Lampadaire en bois",
+      "fichier_origine": "lamp_standing",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tapis-rect",
+      "nom": "Tapis rectangulaire",
+      "fichier_origine": "rugRectangle",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tapis-rond",
+      "nom": "Tapis rond",
+      "fichier_origine": "rugRound",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "paillasson",
+      "nom": "Paillasson",
+      "fichier_origine": "rugDoormat",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "tapis-rayures",
+      "nom": "Tapis à rayures",
+      "fichier_origine": "rug_rectangle_stripes_A",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "cadre-grand",
+      "nom": "Grand cadre",
+      "fichier_origine": "pictureframe_large_A",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "cadre-pose",
+      "nom": "Cadre à poser",
+      "fichier_origine": "pictureframe_standing_A",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "livres",
+      "nom": "Pile de livres",
+      "fichier_origine": "book_set",
+      "pack": "KayKit Furniture Bits 1.0",
+      "auteur": "Kay Lousberg (www.kaylousberg.com)",
+      "licence": "CC0 1.0",
+      "source": "https://github.com/KayKit-Game-Assets/KayKit-Furniture-Bits-1.0",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "coussin",
+      "nom": "Coussin",
+      "fichier_origine": "pillow",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "enceinte",
+      "nom": "Enceinte",
+      "fichier_origine": "speaker",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "radio",
+      "nom": "Radio",
+      "fichier_origine": "radio",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "ecran",
+      "nom": "Écran",
+      "fichier_origine": "televisionModern",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "ordinateur",
+      "nom": "Ordinateur portable",
+      "fichier_origine": "laptop",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "carton",
+      "nom": "Carton",
+      "fichier_origine": "cardboardBoxClosed",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    },
+    {
+      "id": "poubelle",
+      "nom": "Poubelle",
+      "fichier_origine": "trashcan",
+      "pack": "Furniture Kit 2.0",
+      "auteur": "Kenney (www.kenney.nl)",
+      "licence": "CC0 1.0",
+      "source": "https://kenney.nl/assets/furniture-kit",
+      "verifie_le": "2026-10-02"
+    }
+  ]
+}

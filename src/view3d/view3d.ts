@@ -5,7 +5,8 @@ import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
 import { OPENING_DEFAULTS, findFreeT, wallLength } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
-import { placeOpening, selectPick } from '../app/actions';
+import { placeOpening, selectPick } from "../app/actions";
+import { ObjectLayer } from "./objects3d";
 
 const ACCENT = '#BF4E36';
 const LOW_WALL = 0.35; // hauteur des murs abaissés (m)
@@ -27,6 +28,7 @@ export class View3D {
   private raycaster = new THREE.Raycaster();
   private framedOnce = false;
   private lowered = new Set<number>();
+  readonly objects: ObjectLayer;
 
   constructor(private ctx: Ctx) {
     this.el = document.createElement('div');
@@ -59,12 +61,21 @@ export class View3D {
     this.controls.addEventListener('change', () => { this.needsRender = true; });
     this.camera.position.set(5, 12, 18);
 
+    const ov = document.createElement("div"); ov.className = "vp-3d-ov"; this.el.appendChild(ov);
+    this.objects = new ObjectLayer(ctx, {
+      camera: this.camera, canvas: this.renderer.domElement,
+      setOrbit: on => { this.controls.enabled = on; },
+      invalidate: () => { this.needsRender = true; },
+      ray: e => this.rayFrom(e),
+    }, ov);
+    this.scene.add(this.objects.group, this.objects.selectionGroup);
     this.bindPointer();
     new ResizeObserver(() => this.resize()).observe(this.el);
     ctx.store.subscribe(() => this.sync());
     ctx.ui.subscribe(ch => {
       if (ch.includes('shadows')) this.applyShadows();
-      if (ch.includes('sel') || ch.includes('tool')) this.drawSelection();
+      if (ch.includes("sel") || ch.includes("tool")) { this.drawSelection(); this.objects.drawSelection(); }
+      if (ch.includes("view")) this.objects.updateHandles();
       if (ch.includes('cutaway')) this.updateCutaway(true);
       this.needsRender = true;
     });
@@ -74,7 +85,7 @@ export class View3D {
       requestAnimationFrame(loop);
       if (!this.active) return;
       if (this.controls.update()) this.needsRender = true;
-      if (this.needsRender) { this.updateCutaway(); this.renderer.render(this.scene, this.camera); this.needsRender = false; }
+      if (this.needsRender) { this.updateCutaway(); this.renderer.render(this.scene, this.camera); this.objects.updateHandles(); this.needsRender = false; }
     };
     requestAnimationFrame(loop);
   }
@@ -140,6 +151,7 @@ export class View3D {
       this.updateCutaway(true);
       if (d.floor && !this.framedOnce && this.active) this.frame();
     }
+    this.objects.sync();
     this.drawSelection();
     this.needsRender = true;
   }
@@ -202,12 +214,16 @@ export class View3D {
   /* ---------- Souris ---------- */
   private pick(e: PointerEvent): { pick: Pick; point: THREE.Vector3; object: THREE.Object3D } | null {
     if (!this.shop) return null;
-    const r = this.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    this.raycaster.setFromCamera(ndc, this.camera);
-    const hits = this.raycaster.intersectObjects(this.shop.pickables, true);
+    this.raycaster.ray.copy(this.rayFrom(e));
+    const hits = this.raycaster.intersectObjects([...this.shop.pickables, this.objects.group], true);
     for (const h of hits) { const p = h.object.userData.pick as Pick | undefined; if (p) return { pick: p, point: h.point, object: h.object }; }
     return null;
+  }
+  /** Rayon partant de la caméra et passant par le pointeur. */
+  rayFrom(e: PointerEvent | MouseEvent) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    this.raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+    return this.raycaster.ray.clone();
   }
   /** Position le long du mur i (m) d'un point 3D. */
   private tOnWall(i: number, p: THREE.Vector3) {
@@ -230,12 +246,16 @@ export class View3D {
     let drag: { id: string; wall: number; dt: number } | null = null;
     // Écouteur en phase de capture : il passe avant OrbitControls et peut le désactiver pendant un glisser.
     this.el.addEventListener('pointerdown', e => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || (e.target as HTMLElement).closest(".h3d")) return;
       const hit = this.pick(e);
       down = { x: e.clientX, y: e.clientY, empty: !hit || hit.pick.kind === 'floor' };
       const { store, ui } = this.ctx;
       if (!hit) return;
-      if (hit.pick.kind === 'opening') {
+      if (hit.pick.kind === "object") {
+        if (this.objects.onObjectDown(e, hit.pick.id)) cv.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (hit.pick.kind === "opening") {
         const o = store.doc.openings.find(q => q.id === (hit.pick as { id: string }).id)!;
         selectPick(this.ctx, hit.pick);
         drag = { id: o.id, wall: o.wall, dt: o.t - this.tOnWall(o.wall, hit.point) };
@@ -262,7 +282,7 @@ export class View3D {
       if (drag) { this.ctx.store.end(); drag = null; }
       if (down && down.empty && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) this.ctx.ui.set({ sel: null });
       down = null;
-      this.controls.enabled = true;
+      if (!this.objects.dragging) this.controls.enabled = true;
     };
     this.el.addEventListener('pointerup', up);
     this.el.addEventListener('pointercancel', up);

@@ -2,6 +2,7 @@ import type { Ctx } from './state';
 import type { Pick } from '../view3d/build';
 import type { Vec2 } from '../model/types';
 import { OPENING_DEFAULTS, deleteVertex, findFreeT, setFloorPoints, wallLength } from '../model/project';
+import { deleteObjects } from './objectActions';
 import { dist, isSimplePolygon, uid } from '../model/geometry';
 import { toast } from '../ui/components';
 
@@ -44,6 +45,7 @@ export function duplicateOpening(ctx: Ctx, id: string) {
 export function deleteSelection(ctx: Ctx) {
   const { store, ui } = ctx, sel = ui.s.sel;
   if (!sel) return;
+  if (sel.kind === 'objects') { deleteObjects(ctx); return; }
   if (sel.kind === 'opening') {
     const o = store.doc.openings.find(q => q.id === sel.id);
     store.update(d => { d.openings = d.openings.filter(q => q.id !== sel.id); });

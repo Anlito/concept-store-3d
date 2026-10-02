@@ -19,6 +19,7 @@ export function newProject(name = 'Ma boutique'): Project {
     floor: null,
     walls: { height: 3, thickness: 0.15, styles: [] },
     openings: [],
+    objects: [],
   };
 }
 
@@ -139,6 +140,7 @@ export function sanitizeProject(raw: unknown): Project {
     p.walls.styles = p.floor.points.map((_, i) => ({ ...DEFAULT_WALL, ...(p.walls.styles[i] || {}) }));
   }
   p.openings = (p.openings || []).map(o => ({ ...o }));
+  p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));
   clampAllOpenings(p);
   return p;
 }

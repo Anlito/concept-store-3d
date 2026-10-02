@@ -7,7 +7,7 @@ import { floorMaterial, wallMaterial } from './materials';
    Chaque mur est un groupe dans son repère local : x le long du mur (depuis le sommet i), y vers le haut,
    z vers l'intérieur de la boutique. La face intérieure est en z = 0, la face extérieure en z = −épaisseur. */
 
-export type Pick = { kind: 'wall'; index: number } | { kind: 'opening'; id: string } | { kind: 'floor' };
+export type Pick = { kind: 'wall'; index: number } | { kind: 'opening'; id: string } | { kind: 'floor' } | { kind: 'object'; id: string };
 
 const M = {
   outer: new THREE.MeshStandardMaterial({ color: '#F4F2EE', roughness: 0.95, side: THREE.DoubleSide }),

@@ -186,3 +186,67 @@
 .home-sec h2 { margin: 0; font-size: 18px; font-weight: 800; }
 .home-foot { font-size: 13px; color: var(--text-3); display: flex; gap: 16px; }
 .home-foot a { color: var(--text-3); }
+
+/* ---------- Bibliothèque de mobilier (maquette 04) ---------- */
+.lib { position: absolute; left: 0; top: 0; bottom: 0; width: min(780px, 100%); background: #fff; box-shadow: 8px 0 24px rgba(0,0,0,.08);
+  display: flex; flex-direction: column; z-index: 5; }
+.vp.lib-open .vp-3d, .vp.lib-open .vp-2d { opacity: .75; }
+.lib-h { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px 24px; }
+.lib-h h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.lib-tools { display: flex; gap: 8px; padding: 8px 24px 12px; }
+.lib-search { flex: 1; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--bg-app); border-radius: 12px; color: var(--text-3); font-size: 22px; }
+.lib-search:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+.lib-search input { flex: 1; border: none; outline: none; background: transparent; font: 700 15px var(--font); color: var(--ink); min-width: 0; }
+.lib-tabs { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--sep); }
+.lib-tab { height: 44px; padding: 0 14px; border: none; background: transparent; font: 700 15px var(--font); color: var(--text-2); cursor: pointer; display: flex; align-items: center; gap: 8px;
+  box-shadow: inset 0 -3px 0 transparent; }
+.lib-tab .cnt, .lib-cat .cnt { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--track); font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; color: var(--text-3); }
+.lib-tab.on { color: var(--accent-hover); font-weight: 800; box-shadow: inset 0 -3px 0 var(--accent); }
+.lib-tab.on .cnt { background: var(--accent-soft); color: var(--accent-hover); }
+.lib-body { flex: 1; min-height: 0; display: flex; }
+.lib-cats { width: 184px; flex: none; padding: 12px 8px 12px 16px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+.lib-cat { height: 40px; padding: 0 8px 0 10px; border: none; border-radius: 10px; background: transparent; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font: 700 14px var(--font); color: var(--text-2); text-align: left; }
+.lib-cat .ic { font-size: 20px; }
+.lib-cat span:nth-child(2) { flex: 1; }
+.lib-cat:hover { background: var(--hover); }
+.lib-cat.on { background: var(--accent-soft); color: var(--accent-hover); font-weight: 800; }
+.lib-cat.on .cnt { background: #fff; color: var(--accent-hover); }
+.lib-grid { flex: 1; overflow: auto; padding: 12px 20px 16px 8px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-content: start; }
+.lib-empty { grid-column: 1 / -1; padding: 48px 16px; text-align: center; color: var(--text-3); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.lib-empty .ic { font-size: 40px; color: var(--disabled-2); }
+.fc { position: relative; height: 176px; padding: 8px 8px 12px; border-radius: 16px; border: none; background: #fff; box-shadow: inset 0 0 0 1.5px var(--border);
+  display: flex; flex-direction: column; gap: 8px; text-align: left; cursor: pointer; transition: box-shadow .14s ease-out; min-width: 0; }
+.fc:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+.fc.on { box-shadow: inset 0 0 0 2px var(--accent); background: var(--sel-bg); }
+.fc-img { height: 104px; flex: none; border-radius: 10px; background: var(--bg-app); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.fc-img img { max-width: 100%; max-height: 100%; }
+.fc-img img:not([src]) { display: none; }
+.fc-n { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+.fc-d { font-size: 12px; font-weight: 600; color: var(--text-3); padding: 0 4px; margin-top: -6px; }
+.fc-check { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: none; align-items: center; justify-content: center; font-size: 16px; }
+.fc.on .fc-check { display: flex; }
+.lib-foot { display: flex; align-items: center; gap: 16px; padding: 14px 20px 16px 24px; border-top: 1px solid var(--sep); }
+.lib-sel { flex: 1; min-width: 0; }
+.lib-sel-n { font-size: 16px; font-weight: 800; }
+.lib-sel-d { font-size: 13px; color: var(--text-3); }
+
+/* Poignées 3D des objets (maquette 02) */
+.vp-3d-ov { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.h3d { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: grab; }
+.h3d:active { cursor: grabbing; }
+.h-move { width: 36px; height: 36px; background: var(--accent); color: #fff; font-size: 22px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.h-move::after { content: ''; position: absolute; left: 17px; top: 36px; width: 2px; height: 28px; background: var(--accent); }
+.h-rot { width: 34px; height: 34px; background: #fff; color: var(--accent); border: 2px solid var(--accent); font-size: 22px; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+.vp-3d-ov .tag3d { transform: translate(0, -50%); }
+
+/* Panneau d'objet */
+.pn-thumb { width: 56px; height: 56px; border-radius: 12px; background: var(--bg-app); padding: 4px; flex: none; display: flex; align-items: center; justify-content: center; }
+.pn-thumb img { max-width: 100%; max-height: 100%; }
+.rot-row { display: flex; align-items: center; gap: 8px; }
+.rot-row input[type=range] { flex: 1; accent-color: var(--accent); height: 24px; }
+.sq { width: 44px; height: 44px; flex: none; border: 1.5px solid var(--field-border); border-radius: 10px; background: #fff; cursor: pointer; color: var(--ink); font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.sq:hover { background: var(--hover-2); }
+.sw.orig { background: conic-gradient(#BF4E36 0 25%, #6E8B6B 0 50%, #C9A97E 0 75%, #5B6B7A 0) !important; }
+.chk { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-2); cursor: pointer; }
+.chk input { accent-color: var(--accent); width: 18px; height: 18px; }

@@ -47,6 +47,26 @@ export interface Project {
   floor: Floor | null;
   walls: Walls;
   openings: Opening[];
+  objects: PlacedObject[];
   /** Projet modèle fourni par l'enseignant : ne jamais l'écraser. */
   isTemplate?: boolean;
+}
+
+/** Objet posé dans la boutique (meuble, plante, décor…). */
+export interface PlacedObject {
+  id: string;
+  /** Identifiant du modèle dans la bibliothèque (base, créations de l'équipe ou ajouts du professeur). */
+  model: string;
+  /** Centre de l'emprise au sol, dans le plan (m). */
+  x: number;
+  y: number;
+  /** Hauteur du bas de l'objet au-dessus du sol (m). */
+  z: number;
+  /** Rotation dans le sens horaire vu de dessus (degrés). */
+  rot: number;
+  /** Dimensions réelles : largeur, profondeur, hauteur (m). */
+  size: { w: number; d: number; h: number };
+  /** Couleur choisie, ou null pour les couleurs d'origine. */
+  color: string | null;
+  locked: boolean;
 }

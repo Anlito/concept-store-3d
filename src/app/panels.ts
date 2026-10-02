@@ -7,6 +7,9 @@ import { OPENING_DEFAULTS, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, mov
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
 import { clearFloor, closeDraft, deleteSelection, duplicateOpening } from './actions';
 import type { Plan2D } from '../view2d/plan';
+import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
+import { thumbnail } from '../library/thumbs';
+import { alignObjects, deleteObjects, duplicateObjects, editObjects, rotateObjects, toggleLock } from './objectActions';
 
 /* Panneau de propriétés (à droite). Il est reconstruit quand l'outil ou la sélection change,
    et simplement rafraîchi (refresh) à chaque modification du projet. */
@@ -198,3 +201,82 @@ export function emptyPanel(ic: string, title: string, text: string, ctx?: Ctx, s
 
 /** Petite vérification de cohérence exportée pour les tests : nombre de murs = nombre de côtés. */
 export const wallCount = (ctx: Ctx) => (ctx.store.doc.floor ? edges(ctx.store.doc.floor.points).length : 0);
+
+/* ---------- Mobilier ---------- */
+const OBJECT_COLORS = [
+  { name: 'Noir', hex: '#2E2D2B' }, { name: 'Blanc cassé', hex: '#F6F4F0' }, { name: 'Chêne', hex: '#C9A97E' }, { name: 'Terracotta', hex: '#BF4E36' },
+  { name: 'Sauge', hex: '#6E8B6B' }, { name: 'Sable', hex: '#D9D2C6' }, { name: 'Bleu ardoise', hex: '#5B6B7A' },
+];
+
+export function furniturePanel(ctx: Ctx): Panel {
+  const n = () => ctx.store.doc.objects.length;
+  const p = shell('chair', 'Mobilier', () => `${n()} objet${n() > 1 ? 's' : ''} dans la boutique`, [
+    h('p', { class: 'p-help' }, 'Choisis un meuble dans la ', h('b', null, 'bibliothèque'), ', puis ', h('b', null, 'glisse-le'), ' dans la boutique. Clique sur un objet pour le régler.'),
+    h('p', { class: 'p-help' }, h('b', null, 'Maj + clic'), ' : choisir plusieurs objets. Sur le plan, ', h('b', null, 'glisse dans le vide'), ' pour les entourer.'),
+    h('p', { class: 'p-help' }, 'Raccourcis : ', h('b', null, 'Ctrl+C / Ctrl+V'), ' copier-coller, ', h('b', null, 'Ctrl+D'), ' dupliquer, ', h('b', null, 'R'), ' tourner, ', h('b', null, 'flèches'), ' déplacer, ', h('b', null, 'Suppr'), ' supprimer.'),
+  ], h('div', { class: 'pn-f' }, button('Ouvrir la bibliothèque', 'chair', 'btn-primary btn-lg', () => ctx.ui.set({ libraryOpen: true }))));
+  return finish(p, []);
+}
+
+export function objectPanel(ctx: Ctx): Panel {
+  const { store, ui } = ctx;
+  const binds: Bound[] = [];
+  const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
+  const ids = () => (ui.s.sel?.kind === 'objects' ? ui.s.sel.ids : []);
+  const objs = () => store.doc.objects.filter(o => ids().includes(o.id));
+  const one = objs().length === 1 ? objs()[0].id : null;
+  const o = () => store.doc.objects.find(x => x.id === one)!;
+  const item = one ? getItem(o().model) : undefined;
+
+  // Rotation (curseur avec aperçu en direct)
+  const rotVal = h('span', { style: { color: 'var(--ink)' } });
+  const range = h('input', { type: 'range', min: '0', max: '345', step: '15', 'aria-label': 'Rotation' });
+  range.addEventListener('input', () => { store.begin(); store.live(d => { for (const x of d.objects) if (ids().includes(x.id) && !x.locked) x.rot = +range.value; }); });
+  range.addEventListener('change', () => store.end());
+  binds.push({ el: range, refresh: () => { const r = objs()[0]?.rot ?? 0; if (document.activeElement !== range) range.value = String(Math.round(r / 15) * 15 % 360); rotVal.textContent = `${Math.round(r)}°`; } });
+
+  const setSize = (k: 'w' | 'd' | 'h', cm: number) => editObjects(ctx, x => {
+    const v = cm / 100, f = v / x.size[k];
+    if (ui.s.keepRatio) x.size = { w: x.size.w * f, d: x.size.d * f, h: x.size.h * f };
+    x.size[k] = v;
+    for (const kk of ['w', 'd', 'h'] as const) x.size[kk] = Math.round(x.size[kk] * 1000) / 1000;
+  });
+  const ratio = h('input', { type: 'checkbox', onchange: (e: Event) => ui.set({ keepRatio: (e.target as HTMLInputElement).checked }) });
+  binds.push({ el: ratio, refresh: () => { ratio.checked = ui.s.keepRatio; } });
+
+  const lockBtn = h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => toggleLock(ctx) });
+  binds.push({ el: lockBtn, refresh: () => { const l = objs().length > 0 && objs().every(x => x.locked); lockBtn.replaceChildren(icon(l ? 'lock' : 'lock_open'), l ? 'Déverrouiller' : 'Verrouiller'); } });
+
+  const orig = h('button', { type: 'button', class: 'sw orig', title: 'Couleurs d’origine', 'aria-label': 'Couleurs d’origine', onclick: () => editObjects(ctx, x => { x.color = null; }) });
+  const sw = swatches(OBJECT_COLORS, () => objs()[0]?.color ?? '', c => editObjects(ctx, x => { x.color = c; }));
+  sw.el.prepend(orig);
+  binds.push(sw, { el: orig, refresh: () => orig.classList.toggle('on', objs().every(x => !x.color)) });
+
+  const thumb = h('div', { class: 'pn-thumb' });
+  if (one) thumbnail(o().model).then(u => thumb.replaceChildren(h('img', { src: u, alt: '' }))).catch(() => { /* pas de miniature */ });
+  const row = (a: string, extra: Node) => h('span', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' } }, a, extra);
+  const p = shell(one ? 'chair' : 'select_all', one ? (item?.name ?? 'Objet') : `${objs().length} objets`,
+    () => one ? `${categoryLabel(item?.cat ?? '')} · ${SOURCE_LABEL[item?.source ?? 'base']}` : 'Sélection multiple', [
+      one ? section(row('Dimensions', h('label', { class: 'chk' }, ratio, 'Garder les proportions')),
+        h('div', { class: 'g3' },
+          b(numberField({ label: 'Longueur', unit: 'cm', min: 1, max: 2000, get: () => o().size.w * 100, set: v => setSize('w', v) })),
+          b(numberField({ label: 'Profondeur', unit: 'cm', min: 1, max: 2000, get: () => o().size.d * 100, set: v => setSize('d', v) })),
+          b(numberField({ label: 'Hauteur', unit: 'cm', min: 1, max: 2000, get: () => o().size.h * 100, set: v => setSize('h', v) })))) : null,
+      one ? section('Position', h('div', { class: 'g2' },
+          b(numberField({ label: 'X', prefix: 'X', unit: 'm', decimals: 2, get: () => o().x, set: v => editObjects(ctx, x => { x.x = v; }) })),
+          b(numberField({ label: 'Y', prefix: 'Y', unit: 'm', decimals: 2, get: () => o().y, set: v => editObjects(ctx, x => { x.y = v; }) }))),
+        b(numberField({ label: 'Hauteur au-dessus du sol', unit: 'cm', min: 0, max: 600, get: () => o().z * 100, set: v => editObjects(ctx, x => { x.z = v / 100; }),
+          title: 'Pour accrocher un objet au mur ou au plafond' }))) : null,
+      section(row('Rotation', rotVal),
+        h('div', { class: 'rot-row' },
+          h('button', { class: 'sq', type: 'button', title: '−15°', onclick: () => rotateObjects(ctx, -15) }, icon('rotate_left')),
+          range,
+          h('button', { class: 'sq', type: 'button', title: '+15° (touche R)', onclick: () => rotateObjects(ctx, 15) }, icon('rotate_right')))),
+      section('Couleur', sw.el),
+      h('div', { class: 'g2' }, lockBtn, button('Aligner', 'grid_4x4', 'btn-secondary', () => alignObjects(ctx), 'Aligner sur la grille de 10 cm et sur 15°')),
+    ], h('div', { class: 'pn-f two' },
+      button('Dupliquer', 'content_copy', 'btn-secondary', () => duplicateObjects(ctx)),
+      button('Supprimer', 'delete', 'btn-danger', () => deleteObjects(ctx))));
+  if (one) p.el.querySelector('.pn-ic')!.replaceWith(thumb);
+  return finish(p, binds);
+}
