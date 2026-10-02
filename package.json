@@ -1,0 +1,26 @@
+{
+  "name": "concept-store-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-icons.mjs && tsc --noEmit && vite build && vite build --mode diagnostic",
+    "serve": "node scripts/serve.mjs dist",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "@material-symbols/svg-400": "^0.47.6",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.4",
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

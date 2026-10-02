@@ -1,0 +1,50 @@
+/* Polices embarquées (aucun accès Internet) — Nunito, SIL Open Font License. */
+@font-face { font-family: 'Nunito'; font-weight: 600; font-style: normal; font-display: block;
+  src: url('../../node_modules/@fontsource/nunito/files/nunito-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 700; font-style: normal; font-display: block;
+  src: url('../../node_modules/@fontsource/nunito/files/nunito-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 800; font-style: normal; font-display: block;
+  src: url('../../node_modules/@fontsource/nunito/files/nunito-latin-800-normal.woff2') format('woff2'); }
+
+:root {
+  --accent: #BF4E36; --accent-hover: #A8432D; --accent-soft: #F8E7E1; --sel-bg: #FBF1ED; --danger-border: #E9C9C0;
+  --ink: #22211F; --text-2: #4A4945; --text-3: #6A6863; --disabled: #9C9A95; --disabled-2: #CFCCC6;
+  --border: #E4E2DD; --field-border: #DAD8D3; --sep: #EEEDE9; --track: #F0EFEC; --hover: #F3F2EF; --hover-2: #F5F4F1;
+  --bg-app: #F4F3F0; --bg-3d: #EFEEEA; --bg-2d: #FBFAF8; --bg-export: #E9E8E4;
+  --ok: #3C7A5A; --ok-text: #2C5E44; --ok-bg: #EAF3EE;
+  --warn: #D99A2B; --warn-text: #8A5A12; --warn-text-2: #5E3D0B; --warn-bg: #FDF3E1;
+  --font: 'Nunito', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: var(--font); font-weight: 600; color: var(--ink); background: var(--bg-app); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: inherit; }
+.ic { display: inline-block; width: 1em; height: 1em; flex: none; fill: currentColor; vertical-align: middle; }
+
+/* Boutons */
+.btn { height: 44px; padding: 0 18px 0 14px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; white-space: nowrap; font-size: 15px; font-weight: 700; cursor: pointer; border: none; background: transparent; color: var(--ink);
+  transition: background-color .14s ease-out, box-shadow .14s ease-out; }
+.btn .ic { font-size: 22px; }
+.btn-primary { background: var(--accent); color: #fff; font-weight: 800; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: #fff; border: 1.5px solid var(--field-border); }
+.btn-secondary:hover { background: var(--hover-2); }
+.btn-ghost:hover { background: var(--track); }
+.btn-danger { background: #fff; border: 1.5px solid var(--danger-border); color: var(--accent-hover); }
+.btn-danger:hover { background: var(--sel-bg); }
+.btn:disabled, .btn.is-disabled { cursor: not-allowed; }
+.btn-primary:disabled { background: var(--disabled-2); }
+.btn-ghost:disabled, .btn-secondary:disabled { color: var(--disabled); background: transparent; }
+.btn-icon { width: 40px; height: 40px; padding: 0; border-radius: 10px; }
+.btn-lg { height: 48px; }
+.btn-xl { height: 56px; border-radius: 14px; font-size: 16px; }
+
+/* Alertes */
+.alert { display: flex; gap: 10px; padding: 14px; border-radius: 14px; font-size: 14px; line-height: 1.35; }
+.alert .ic { font-size: 22px; margin-top: -1px; }
+.alert-warning { background: var(--warn-bg); color: var(--warn-text-2); }
+.alert-warning > .ic { color: var(--warn-text); }
+.alert-success { background: var(--ok-bg); color: var(--ok-text); font-weight: 700; align-items: center; }
+.alert-error { background: #FBE9E5; color: #7A2A1A; }
+.alert b { font-weight: 800; }
