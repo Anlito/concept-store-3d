@@ -17,7 +17,7 @@ export function newProject(name = 'Ma boutique'): Project {
     format: 'concept-store-3d', version: 1, id: uid(), name,
     team: { name: '', members: '', klass: '' },
     floor: null,
-    walls: { height: 3, thickness: 0.15, styles: [] },
+    walls: { height: 3, thickness: 0.1, styles: [] }, // 10 cm = carton de 3 mm à l'échelle 1 m = 3 cm
     openings: [],
     objects: [],
   };

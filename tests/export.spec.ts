@@ -40,6 +40,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
   await page.getByTestId('template').click(); // boutique exemple 10 × 7 m, murs de 15 cm
+  await page.getByRole('button', { name: 'Boutique exemple' }).click();
 });
 test.afterEach(() => expect(errors).toEqual([]));
 

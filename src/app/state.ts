@@ -1,5 +1,6 @@
 import type { OpeningType, Vec2 } from '../model/types';
 import type { Store } from '../model/store';
+import type { FileState } from './files';
 
 export type Tool = 'sol' | 'murs' | 'ouvertures' | 'mobilier' | 'images';
 export type View = '2d' | '3d';
@@ -10,7 +11,7 @@ export type Selection =
   | { kind: 'vertex'; index: number }
   | { kind: 'objects'; ids: string[] };
 export type ShadowQuality = 'off' | 'low' | 'high';
-export type SaveStatus = 'saved' | 'unsaved' | 'saving';
+export type SaveStatus = 'new' | 'saved' | 'unsaved' | 'saving';
 
 export interface UIState {
   view: View;
@@ -70,4 +71,6 @@ export interface Ctx {
   home(): void;
   /** Ouvre l'écran « Plan A3 à imprimer ». */
   exportPlan(): void;
+  /** Fichier du projet en cours (pour « Enregistrer »). */
+  file: FileState;
 }

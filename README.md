@@ -36,3 +36,15 @@ Police : Nunito (SIL OFL), embarquée.
 - `scripts/build-library.mjs` intègre les modèles dans le HTML (base64), lancé par `npm run build`.
 
 Crédits : Kenney « Furniture Kit » (CC0, kenney.nl) · Kay Lousberg « KayKit Furniture Bits » (CC0, kaylousberg.com).
+
+## Sauvegarde des projets
+
+- Un projet = un fichier `.json` (sol, murs, ouvertures, objets, cartouche).
+- Chrome / Edge : « Enregistrer » ouvre le sélecteur de dossier (dossier de l'équipe), puis réécrit ce fichier.
+  Autres navigateurs : le projet est téléchargé.
+- **Projet modèle** : le professeur prépare une boutique puis « Enregistrer ▾ › Enregistrer comme modèle ».
+  Le fichier `modele-….json` porte la marque `isTemplate` : l'outil refuse de l'écraser et un élève
+  qui l'ouvre doit toujours enregistrer sous un nouveau nom. Astuce : mettre ce fichier en lecture seule
+  sur le réseau.
+- Copie de secours automatique dans le navigateur (IndexedDB) ; « Projets récents » sur l'accueil ;
+  avertissement si on ferme l'onglet sans enregistrer.

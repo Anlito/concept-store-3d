@@ -267,3 +267,41 @@
 .tf input::placeholder { color: var(--disabled); font-weight: 600; }
 .mr.bad { background: var(--warn-bg); }
 .mr.bad .mr-k, .mr.bad .mr-v { color: var(--warn-text); }
+
+/* Bouton « Enregistrer » avec menu */
+.split { position: relative; display: flex; }
+.split-main { border-radius: 12px 0 0 12px; }
+.split-more { border-radius: 0 12px 12px 0; padding: 0 8px; margin-left: 1px; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 300px; background: #fff; border-radius: 14px; padding: 6px; z-index: 50;
+  box-shadow: 0 2px 4px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.14); display: none; flex-direction: column; }
+.menu.open { display: flex; }
+.menu button { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: none; border-radius: 10px; background: transparent;
+  font: 700 14px var(--font); color: var(--ink); cursor: pointer; text-align: left; }
+.menu button .ic { font-size: 20px; color: var(--text-2); }
+.menu button:hover { background: var(--hover); }
+.menu kbd { margin-left: auto; font: 700 11px var(--font); color: var(--text-3); }
+
+/* Fenêtre de confirmation */
+.modal-veil { position: fixed; inset: 0; background: rgba(34,33,31,.42); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.modal { width: min(480px, calc(100vw - 32px)); background: #fff; border-radius: 22px; box-shadow: 0 24px 64px rgba(0,0,0,.25); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.modal h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.modal p { margin: 0; font-size: 15px; color: var(--text-2); line-height: 1.45; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
+
+/* Projets récents */
+.recents { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.rc { position: relative; display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 18px; background: #fff; box-shadow: inset 0 0 0 1.5px var(--border);
+  cursor: pointer; border: none; text-align: left; font-family: inherit; color: var(--ink); transition: box-shadow .14s ease-out; min-width: 0; }
+.rc:hover { box-shadow: inset 0 0 0 2px var(--accent); }
+.rc-img { width: 72px; height: 72px; flex: none; border-radius: 12px; background: var(--bg-app); padding: 6px; }
+.rc-img svg { width: 100%; height: 100%; display: block; }
+.rc-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rc-n { font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-d { font-size: 13px; font-weight: 600; color: var(--text-3); }
+.rc-w { font-size: 12px; font-weight: 800; color: var(--warn-text); display: flex; align-items: center; gap: 6px; }
+.rc-w::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.rc > .ic { font-size: 24px; color: var(--disabled); }
+.rc-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent; color: var(--disabled); cursor: pointer;
+  display: none; align-items: center; justify-content: center; font-size: 18px; }
+.rc:hover .rc-x { display: flex; }
+.rc-x:hover { background: var(--hover); color: var(--ink); }

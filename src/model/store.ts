@@ -61,7 +61,9 @@ export class Store {
     this.past.push(this.doc); this.doc = next; this.dirty++; this.emit('history');
   }
 
-  load(doc: Project) {
-    this.doc = doc; this.past = []; this.future = []; this.gesture = null; this.dirty = 0; this.emit('load');
+  /** Charge un projet (historique vidé). dirty > 0 : il reste des modifications non enregistrées (copie de secours). */
+  load(doc: Project, dirty = 0) {
+    this.doc = doc; this.past = []; this.future = []; this.gesture = null; this.dirty = dirty; this.emit('load');
   }
+  markSaved() { this.dirty = 0; }
 }

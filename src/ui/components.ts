@@ -36,7 +36,7 @@ export function numberField(o: NumberOpts): Bound {
     input.value = fmt(o.get());
   };
   input.addEventListener('keydown', e => {
-    e.stopPropagation(); // les raccourcis de l'éditeur ne s'appliquent pas pendant la saisie
+    if (!e.ctrlKey && !e.metaKey) e.stopPropagation(); // pendant la saisie, seuls les raccourcis Ctrl (Ctrl+S…) remontent
     if (e.key === 'Enter') { commit(); if (o.blurOnEnter) { skipBlur = true; input.blur(); } else input.select(); }
     if (e.key === 'Escape') { refresh(); input.blur(); }
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -114,4 +114,19 @@ export function toast(msg: string, action?: { label: string; run: () => void }, 
     action ? h('button', { type: 'button', onclick: () => { action.run(); t.remove(); } }, action.label) : null);
   document.body.appendChild(t);
   toastTimer = window.setTimeout(() => t.remove(), action ? 5000 : 3200);
+}
+
+/** Fenêtre de choix (Échap ou clic sur le voile = première option « discrète », ou null). */
+export function choose<T extends string>(title: string, text: string, buttons: { label: string; value: T; cls?: string; icon?: string }[]): Promise<T | null> {
+  return new Promise(resolve => {
+    const done = (v: T | null) => { veil.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); done(null); } };
+    const veil = h('div', { class: 'modal-veil', onclick: (e: MouseEvent) => { if (e.target === veil) done(null); } },
+      h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+        h('h2', null, title), h('p', null, text),
+        h('div', { class: 'modal-btns' }, buttons.map(b => button(b.label, b.icon ?? null, b.cls ?? 'btn-secondary', () => done(b.value))))));
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(veil);
+    (veil.querySelector('.btn-primary') as HTMLElement | null)?.focus();
+  });
 }

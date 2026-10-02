@@ -1,10 +1,11 @@
 import type { Ctx, Tool, View } from './state';
 import { h, icon } from '../ui/dom';
-import { toast, toggle } from '../ui/components';
+import { toggle } from '../ui/components';
 import { View3D } from '../view3d/view3d';
 import { Plan2D } from '../view2d/plan';
 import { type Panel, emptyPanel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
 import { libraryDrawer } from './libraryDrawer';
+import { saveProject } from './files';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection } from './actions';
 import { floorTints, wallTints } from '../view3d/materials';
@@ -48,7 +49,7 @@ export class Editor {
       h('div', { class: 'tb-c' }, h('div', { class: 'vsw' }, b2d, b3d)),
       h('div', { class: 'tb-r' }, undo, redo, h('div', { class: 'tb-sep' }),
         h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.exportPlan() }, icon('print'), 'Plan A3'),
-        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => toast('L’enregistrement arrive à une prochaine étape.') }, icon('save'), 'Enregistrer')));
+        this.saveGroup()));
 
     // --- Barre d'outils
     const toolBtns = TOOLS.map(t => h('button', { type: 'button', class: t.soon ? 'soon' : '', 'data-tool': t.id, title: t.soon ? 'Bientôt disponible' : t.label,
@@ -73,9 +74,11 @@ export class Editor {
       });
       undo.disabled = !store.canUndo && !s.draft.length; redo.disabled = !store.canRedo;
       if (document.activeElement !== name) name.value = store.doc.name;
-      const st = store.dirty ? 'unsaved' : s.saveStatus;
-      status.className = 'tb-status ' + st;
-      status.replaceChildren(...(st === 'saved' ? [icon('check_circle', true), 'Enregistré'] : st === 'saving' ? [icon('progress_activity'), 'Enregistrement…'] : ['Non enregistré']));
+      const st = store.dirty && s.saveStatus !== 'saving' ? 'unsaved' : s.saveStatus;
+      status.className = 'tb-status ' + (st === 'new' ? 'unsaved' : st);
+      status.title = ctx.file.fileName ? 'Fichier : ' + ctx.file.fileName : '';
+      status.replaceChildren(...(st === 'saved' ? [icon('check_circle', true), 'Enregistré'] : st === 'saving' ? [icon('progress_activity'), 'Enregistrement…']
+        : st === 'new' ? ['Pas encore enregistré'] : ['Non enregistré']));
       this.vp.classList.toggle('v2d', s.view === '2d');
       this.vp.classList.toggle('lib-open', s.libraryOpen);
       drawer.style.display = s.libraryOpen ? '' : 'none';
@@ -89,6 +92,21 @@ export class Editor {
     refreshChrome();
     this.updatePanel();
     this.bindKeys();
+  }
+
+  /** Bouton « Enregistrer » + menu (Enregistrer sous, Enregistrer comme modèle pour le professeur). */
+  private saveGroup() {
+    const menu = h('div', { class: 'menu', role: 'menu' },
+      h('button', { type: 'button', role: 'menuitem', onclick: () => { close(); void saveProject(this.ctx, 'saveAs'); } }, icon('save'), 'Enregistrer sous…', h('kbd', null, 'Ctrl+Maj+S')),
+      h('button', { type: 'button', role: 'menuitem', onclick: () => { close(); void saveProject(this.ctx, 'template'); } }, icon('bookmark_add'), 'Enregistrer comme modèle (professeur)'));
+    const close = () => { menu.classList.remove('open'); document.removeEventListener('pointerdown', outside, true); };
+    const outside = (e: Event) => { if (!wrap.contains(e.target as Node)) close(); };
+    const wrap = h('div', { class: 'split' },
+      h('button', { class: 'btn btn-primary split-main', type: 'button', title: 'Enregistrer (Ctrl+S)', onclick: () => void saveProject(this.ctx, 'save') }, icon('save'), 'Enregistrer'),
+      h('button', { class: 'btn btn-primary split-more', type: 'button', title: 'Autres façons d’enregistrer', 'aria-label': 'Autres façons d’enregistrer',
+        onclick: () => { if (menu.classList.toggle('open')) document.addEventListener('pointerdown', outside, true); else close(); } }, icon('keyboard_arrow_down')),
+      menu);
+    return wrap;
   }
 
   private undo() {
@@ -202,9 +220,12 @@ export class Editor {
     window.addEventListener('keydown', e => {
       if (!this.el.isConnected) return;
       const t = e.target as HTMLElement;
+      const ctrl0 = e.ctrlKey || e.metaKey;
+      if (ctrl0 && e.key.toLowerCase() === 's') { e.preventDefault(); (document.activeElement as HTMLElement | null)?.blur(); void saveProject(this.ctx, e.shiftKey ? 'saveAs' : 'save'); return; }
       if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
       const ctrl = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
       const drawing = ui.s.tool === 'sol' && !store.doc.floor;
+      if (ctrl && key === 's') { e.preventDefault(); void saveProject(this.ctx, e.shiftKey ? 'saveAs' : 'save'); return; }
       if (ctrl && key === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); return; }
       if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); return; }
       if (e.key === 'Escape') {

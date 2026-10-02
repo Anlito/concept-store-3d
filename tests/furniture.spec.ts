@@ -14,6 +14,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
   await page.getByTestId('template').click();
+  await page.getByRole('button', { name: 'Boutique exemple' }).click();
   await page.locator('button[data-view="2d"]').click();
   await page.locator('[data-tool="mobilier"]').click();
   await expect(page.getByTestId('library')).toBeVisible();
