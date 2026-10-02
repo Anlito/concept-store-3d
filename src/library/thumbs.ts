@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { loadProto, instantiate } from './library';
+import { loadProto, instantiate, onProtoForgotten } from './library';
+
+// Une création modifiée dans l'atelier : ses miniatures sont recalculées.
+onProtoForgotten(id => { for (const k of [...cache.keys()]) if (k.startsWith(id + '|')) cache.delete(k); });
 
 /* Miniatures des meubles, calculées à la demande avec un petit moteur de rendu dédié
    (une seule fois par modèle et par session). */

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import catalogue from '../../library/catalogue.json';
 import { VOLUME_MODELS, type Part } from './volumes';
+import type { Creation, Volume } from '../model/types';
+import { buildVolumes } from './volumes3d';
 
 /* Bibliothèque de mobilier. Les modèles GLB sont intégrés au fichier HTML (base64, voir scripts/build-library.mjs) :
    aucun fetch, donc compatible avec l'ouverture en file://. */
@@ -25,7 +27,11 @@ export interface LibItem {
   pack: string;
   mural?: boolean; elev?: number; plafond?: boolean;
   glb?: string;            // modèle GLB en base64
-  parts?: Part[];          // ou volumes simples
+  parts?: Part[];          // ou volumes simples (meubles de l'outil)
+  volumes?: Volume[];      // ou volumes de l'atelier (créations des élèves)
+  /** Création : enregistrée dans le projet ouvert, ou seulement sur ce poste. */
+  where?: 'projet' | 'poste';
+  team?: string;
   target?: { h?: number; w?: number };
   rot?: number;
 }
@@ -42,8 +48,21 @@ const items: LibItem[] = [
 ];
 const byId = new Map(items.map(i => [i.id, i]));
 
-export const libraryItems = () => items;
-export const getItem = (id: string) => byId.get(id);
+/* ---------- Créations de l'équipe (« Mes créations ») ---------- */
+const creations = new Map<string, LibItem>();
+const creationItem = (c: Creation, where: 'projet' | 'poste'): LibItem =>
+  ({ id: c.id, name: c.name, cat: (c.cat as Category) || 'decor', source: 'moi', pack: 'eleves', volumes: c.volumes, where, team: c.team });
+/** Met à jour la liste des créations : celles du projet ouvert, puis celles gardées sur ce poste. */
+export function setCreations(inProject: Creation[], onComputer: Creation[]) {
+  const next = new Map<string, LibItem>();
+  for (const c of onComputer) next.set(c.id, creationItem(c, 'poste'));
+  for (const c of inProject) next.set(c.id, creationItem(c, 'projet'));
+  for (const [id, it] of next) { const old = creations.get(id); if (!old || JSON.stringify(old.volumes) !== JSON.stringify(it.volumes)) forgetProto(id); }
+  creations.clear(); for (const [id, it] of next) creations.set(id, it);
+}
+
+export const libraryItems = () => [...items, ...[...creations.values()].sort((a, b) => (a.where === b.where ? 0 : a.where === 'projet' ? -1 : 1))];
+export const getItem = (id: string) => byId.get(id) ?? creations.get(id);
 export const PACKS = catalogue.packs as Record<string, { nom: string; auteur: string; licence: string; source: string }>;
 
 /* ---------- Prototypes 3D ---------- */
@@ -142,11 +161,12 @@ function buildParts(parts: Part[]): THREE.Group {
 export function loadProto(id: string): Promise<Proto> {
   let p = protos.get(id);
   if (p) return p;
-  const item = byId.get(id);
+  const item = getItem(id);
   p = (async (): Promise<Proto> => {
     if (!item) throw new Error('Modèle inconnu : ' + id);
     let obj: THREE.Object3D;
     if (item.parts) obj = buildParts(item.parts);
+    else if (item.volumes) obj = buildVolumes(item.volumes);
     else if (item.glb) {
       const gltf = await loader.parseAsync(dataUrlToBuffer(item.glb), '');
       obj = gltf.scene;
@@ -176,3 +196,8 @@ export function instantiate(proto: Proto, color: string | null): THREE.Object3D 
 
 /** Dimensions par défaut d'un modèle (après chargement). */
 export async function defaultDims(id: string) { return (await loadProto(id)).dims; }
+
+/** Oublie le prototype d'un modèle (création modifiée) : il sera reconstruit. */
+export function forgetProto(id: string) { protos.delete(id); onForget.forEach(f => f(id)); }
+const onForget = new Set<(id: string) => void>();
+export const onProtoForgotten = (f: (id: string) => void) => onForget.add(f);

@@ -48,6 +48,8 @@ export interface Project {
   walls: Walls;
   openings: Opening[];
   objects: PlacedObject[];
+  /** Meubles créés par l'équipe (atelier), enregistrés avec le projet. */
+  creations: Creation[];
   /** Projet modèle fourni par l'enseignant : ne jamais l'écraser. */
   isTemplate?: boolean;
 }
@@ -69,4 +71,38 @@ export interface PlacedObject {
   /** Couleur choisie, ou null pour les couleurs d'origine. */
   color: string | null;
   locked: boolean;
+}
+
+/* ---------- Atelier de création (niveau B) ---------- */
+export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche';
+
+/** Volume simple d'une création. Longueurs en mètres, repère du meuble : x et y au sol, z vers le haut. */
+export interface Volume {
+  id: string;
+  type: VolumeType;
+  name: string;
+  /** Coin du volume (avant rotation), depuis le coin du meuble. */
+  x: number; y: number; z: number;
+  /** Boîte et arche : longueur, profondeur, hauteur. Cylindre : w = diamètre, h = hauteur.
+      Plan : w = longueur, d = largeur (h inutilisé). */
+  w: number; d: number; h: number;
+  /** Épaisseur du plan ou de l'arche. */
+  t: number;
+  /** Cylindre couché / plan debout. */
+  turned: boolean;
+  /** Rotation autour de la verticale (degrés). */
+  rot: number;
+  color: string;
+  /** Masqué dans l'atelier seulement (pour travailler sur les volumes cachés). */
+  hidden?: boolean;
+}
+
+/** Meuble créé par l'équipe dans l'atelier (« Mes créations »). */
+export interface Creation {
+  id: string;
+  name: string;
+  cat: string;
+  team: string;
+  volumes: Volume[];
+  updated: number;
 }

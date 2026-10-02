@@ -305,3 +305,37 @@
   display: none; align-items: center; justify-content: center; font-size: 18px; }
 .rc:hover .rc-x { display: flex; }
 .rc-x:hover { background: var(--hover); color: var(--ink); }
+
+/* ---------- Atelier de création (maquette 05) ---------- */
+.at-left { width: 264px; flex: none; background: #fff; border-right: 1px solid var(--border); padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+.at-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.at-tile { height: 84px; border: none; border-radius: 14px; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font: 700 13px var(--font); color: var(--ink); cursor: pointer; transition: background-color .14s ease-out; }
+.at-tile:hover { background: var(--accent-soft); color: var(--accent-hover); }
+.at-pic { display: flex; }
+.at-list { display: flex; flex-direction: column; gap: 4px; overflow: auto; min-height: 0; }
+.at-row { height: 48px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 4px 0 12px; border-radius: 12px; cursor: pointer; font-size: 14px; font-weight: 700; }
+.at-row:hover { background: var(--hover); }
+.at-row.on { background: var(--sel-bg); box-shadow: inset 0 0 0 2px var(--accent); }
+.at-dot { width: 18px; height: 18px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.14); }
+.at-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.at-row .btn-icon { width: 36px; height: 36px; color: var(--text-3); }
+.at-import { width: 100%; height: 48px; border: 1.5px dashed var(--field-border); background: #fff; font-size: 14px; }
+.at-import:hover { border-color: var(--accent); background: var(--sel-bg); }
+.at-pills { position: absolute; left: 16px; top: 16px; display: flex; gap: 8px; }
+.at-pills .pill { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.1); height: 40px; }
+.at-name span { color: var(--text-3); font-weight: 800; }
+.at-name-in { border: none; outline: none; font: 800 15px var(--font); color: var(--ink); width: 200px; background: transparent; }
+.at-total { font-weight: 800; color: var(--ink); }
+.sws6 { display: grid; grid-template-columns: repeat(6, 36px); gap: 8px; }
+.at-select { height: 44px; padding: 0 10px; border: 1.5px solid var(--field-border); border-radius: 10px; font: 700 15px var(--font); color: var(--ink); background: #fff; }
+.at .vp { background: var(--bg-3d); }
+.fc-actions { position: absolute; top: 8px; left: 8px; display: none; gap: 4px; }
+.fc:hover .fc-actions, .fc.on .fc-actions { display: flex; }
+.fc-actions span { width: 28px; height: 28px; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); display: flex; align-items: center; justify-content: center; color: var(--text-2); font-size: 18px; }
+.fc-actions span:hover { color: var(--accent-hover); }
+.fc-badge { position: absolute; top: 8px; left: 8px; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; }
+.fc:hover .fc-badge, .fc.on .fc-badge { display: none; }
+.lib-tabbar { display: flex; gap: 8px; padding: 12px 20px 0 8px; grid-column: 1 / -1; }
+.at-import { white-space: normal; font-size: 13px; line-height: 1.2; padding: 0 12px; }
+.at-cat { border: none; outline: none; background: transparent; font: 800 15px var(--font); color: var(--ink); cursor: pointer; }

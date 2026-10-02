@@ -11,21 +11,21 @@ export type ChangeReason = 'doc' | 'history' | 'load';
 const MAX_HISTORY = 100;
 const clone = <T>(x: T): T => structuredClone(x);
 
-export class Store {
-  doc: Project;
-  private past: Project[] = [];
-  private future: Project[] = [];
-  private gesture: Project | null = null;
+export class Store<T = Project> {
+  doc: T;
+  private past: T[] = [];
+  private future: T[] = [];
+  private gesture: T | null = null;
   private listeners = new Set<Listener>();
   /** Nombre de modifications depuis le dernier enregistrement. */
   dirty = 0;
 
-  constructor(doc: Project) { this.doc = doc; }
+  constructor(doc: T) { this.doc = doc; }
 
   subscribe(fn: Listener) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   private emit(r: ChangeReason) { this.listeners.forEach(f => f(r)); }
 
-  update(fn: (d: Project) => void | boolean) {
+  update(fn: (d: T) => void | boolean) {
     const before = clone(this.doc);
     if (fn(this.doc) === false) { this.doc = before; return false; }
     if (JSON.stringify(before) === JSON.stringify(this.doc)) return false;
@@ -35,7 +35,7 @@ export class Store {
   }
 
   begin() { if (!this.gesture) this.gesture = clone(this.doc); }
-  live(fn: (d: Project) => void) { fn(this.doc); this.emit('doc'); }
+  live(fn: (d: T) => void) { fn(this.doc); this.emit('doc'); }
   end() {
     const g = this.gesture; this.gesture = null;
     if (g && JSON.stringify(g) !== JSON.stringify(this.doc)) this.push(g);
@@ -43,7 +43,7 @@ export class Store {
   /** Annule le geste en cours (Échap pendant un glisser). */
   cancel() { if (this.gesture) { this.doc = this.gesture; this.gesture = null; this.emit('doc'); } }
 
-  private push(before: Project) {
+  private push(before: T) {
     this.past.push(before);
     if (this.past.length > MAX_HISTORY) this.past.shift();
     this.future = [];
@@ -62,7 +62,7 @@ export class Store {
   }
 
   /** Charge un projet (historique vidé). dirty > 0 : il reste des modifications non enregistrées (copie de secours). */
-  load(doc: Project, dirty = 0) {
+  load(doc: T, dirty = 0) {
     this.doc = doc; this.past = []; this.future = []; this.gesture = null; this.dirty = dirty; this.emit('load');
   }
   markSaved() { this.dirty = 0; }

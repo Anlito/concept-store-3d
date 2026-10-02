@@ -20,6 +20,7 @@ export function newProject(name = 'Ma boutique'): Project {
     walls: { height: 3, thickness: 0.1, styles: [] }, // 10 cm = carton de 3 mm à l'échelle 1 m = 3 cm
     openings: [],
     objects: [],
+    creations: [],
   };
 }
 
@@ -141,6 +142,7 @@ export function sanitizeProject(raw: unknown): Project {
   }
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));
+  p.creations = (p.creations || []).filter(c => c && Array.isArray(c.volumes)).map(c => ({ ...c, volumes: c.volumes.map(v => ({ ...v })) }));
   clampAllOpenings(p);
   return p;
 }

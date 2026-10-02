@@ -10,6 +10,8 @@ import { exportScreen } from './app/exportScreen';
 import { choose, toast } from './ui/components';
 import { emptyFileState, pickProjectFile, reopenHandle, saveProject, type OpenedFile } from './app/files';
 import { deleteBackup, putBackup, type Backup } from './storage/backup';
+import { atelierScreen } from './app/atelier';
+import { findCreation, refreshCreations } from './app/creations';
 
 /* Point d'entrée : accueil puis éditeur. Un seul fichier HTML, aucun accès réseau. */
 
@@ -22,8 +24,16 @@ let inEditor = false;
 const ctx: Ctx = {
   store, ui, file: emptyFileState(),
   home: () => void leaveToHome(),
-  exportPlan: () => app.replaceChildren(exportScreen(ctx, () => { if (editor) app.replaceChildren(editor.el); })),
+  exportPlan: () => app.replaceChildren(exportScreen(ctx, backToEditor)),
+  openAtelier: id => {
+    const creation = id ? findCreation(ctx, id) : undefined;
+    app.replaceChildren(atelierScreen(ctx, {
+      creation, back: backToEditor,
+      done: () => { backToEditor(); ui.set({ tool: 'mobilier', sel: null, libraryTab: 'moi', libraryOpen: false }); ui.set({ libraryOpen: true }); },
+    }));
+  },
 };
+function backToEditor() { if (editor) app.replaceChildren(editor.el); }
 
 function showHome() {
   inEditor = false;
@@ -40,6 +50,7 @@ interface StartOpts { view: '2d' | '3d'; dirty?: number; file?: Partial<typeof c
 function start(p: Project, o: StartOpts) {
   Object.assign(ctx.file, emptyFileState(), o.file ?? {});
   store.load(p, o.dirty ?? 0);
+  void refreshCreations(ctx, true);
   ui.set({ ...defaultUI(), view: o.view, tool: p.floor ? 'murs' : 'sol', saveStatus: ctx.file.savedAt ? 'saved' : 'new' });
   if (!editor) editor = new Editor(ctx);
   app.replaceChildren(editor.el);
@@ -107,6 +118,9 @@ async function backupNow() {
   });
 }
 store.subscribe(r => { if (r !== 'load') { clearTimeout(backupTimer); backupTimer = window.setTimeout(() => void backupNow(), 1500); } });
+// « Mes créations » suit le projet (ajout, modification, annuler…)
+let creationsKey = '';
+store.subscribe(() => { const k = store.doc.creations.map(c => c.id + ':' + c.updated).join(); if (k !== creationsKey) { creationsKey = k; void refreshCreations(ctx); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden) void backupNow(); });
 window.addEventListener('beforeunload', e => {
   if (inEditor && store.dirty > 0) { void backupNow(); e.preventDefault(); e.returnValue = ''; }

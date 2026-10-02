@@ -4,6 +4,7 @@ import { uid, snapTo } from '../model/geometry';
 import { freeSpot, normRot, snapToWall } from '../model/objects';
 import { getItem, loadProto } from '../library/library';
 import { toast } from '../ui/components';
+import { findCreation } from './creations';
 
 /* Actions sur les objets posés : ajout, sélection, duplication, copier-coller, rotation, couleur… */
 
@@ -32,7 +33,9 @@ export async function addObject(ctx: Ctx, model: string) {
   if (item.plafond) o.z = Math.max(0, store.doc.walls.height - o.size.h);
   if (item.elev !== undefined) o.z = item.elev;
   if (item.mural) snapToWall(store.doc, o, 100);
-  store.update(d => { d.objects.push(o); });
+  // Une création gardée sur ce poste est copiée dans le projet (le fichier reste complet).
+  const creation = item.source === 'moi' && !store.doc.creations.some(c => c.id === model) ? findCreation(ctx, model) : undefined;
+  store.update(d => { if (creation) d.creations.push(structuredClone(creation)); d.objects.push(o); });
   selectObjects(ctx, [id]);
   toast(`« ${item.name} » posé dans la boutique : glisse-le pour le placer.`);
 }

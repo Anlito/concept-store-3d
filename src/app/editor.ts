@@ -59,8 +59,10 @@ export class Editor {
     // --- Vue
     this.vp = h('main', { class: 'vp' }, this.view3d.el, this.plan.el);
     const ov3d = this.overlay3d(), ov2d = this.overlay2d();
-    const drawer = libraryDrawer(ctx);
+    const lib = libraryDrawer(ctx), drawer = lib.el;
     this.vp.append(ov3d, ov2d, drawer);
+    let wasOpen = false;
+    ui.subscribe(ch => { if (ch.includes('libraryOpen') && ui.s.libraryOpen && !wasOpen) lib.refresh(); wasOpen = ui.s.libraryOpen; });
 
     this.panelHost = h('div', { style: { display: 'contents' } });
     this.el = h('div', { class: 'ed' }, topbar, h('div', { class: 'ed-body' }, rail, this.vp, this.panelHost));

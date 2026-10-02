@@ -1,7 +1,7 @@
 import type { Ctx } from './state';
 import { h, icon } from '../ui/dom';
-import { toast } from '../ui/components';
-import { CATEGORIES, SOURCE_LABEL, libraryItems, loadProto, type LibItem, type Source } from '../library/library';
+import { CATEGORIES, SOURCE_LABEL, libraryItems, loadProto, onProtoForgotten, type LibItem, type Source } from '../library/library';
+import { deleteCreation, importCreations, onCreationsChanged } from './creations';
 import { thumbnail } from '../library/thumbs';
 import { addObject } from './objectActions';
 
@@ -15,6 +15,7 @@ const fmtDims = (d: { w: number; d: number; h: number }, round = false) => {
 export function libraryDrawer(ctx: Ctx) {
   let tab: Source = 'base', cat = 'tout', query = '', selected: LibItem | null = null;
   const dims = new Map<string, string>();
+  onProtoForgotten(id => dims.delete(id));
 
   const search = h('input', { type: 'search', placeholder: 'Rechercher un meuble…', 'aria-label': 'Rechercher un meuble' });
   search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); renderGrid(); });
@@ -32,7 +33,7 @@ export function libraryDrawer(ctx: Ctx) {
       h('button', { class: 'btn btn-ghost btn-icon', type: 'button', title: 'Fermer', onclick: close }, icon('close'))),
     h('div', { class: 'lib-tools' },
       h('label', { class: 'lib-search' }, icon('search'), search),
-      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => toast('L’atelier de création arrive à une prochaine étape.') }, icon('handyman'), 'Créer un meuble')),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.openAtelier() }, icon('handyman'), 'Créer un meuble')),
     tabsEl,
     h('div', { class: 'lib-body' }, catsEl, grid),
     h('div', { class: 'lib-foot' }, h('div', { class: 'lib-sel' }, footName, footDims), place));
@@ -55,13 +56,15 @@ export function libraryDrawer(ctx: Ctx) {
     }));
   }
   function renderGrid() {
+    const bar = tab === 'moi' ? h('div', { class: 'lib-tabbar' },
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => void importCreations(ctx) }, icon('upload_file'), 'Importer d’un autre projet')) : null;
     const list = items().filter(i => (cat === 'tout' || i.cat === cat) && (!query || i.name.toLowerCase().includes(query)));
     if (!list.length) {
       const msg = tab === 'moi' ? 'Tes meubles créés dans l’Atelier apparaîtront ici.' : tab === 'prof' ? 'Les modèles ajoutés par ton professeur apparaîtront ici.' : 'Aucun meuble trouvé';
-      grid.replaceChildren(h('div', { class: 'lib-empty' }, icon(query ? 'search' : 'category'), msg));
+      grid.replaceChildren(...[bar, h('div', { class: 'lib-empty' }, icon(query ? 'search' : 'category'), msg)].filter(Boolean) as HTMLElement[]);
       return;
     }
-    grid.replaceChildren(...list.map(card));
+    grid.replaceChildren(...[bar, ...list.map(card)].filter(Boolean) as HTMLElement[]);
   }
   function card(it: LibItem) {
     const img = h('img', { alt: '', draggable: false });
@@ -70,7 +73,11 @@ export function libraryDrawer(ctx: Ctx) {
       onclick: () => { selected = it; grid.querySelectorAll('.fc.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); updateFoot(); },
       ondblclick: () => doPlace(it) },
       h('div', { class: 'fc-img' }, img), h('div', { class: 'fc-n' }, it.name), d,
-      h('span', { class: 'fc-check' }, icon('check')));
+      h('span', { class: 'fc-check' }, icon('check')),
+      it.source === 'moi' && it.where === 'poste' ? h('span', { class: 'fc-badge', title: 'Créé dans un autre projet sur ce poste' }, 'Poste') : null,
+      it.source === 'moi' ? h('span', { class: 'fc-actions' },
+        h('span', { role: 'button', title: 'Modifier dans l’atelier', onclick: (e: MouseEvent) => { e.stopPropagation(); ctx.openAtelier(it.id); } }, icon('edit')),
+        h('span', { role: 'button', title: 'Supprimer', onclick: (e: MouseEvent) => { e.stopPropagation(); void deleteCreation(ctx, it.id); } }, icon('delete'))) : null);
     loadProto(it.id).then(p => {
       const round = Math.abs(p.dims.w - p.dims.d) < 0.02 && /rond|cactus|plante|vase/i.test(it.id + it.name);
       const s = fmtDims(p.dims, round); dims.set(it.id, s); d.textContent = s;
@@ -86,7 +93,10 @@ export function libraryDrawer(ctx: Ctx) {
   }
   function renderAll() { renderTabs(); renderCats(); renderGrid(); updateFoot(); }
   renderAll();
+  onCreationsChanged(() => { if (selected && !libraryItems().some(i => i.id === selected!.id)) selected = null; if (el.isConnected) renderAll(); });
 
   el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
-  return el;
+  /** À l'ouverture : onglet demandé (après l'atelier : « Mes créations ») et listes à jour. */
+  const refresh = () => { tab = ctx.ui.s.libraryTab; cat = 'tout'; renderAll(); };
+  return { el, refresh };
 }

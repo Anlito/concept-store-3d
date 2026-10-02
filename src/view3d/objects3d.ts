@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Ctx } from '../app/state';
 import type { PlacedObject } from '../model/types';
-import { getItem, instantiate, loadProto } from '../library/library';
+import { getItem, instantiate, loadProto, onProtoForgotten } from '../library/library';
 import { normRot, snapToWall } from '../model/objects';
 import { snapTo } from '../model/geometry';
 import { selectedIds, selectObjects } from '../app/objectActions';
@@ -41,6 +41,11 @@ export class ObjectLayer {
     for (const el of [this.moveH, this.rotH]) el.addEventListener('pointerdown', e => this.onHandleDown(e, el === this.moveH ? 'move' : 'rot'));
     window.addEventListener('pointermove', e => this.onMove(e));
     window.addEventListener('pointerup', () => this.onUp());
+    // Création modifiée dans l'atelier : on reconstruit les objets qui l'utilisent.
+    onProtoForgotten(id => {
+      for (const [oid, e] of this.entries) if (e.key.startsWith(id + '|')) { this.group.remove(e.group); this.entries.delete(oid); }
+      this.sync(); this.host.invalidate();
+    });
   }
 
   get selectionGroup() { return this.sel; }
