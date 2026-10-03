@@ -91,8 +91,12 @@ export interface Volume {
   t: number;
   /** Cylindre, tube ou demi-rond couché ; plan debout ; prisme en coin (triangle rectangle). */
   turned: boolean;
-  /** Rotation autour de la verticale (degrés). */
+  /** Rotation autour de la verticale, vue de dessus (degrés, sens horaire). */
   rot: number;
+  /** Inclinaison vers l'avant (degrés ; négatif = vers l'arrière). */
+  tiltX?: number;
+  /** Inclinaison vers la droite (degrés ; négatif = vers la gauche). */
+  tiltY?: number;
   color: string;
   /** Masqué dans l'atelier seulement (pour travailler sur les volumes cachés). */
   hidden?: boolean;

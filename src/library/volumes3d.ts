@@ -71,7 +71,9 @@ export function volumeMesh(v: Volume): THREE.Mesh {
   centerGeometry(g);
   const m = new THREE.Mesh(g, mat(v.color));
   m.position.set(v.x + bw / 2, v.z + bh / 2, v.y + bd / 2);
-  m.rotation.y = -THREE.MathUtils.degToRad(v.rot);
+  // Inclinaisons d'abord (dans le repère du volume), puis rotation vue de dessus.
+  const r = THREE.MathUtils.degToRad;
+  m.rotation.set(r(v.tiltX ?? 0), -r(v.rot), -r(v.tiltY ?? 0), 'YXZ');
   m.castShadow = true; m.receiveShadow = true;
   m.userData.volume = v.id;
   return m;

@@ -177,3 +177,26 @@ test('placer un volume par rapport à un autre, et les nouvelles formes', async 
   expect(d.creations[0].volumes.map((v: any) => v.type)).toEqual(['boite', 'tube', 'boule', 'cone', 'demirond', 'prisme']);
   expect(d.creations[0].volumes[5].turned).toBe(true);
 });
+
+test('tourner et pencher un volume à n’importe quel angle ; angle exact d’un meuble', async ({ page }) => {
+  await openSample(page);
+  await page.getByTestId('library').getByRole('button', { name: 'Créer un meuble' }).click();
+  const panel = page.getByTestId('atelier-panel');
+  await page.getByRole('button', { name: 'Ajouter : Cylindre' }).click();
+  await setField(page, 'Diamètre', 10); await setField(page, 'Hauteur', 100);
+  await expect(page.locator('.at-total')).toHaveText('Total : 10 × 10 × 100 cm');
+  // Pencher de 30° vers l'avant : la hauteur devient environ 100 × cos 30° + 10 × sin 30° ≈ 92 cm
+  await setField(page, 'Pencher vers l’avant', 30);
+  await expect(page.locator('.at-total')).toHaveText('Total : 10 × 59 × 92 cm');
+  await setField(page, 'Tourner (vue de dessus)', 37);
+  await expect(panel.getByLabel('Tourner (vue de dessus)', { exact: true })).toHaveValue('37');
+  await panel.getByRole('button', { name: 'Remettre droit' }).click();
+  await expect(page.locator('.at-total')).toHaveText('Total : 10 × 10 × 100 cm');
+  await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
+  // Dans la boutique : angle exact au clavier
+  await page.locator('.fc', { hasText: 'Mon meuble' }).dblclick();
+  const angle = page.getByTestId('panel').getByLabel('Angle exact (vue de dessus)', { exact: true });
+  await angle.fill('37'); await angle.press('Enter');
+  const d = await doc(page);
+  expect(d.objects[0].rot).toBe(37);
+});

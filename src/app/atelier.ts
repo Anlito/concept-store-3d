@@ -107,8 +107,6 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
       const nameIn = h('input', { value: v.name, 'aria-label': 'Nom du volume', maxLength: 40 });
       nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') nameIn.blur(); });
       nameIn.addEventListener('change', () => edit(x => { x.name = nameIn.value.trim() || x.name; }));
-      const rotVal = h('span', { style: { color: 'var(--ink)' } });
-      binds.push({ el: rotVal, refresh: () => { rotVal.textContent = `${Math.round(vol()?.rot ?? 0)}°`; } });
       const turn = v.type === 'cylindre' || v.type === 'tube' || v.type === 'demirond' ? toggle('Couché', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
         : v.type === 'plan' ? toggle('Debout', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
         : v.type === 'prisme' ? toggle('En coin (triangle droit)', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
@@ -118,9 +116,17 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         turn ? b(turn) : null,
         section('Position (depuis le coin du meuble)', h('div', { class: 'g3' }, nf('X', 'x', -500, 500), nf('Y', 'y', -500, 500), nf('Z (hauteur)', 'z', 0, 500))),
         placeRelative(v),
-        section(h('span', { style: { display: 'flex', justifyContent: 'space-between', width: '100%' } }, 'Rotation', rotVal), h('div', { class: 'rot-row' },
-          h('button', { class: 'sq', type: 'button', title: '−15°', onclick: () => edit(x => { x.rot = ((x.rot - 15) % 360 + 360) % 360; }) }, icon('rotate_left')),
-          h('button', { class: 'sq', type: 'button', title: '+15°', onclick: () => edit(x => { x.rot = (x.rot + 15) % 360; }) }, icon('rotate_right')))),
+        section('Rotation et inclinaison (en degrés)',
+          h('div', { class: 'rot-row rot-free' },
+            h('button', { class: 'sq', type: 'button', title: '−15°', onclick: () => edit(x => { x.rot = norm360(x.rot - 15); }) }, icon('rotate_left')),
+            b(numberField({ label: 'Tourner (vue de dessus)', unit: '°', min: -360, max: 360, get: () => vol()?.rot ?? 0, set: a => edit(x => { x.rot = norm360(a); }),
+              title: 'N’importe quel angle, par exemple 37' })),
+            h('button', { class: 'sq', type: 'button', title: '+15°', onclick: () => edit(x => { x.rot = norm360(x.rot + 15); }) }, icon('rotate_right'))),
+          h('div', { class: 'g2' },
+            b(numberField({ label: 'Pencher vers l’avant', unit: '°', min: -180, max: 180, get: () => vol()?.tiltX ?? 0, set: a => edit(x => { x.tiltX = a; }) })),
+            b(numberField({ label: 'Pencher vers la droite', unit: '°', min: -180, max: 180, get: () => vol()?.tiltY ?? 0, set: a => edit(x => { x.tiltY = a; }) }))),
+          h('p', { class: 'p-help' }, 'Un angle négatif penche vers l’arrière ou vers la gauche. Après une inclinaison, « Au sol » ou « Dessus » recalent le volume.'),
+          button('Remettre droit', 'restart_alt', 'btn-ghost', () => edit(x => { x.rot = 0; x.tiltX = 0; x.tiltY = 0; }))),
         section('Couleur du volume', b(swatches(COLORS, () => vol()?.color ?? '', c => edit(x => { x.color = c; }), 'sws6'))),
         h('div', { class: 'g2' }, button('Dupliquer', 'content_copy', 'btn-secondary', () => duplicate()), button('Supprimer', 'delete', 'btn-danger', () => remove())),
       ];
@@ -282,6 +288,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   return el;
 }
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
+const norm360 = (a: number) => ((Math.round(a * 10) / 10) % 360 + 360) % 360;
 type Align = 'centre' | 'centreX' | 'centreY' | 'dessus' | 'sol' | 'bas' | 'gauche' | 'droite' | 'devant' | 'derriere';
 /** Encombrement réel d'un volume (rotation comprise), dans le repère 3D. */
 const bbox = (v: Volume) => new THREE.Box3().setFromObject(volumeMesh(v));

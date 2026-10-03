@@ -346,3 +346,5 @@
 .algn .ic { font-size: 20px; color: var(--text-2); }
 .algn:hover { background: var(--sel-bg); border-color: var(--accent); }
 .algn:hover .ic { color: var(--accent); }
+.rot-free { align-items: flex-end; }
+.rot-free .nf { flex: 1; }
