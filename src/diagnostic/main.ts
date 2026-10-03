@@ -258,9 +258,11 @@ function perfCard(onDone: (phases: Phase[]) => void) {
 
 function perfVerdict(): Row[] {
   const [none, low, high] = PHASES.map(p => p.fps || 0);
+  // La recommandation est transmise à l'outil (même navigateur, même poste) : qualité des ombres au démarrage.
+  try { localStorage.setItem('cs3d-shadows-reco', high >= 40 ? 'high' : low >= 40 ? 'low' : 'off'); } catch { /* stockage bloqué */ }
   if (high >= 40) return [{ k: 'Recommandation', v: 'Ombres soignées', level: 'ok', note: 'Le poste affiche la 3D avec fluidité, même avec la meilleure qualité.' }];
   if (low >= 40) return [{ k: 'Recommandation', v: 'Ombres légères', level: 'ok', note: 'Fluide avec des ombres légères. Les ombres soignées seront un peu saccadées.' }];
-  if (none >= 30) return [{ k: 'Recommandation', v: 'Ombres désactivées', level: 'warn', note: 'Le poste est fluide sans ombres seulement. L’outil démarrera avec les ombres désactivées.' }];
+  if (none >= 30) return [{ k: 'Recommandation', v: 'Ombres désactivées', level: 'warn', note: 'Le poste est fluide sans ombres seulement. L’outil démarrera sur ce poste avec les ombres désactivées.' }];
   if (none >= 18) return [{ k: 'Recommandation', v: 'Utilisable, mais lent', level: 'warn', note: 'La 3D sera saccadée. Le plan 2D restera confortable.' }];
   return [{ k: 'Recommandation', v: 'Trop lent pour la 3D', level: 'bad', note: 'Vérifier l’accélération graphique du navigateur, fermer les autres programmes, ou utiliser surtout le plan 2D.' }];
 }

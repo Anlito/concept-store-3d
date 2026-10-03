@@ -8,6 +8,8 @@ import { type Panel, floorPanel, furniturePanel, objectPanel, openingsPanel, wal
 import { libraryDrawer } from './libraryDrawer';
 import { imagePanel, imagesPanel } from './imagesUi';
 import { saveProject } from './files';
+import { openPhotoDialog } from './photoDialog';
+import { openHelp } from './help';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection } from './actions';
 import { floorTints, wallTints } from '../view3d/materials';
@@ -49,7 +51,7 @@ export class Editor {
         h('button', { class: 'tb-logo', type: 'button', title: 'Accueil', onclick: () => ctx.home() }, icon('storefront')),
         h('div', { class: 'tb-title' }, name, status)),
       h('div', { class: 'tb-c' }, h('div', { class: 'vsw' }, b2d, b3d)),
-      h('div', { class: 'tb-r' }, undo, redo, h('div', { class: 'tb-sep' }),
+      h('div', { class: 'tb-r' }, h('button', { class: 'btn btn-ghost btn-icon', type: 'button', title: 'Aide', 'aria-label': 'Aide', onclick: () => openHelp() }, icon('help')), undo, redo, h('div', { class: 'tb-sep' }),
         h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.exportPlan() }, icon('print'), 'Plan A3'),
         this.saveGroup()));
 
@@ -183,14 +185,17 @@ export class Editor {
       h('div', { class: 'big' }, icon('grid_on')), h('h2', null, 'Commence par le sol'),
       h('p', null, 'Trace la surface de ta boutique sur le plan 2D : les murs se créeront tout seuls.'),
       h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => ui.set({ view: '2d', tool: 'sol' }) }, icon('grid_on'), 'Tracer le sol')));
-    const cut = toggle('Murs avant abaissés', 'vertical_align_bottom', () => ui.s.cutaway, v => ui.set({ cutaway: v }));
+    const cut = toggle('Murs abaissés', 'vertical_align_bottom', () => ui.s.cutaway, v => ui.set({ cutaway: v }));
+    cut.el.title = 'Abaisser les murs entre la caméra et la boutique pour voir l’intérieur';
     const shadows = h('select', { 'aria-label': 'Ombres', title: 'Qualité des ombres (à baisser si la 3D est lente)', onchange: (e: Event) => {
       const v = (e.target as HTMLSelectElement).value as 'off' | 'low' | 'high';
       ui.set({ shadows: v }); try { localStorage.setItem('cs3d-shadows', v); } catch { /* ignoré */ }
     } }, h('option', { value: 'off' }, 'Sans ombres'), h('option', { value: 'low' }, 'Ombres légères'), h('option', { value: 'high' }, 'Ombres soignées'));
-    const facade = h('button', { class: 'tg', type: 'button', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Voir la façade');
-    const snap3 = toggle('Aimantation', 'join', () => ui.s.snap, v => ui.set({ snap: v })), step3 = this.stepSelect();
-    const bar = h('div', { class: 'fbar' }, cut.el, facade, shadows, snap3.el, step3.el);
+    const facade = h('button', { class: 'tg', type: 'button', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Façade');
+    const snap3 = toggle('Aimanter', 'join', () => ui.s.snap, v => ui.set({ snap: v })), step3 = this.stepSelect();
+    snap3.el.title = 'Aimantation des meubles et ouvertures sur la grille';
+    const photo = h('button', { class: 'tg', type: 'button', title: 'Images PNG ou JPG du rendu 3D', onclick: () => openPhotoDialog(this.ctx, this.view3d) }, icon('photo_camera'), 'Photo');
+    const bar = h('div', { class: 'fbar' }, cut.el, facade, photo, shadows, snap3.el, step3.el);
     const el = h('div', { class: 'vp-ov', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
       h('div', { style: { pointerEvents: 'auto' } }, bar),
       h('div', { class: 'vp-hints' },

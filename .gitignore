@@ -5,3 +5,4 @@ test-results/
 playwright-report/
 *.log
 src/library/models.gen.ts
+livrables/

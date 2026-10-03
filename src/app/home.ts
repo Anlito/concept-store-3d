@@ -1,5 +1,5 @@
 import { h, icon } from '../ui/dom';
-import { toast } from '../ui/components';
+import { openCredits, openHelp } from './help';
 import type { Project } from '../model/types';
 import { bounds, offsetPolygon } from '../model/geometry';
 import { listBackups, type Backup } from '../storage/backup';
@@ -19,7 +19,7 @@ export function homeScreen(a: HomeActions) {
   const el = h('div', { class: 'home' },
     h('header', { class: 'home-h' },
       h('div', { class: 'home-brand' }, h('div', { class: 'home-logo' }, icon('storefront')), 'Concept Store 3D'),
-      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => toast('Trace le sol, pose les portes et fenêtres, aménage ta boutique, puis imprime le plan A3 !') }, icon('help'), 'Aide')),
+      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => openHelp() }, icon('help'), 'Aide')),
     h('main', { class: 'home-m' },
       h('h1', null, 'Que veux-tu faire ?'),
       h('div', { class: 'home-cards' },
@@ -31,7 +31,8 @@ export function homeScreen(a: HomeActions) {
           h('span', { class: 'hc-img' }, isoThumb()),
           h('span', { class: 'hc-t' }, h('b', null, 'Projet modèle'), h('span', null, 'Partir d’une boutique de départ')))),
       recentSec,
-      h('p', { class: 'home-foot' }, 'Concept Store 3D · version ' + __APP_VERSION__ + ' · aucune donnée n’est envoyée sur Internet')));
+      h('p', { class: 'home-foot' }, 'Concept Store 3D · version ' + __APP_VERSION__ + ' · aucune donnée n’est envoyée sur Internet · ',
+        h('button', { class: 'linkbtn', type: 'button', onclick: () => openCredits() }, 'Crédits et licences'))));
 
   void listBackups().then(list => {
     if (!list.length) return;

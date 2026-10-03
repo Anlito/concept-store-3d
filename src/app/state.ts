@@ -66,7 +66,8 @@ export class UIStore {
 
 export function defaultUI(): UIState {
   let shadows: ShadowQuality = 'low';
-  try { shadows = (localStorage.getItem('cs3d-shadows') as ShadowQuality) || 'low'; } catch { /* stockage indisponible */ }
+  // Choix de l'élève, sinon recommandation de la page de test du poste, sinon ombres légères.
+  try { shadows = (localStorage.getItem('cs3d-shadows') ?? localStorage.getItem('cs3d-shadows-reco') ?? 'low') as ShadowQuality; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
     grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', placeStyles: {},

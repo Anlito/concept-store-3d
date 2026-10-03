@@ -7,6 +7,7 @@ import { OPENING_DEFAULTS, findFreeT, wallLength } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
 import { placeOpening, selectPick } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
+import { toast } from '../ui/components';
 import { buildImages, type BuiltImages } from './images3d';
 
 const ACCENT = '#BF4E36';
@@ -29,6 +30,8 @@ export class View3D {
   private raycaster = new THREE.Raycaster();
   private framedOnce = false;
   private lowered = new Set<number>();
+  /** Pendant une photo : murs avant abaissés ou non, sans toucher au réglage de l'élève. */
+  private cutOverride: boolean | null = null;
   readonly objects: ObjectLayer;
   private images: BuiltImages | null = null;
   private imagesKey = '';
@@ -88,9 +91,28 @@ export class View3D {
       requestAnimationFrame(loop);
       if (!this.active) return;
       if (this.controls.update()) this.needsRender = true;
-      if (this.needsRender) { this.updateCutaway(); this.renderer.render(this.scene, this.camera); this.objects.updateHandles(); this.needsRender = false; }
+      if (this.needsRender) { this.updateCutaway(); this.renderer.render(this.scene, this.camera); this.objects.updateHandles(); this.needsRender = false; this.watchSpeed(); }
     };
     requestAnimationFrame(loop);
+  }
+
+  /** Surveille la fluidité pendant les mouvements : si la 3D est saccadée avec des ombres, on propose de les couper. */
+  private frames: number[] = [];
+  private lastFrame = 0;
+  private speedWarned = false;
+  private watchSpeed() {
+    const now = performance.now(), dt = now - this.lastFrame;
+    this.lastFrame = now;
+    // On ne compte que les images enchaînées (rotation, glisser…) ; rien sous pilotage automatique (tests).
+    if (this.speedWarned || dt > 400 || navigator.webdriver) return;
+    this.frames.push(dt);
+    if (this.frames.length < 90) return;
+    const avg = this.frames.reduce((a, b) => a + b, 0) / this.frames.length;
+    this.frames = [];
+    if (avg > 55 && this.ctx.ui.s.shadows !== 'off') {
+      this.speedWarned = true;
+      toast('La 3D est saccadée sur ce poste.', { label: 'Couper les ombres', run: () => { this.ctx.ui.set({ shadows: 'off' }); try { localStorage.setItem('cs3d-shadows', 'off'); } catch { /* ignoré */ } } }, 'warning');
+    }
   }
 
   setActive(on: boolean) {
@@ -120,8 +142,61 @@ export class View3D {
     this.framedOnce = true;
     this.needsRender = true;
   }
+  /** Photo du rendu 3D (data URL), à la taille demandée, sans les poignées de sélection.
+      La caméra, les ombres et les murs sont remis comme avant après la prise de vue. */
+  capture(o: { w: number; h: number; mime: 'image/png' | 'image/jpeg'; view: PhotoView; best: boolean; background: string }): string {
+    const cam = this.camera.position.clone(), target = this.controls.target.clone();
+    const size = this.renderer.getSize(new THREE.Vector2()), ratio = this.renderer.getPixelRatio(), bg = (this.scene.background as THREE.Color).clone();
+    const hidden = [this.overlay, this.objects.selectionGroup, this.ghost].filter(Boolean) as THREE.Object3D[];
+    hidden.forEach(x => { x.visible = false; });
+    if (o.best) this.applyShadows('high');
+    this.scene.background = new THREE.Color(o.background);
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(o.w, o.h, false);
+    this.camera.aspect = o.w / o.h; this.camera.updateProjectionMatrix();
+    if (o.view !== 'actuelle') this.placeCamera(o.view); // cadrage calculé au format de la photo
+    this.updateCutaway(true);
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera); // deuxième passe : carte d'ombres à jour
+    const url = this.renderer.domElement.toDataURL(o.mime, 0.92);
+    // Remise en état
+    hidden.forEach(x => { x.visible = true; });
+    this.cutOverride = null;
+    this.scene.background = bg;
+    this.camera.position.copy(cam); this.controls.target.copy(target); this.controls.update();
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(size.x, size.y, false);
+    this.camera.aspect = size.x / size.y; this.camera.updateProjectionMatrix();
+    if (o.best) this.applyShadows();
+    this.updateCutaway(true);
+    this.needsRender = true;
+    return url;
+  }
+
+  /** Angles prédéfinis pour les photos. */
+  private placeCamera(view: PhotoView) {
+    const d = this.ctx.store.doc;
+    if (!d.floor) return;
+    if (view === 'facade') { this.facade(true); return; }
+    const b = bounds(d.floor.points);
+    const c = new THREE.Vector3((b.x0 + b.x1) / 2, 0.8, (b.y0 + b.y1) / 2), r = Math.max(b.w, b.h, 3);
+    const fov = THREE.MathUtils.degToRad(this.camera.fov), dist = (r * 0.85) / Math.tan(fov / 2);
+    this.controls.target.copy(c);
+    if (view === 'dessus') { this.cutOverride = false; this.camera.position.set(c.x, dist * 1.3, c.z + dist * 0.12); }
+    else if (view === 'interieur') { // depuis un angle de la boutique, à hauteur d'yeux
+      this.cutOverride = false;
+      this.camera.position.set(b.x0 + 0.5, 1.6, b.y1 - 0.5);
+      this.controls.target.set((b.x0 + b.x1) / 2 + b.w * 0.15, 1.1, (b.y0 + b.y1) / 2 - b.h * 0.1);
+    } else {
+      this.cutOverride = true;
+      const dir = new THREE.Vector3(view === 'gauche' ? -0.55 : 0.55, 0.62, 0.75).normalize();
+      this.camera.position.copy(c).add(dir.multiplyScalar(dist));
+    }
+    this.camera.lookAt(this.controls.target);
+  }
+
   /** Place la caméra dans la rue, face à la façade (mur choisi, sinon celui de la porte d'entrée). */
-  facade() {
+  facade(forPhoto = false) {
     const d = this.ctx.store.doc, s = this.ctx.ui.s;
     if (!d.floor) return;
     const E = edges(d.floor.points);
@@ -131,8 +206,8 @@ export class View3D {
     if (i < 0) i = d.openings.find(o => o.type === 'porte')?.wall ?? d.openings.find(o => o.type === 'vitrine')?.wall ?? E.reduce((b, e) => (e.length > E[b].length ? e.i : b), 0);
     const e = E[i], H = d.walls.height;
     const mid = new THREE.Vector3((e.a.x + e.b.x) / 2, H * 0.45, (e.a.y + e.b.y) / 2);
-    const fov = THREE.MathUtils.degToRad(this.camera.fov), dist = Math.max((e.length * 0.62) / Math.tan(fov / 2) / Math.min(1, this.camera.aspect), 4);
-    this.ctx.ui.set({ cutaway: false });
+    const fov = THREE.MathUtils.degToRad(this.camera.fov), dist = Math.max((e.length * (forPhoto ? 0.56 : 0.62)) / Math.tan(fov / 2) / this.camera.aspect, 4);
+    if (forPhoto) this.cutOverride = false; else this.ctx.ui.set({ cutaway: false });
     this.controls.target.copy(mid);
     this.camera.position.set(mid.x + e.n.x * dist, 1.6, mid.z + e.n.y * dist);
     this.controls.update(); this.needsRender = true;
@@ -144,8 +219,8 @@ export class View3D {
     this.needsRender = true;
   }
 
-  private applyShadows() {
-    const q: ShadowQuality = this.ctx.ui.s.shadows;
+  private applyShadows(force?: ShadowQuality) {
+    const q: ShadowQuality = force ?? this.ctx.ui.s.shadows;
     this.renderer.shadowMap.enabled = q !== 'off';
     this.sun.castShadow = q !== 'off';
     const size = q === 'high' ? 2048 : 1024;
@@ -202,7 +277,7 @@ export class View3D {
   private updateCutaway(force = false) {
     if (!this.shop) return;
     const cam = new THREE.Vector2(this.camera.position.x, this.camera.position.z);
-    const on = this.ctx.ui.s.cutaway;
+    const on = this.cutOverride ?? this.ctx.ui.s.cutaway;
     let changed = false;
     for (const w of this.shop.walls) {
       const low = on && cam.clone().sub(w.mid).dot(w.normal) > 0.3;
@@ -366,3 +441,5 @@ function isShown(o: THREE.Object3D | null): boolean {
   for (; o; o = o.parent) if (!o.visible) return false;
   return true;
 }
+
+export type PhotoView = 'actuelle' | 'facade' | 'gauche' | 'droite' | 'interieur' | 'dessus';

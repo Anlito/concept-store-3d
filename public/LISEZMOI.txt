@@ -1,0 +1,34 @@
+CONCEPT STORE 3D - INSTALLATION AU COLLÈGE
+==========================================
+
+Aucune installation, aucun droit administrateur, aucun accès Internet.
+
+1. Copier ce dossier entier sur le réseau du collège (par exemple dans le dossier de la classe).
+2. Avant la première séance, sur un PC du collège : double-cliquer sur « diagnostic.html ».
+   La page teste le navigateur, la 3D et l'enregistrement, puis donne un rapport à garder.
+   Elle règle aussi la qualité des ombres conseillée pour ce poste.
+3. Les élèves ouvrent l'outil en double-cliquant sur « index.html » (Chrome ou Edge).
+
+CONTENU
+-------
+- index.html        : l'outil (fichier unique : tout est dedans).
+- diagnostic.html   : test du poste.
+- Mobilier/         : modèles 3D ajoutés par le professeur (voir Mobilier/LISEZMOI.txt).
+                      À mettre en lecture seule pour les élèves.
+
+PROJETS DES ÉLÈVES
+------------------
+- Chaque équipe enregistre son projet (fichier .json) dans son dossier, avec Ctrl+S.
+  Le projet contient tout : sol, murs, meubles, créations de l'atelier, images.
+- Pour un « projet modèle » : préparer une boutique, puis Enregistrer ▾ › « Enregistrer comme
+  modèle (professeur) ». Les élèves l'ouvrent avec « Projet modèle » ; il n'est jamais écrasé.
+  Conseil : mettre aussi ce fichier en lecture seule.
+
+PLAN A3
+-------
+- Bouton « Plan A3 » : PDF A3 paysage, à imprimer en « Taille réelle » / « 100 % ».
+- Vérifier à la règle la barre d'échelle imprimée (9 cm = 3 m à l'échelle 1 m = 3 cm).
+
+MODE SERVEUR (facultatif)
+-------------------------
+L'outil fonctionne aussi depuis n'importe quel serveur web statique (même dossier).

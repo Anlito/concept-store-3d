@@ -149,7 +149,7 @@ export function wallsPanel(ctx: Ctx): Panel {
       sel < 0 ? h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour changer seulement sa matière ou sa couleur. Sinon, les réglages ci-dessous s’appliquent à tous les murs.') : null,
       mixed ? alert('info', 'Les murs sont différents', 'Choisir une matière ou une couleur ici l’applique à tous les murs.') : null,
       section('Face à décorer', b(face)),
-      ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Voir la façade'), ' place la caméra devant.') : null,
+      ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Façade'), ' de la vue 3D place la caméra devant.') : null,
       section((ext ? 'Façade' : 'Intérieur') + (sel >= 0 ? ' · matière' : ' · matière de tous les murs'), b(matTiles)),
       wallTints(matOf(ref())) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(ref()), c => setStyle({ color: c })))) : null,
     ], sel >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à tous les murs', 'format_paint', 'btn-secondary', () => {

@@ -202,7 +202,7 @@ test('pas d’aimantation : 1 m pour le sol, 10 cm pour le reste, réglable part
   // Réglage depuis la vue 3D : 50 cm pour les éléments
   await page.keyboard.press('Escape');
   await page.locator('button[data-view="3d"]').click();
-  await page.locator('.fbar').filter({ hasText: 'Voir la façade' }).getByLabel('Pas de l’aimantation').selectOption('0.5');
+  await page.locator('.fbar').filter({ hasText: 'Murs abaissés' }).getByLabel('Pas de l’aimantation').selectOption('0.5');
   expect((await s())).toMatchObject({ step: 0.5, stepOther: 0.5, stepSol: 1 });
   // Retour au sol : on retrouve 1 m ; réglé à 10 cm, il est gardé
   await page.locator('[data-tool="sol"]').click();

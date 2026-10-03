@@ -58,3 +58,13 @@ Le livrable `dist/` contient un dossier `Mobilier/` (voir `Mobilier/LISEZMOI.txt
 - ou, sous Chrome / Edge, « Charger le dossier du professeur » dans la bibliothèque (dossier mémorisé).
 Échelle devinée (modèle en cm ou en mm), correction possible sur la carte ; avertissement au-delà
 de 5 Mo ou 50 000 triangles, modèle ignoré au-delà de 25 Mo.
+
+## Version 1.0 : finitions
+
+- Aide intégrée (bouton « Aide » de l'accueil et « ? » de l'éditeur) et page « Crédits et licences ».
+- Photos du rendu 3D (bouton « Photo ») : PNG ou JPG, HD, grande ou carrée, angles prédéfinis
+  (façade, 3/4, intérieur, dessus) ou les 4 angles en `.zip`, sans les poignées de sélection.
+- La page de diagnostic transmet la qualité d'ombres conseillée ; la 3D propose de couper les ombres
+  si elle devient saccadée.
+- `npm run package` : construit et crée `livrables/Concept-Store-3D-<version>.zip` (dossier à copier).
+- `dist/LISEZMOI.txt` : installation au collège.

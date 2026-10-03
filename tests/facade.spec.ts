@@ -18,7 +18,7 @@ test.afterEach(() => expect(errors).toEqual([]));
 
 test('revêtement de façade, indépendant de l’intérieur', async ({ page }) => {
   await page.locator('[data-tool="murs"]').click();
-  await page.getByRole('button', { name: 'Façade', exact: true }).click();
+  await page.getByTestId('panel').getByRole('button', { name: 'Façade', exact: true }).click();
   expect((await ui(page)).cutaway).toBe(false); // on voit la façade
   await page.evaluate(() => (window as any).cs3d.ui.set({ sel: { kind: 'wall', index: 2 } }));
   await page.getByRole('button', { name: 'Pierre' }).click();
@@ -93,7 +93,7 @@ test('décor extérieur : catégorie « Extérieur », objets de façade côté 
   expect(f2.rot).toBe(0); // face à la rue (+y)
 });
 
-test('image côté rue et bouton « Voir la façade »', async ({ page }) => {
+test('image côté rue et bouton « Façade » de la vue 3D', async ({ page }) => {
   await page.locator('[data-tool="images"]').click();
   await page.getByRole('button', { name: 'Ajouter une image' }).click();
   const dlg = page.getByTestId('image-dialog');
@@ -106,6 +106,6 @@ test('image côté rue et bouton « Voir la façade »', async ({ page }) => {
   await dlg.getByRole('button', { name: 'Placer l’image' }).click();
   expect((await doc(page)).images[0]).toMatchObject({ target: 'vitrine', wall: 2, side: 'ext' });
   await page.evaluate(() => (window as any).cs3d.ui.set({ cutaway: true }));
-  await page.getByRole('button', { name: 'Voir la façade' }).click();
+  await page.locator('.fbar').getByRole('button', { name: 'Façade', exact: true }).click();
   expect((await ui(page)).cutaway).toBe(false);
 });
