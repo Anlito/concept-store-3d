@@ -4,17 +4,18 @@ import catalogue from '../../library/catalogue.json';
 import { VOLUME_MODELS, type Part } from './volumes';
 import type { Creation, Volume } from '../model/types';
 import { buildVolumes } from './volumes3d';
+import { EXTERIOR_MODELS } from './exterior';
 
 /* Bibliothèque de mobilier. Les modèles GLB sont intégrés au fichier HTML (base64, voir scripts/build-library.mjs) :
    aucun fetch, donc compatible avec l'ouverture en file://. */
 
-export type Category = 'assises' | 'rangements' | 'comptoirs' | 'tables' | 'portants' | 'plantes' | 'luminaires' | 'decor';
+export type Category = 'assises' | 'rangements' | 'comptoirs' | 'tables' | 'portants' | 'plantes' | 'luminaires' | 'decor' | 'exterieur';
 export const CATEGORIES: { id: Category | 'tout'; label: string; icon: string }[] = [
   { id: 'tout', label: 'Tout', icon: 'apps' }, { id: 'assises', label: 'Assises', icon: 'chair' },
   { id: 'rangements', label: 'Rangements', icon: 'shelves' }, { id: 'comptoirs', label: 'Comptoirs', icon: 'countertops' },
   { id: 'tables', label: 'Tables', icon: 'table_restaurant' }, { id: 'portants', label: 'Portants', icon: 'checkroom' },
   { id: 'plantes', label: 'Plantes', icon: 'potted_plant' }, { id: 'luminaires', label: 'Luminaires', icon: 'light' },
-  { id: 'decor', label: 'Décor', icon: 'interests' },
+  { id: 'decor', label: 'Décor', icon: 'interests' }, { id: 'exterieur', label: 'Extérieur', icon: 'storefront' },
 ];
 export const categoryLabel = (c: string) => CATEGORIES.find(x => x.id === c)?.label ?? c;
 
@@ -26,6 +27,8 @@ export interface LibItem {
   /** Pack d'origine (crédits). */
   pack: string;
   mural?: boolean; elev?: number; plafond?: boolean;
+  /** Objet mural qui s'accroche à la façade (face extérieure du mur). */
+  outside?: boolean;
   glb?: string;            // modèle GLB en base64
   glbBuffer?: ArrayBuffer; // ou octets du fichier (dossier du professeur)
   /** Dossier du professeur : chemin du fichier, poids, redressé, échelle devinée (cm / mm → m). */
@@ -48,6 +51,7 @@ const items: LibItem[] = [
     glb: MODELS[m.id], target: { h: m.h, w: m.w },
   })),
   ...VOLUME_MODELS.map(v => ({ id: v.id, name: v.nom, cat: v.cat as Category, source: 'base' as Source, pack: 'outil', parts: v.parts, mural: v.mural, elev: v.elev, plafond: v.plafond })),
+  ...EXTERIOR_MODELS.map(x => ({ id: x.id, name: x.nom, cat: 'exterieur' as Category, source: 'base' as Source, pack: 'outil', volumes: x.volumes, mural: x.mural, outside: x.outside, elev: x.elev })),
 ];
 const byId = new Map(items.map(i => [i.id, i]));
 

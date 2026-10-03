@@ -98,6 +98,35 @@ const WALLS: Record<WallMaterial, TexDef> = {
       c.fillStyle = 'rgba(90,60,30,.35)'; c.fillRect(i * w, 0, 2, s);
     }
   } },
+  // Bardage : lames horizontales à recouvrement (façades), teintable
+  bardage: { label: 'Bardage bois', size: 1.2, tint: true, draw: (c, s) => {
+    const n = 8, hh = s / n;
+    for (let i = 0; i < n; i++) {
+      const g = c.createLinearGradient(0, i * hh, 0, (i + 1) * hh);
+      g.addColorStop(0, shade('#FFFFFF', 0.86)); g.addColorStop(0.15, shade('#FFFFFF', 0.99)); g.addColorStop(1, shade('#FFFFFF', 0.93));
+      c.fillStyle = g; c.fillRect(0, i * hh, s, hh);
+      for (let k = 0; k < 10; k++) { c.fillStyle = `rgba(90,70,50,${0.03 + rnd() * 0.04})`; c.fillRect(0, i * hh + rnd() * hh, s, 1 + rnd() * 1.5); }
+      c.fillStyle = 'rgba(40,30,20,.35)'; c.fillRect(0, i * hh, s, 2);
+    }
+  } },
+  // Pierre : moellons irréguliers
+  pierre: { label: 'Pierre', size: 1.4, tint: false, draw: (c, s) => {
+    c.fillStyle = '#B9B1A4'; c.fillRect(0, 0, s, s);
+    const rows = 7, rh = s / rows;
+    for (let r = 0; r < rows; r++) {
+      let x = -rnd() * rh;
+      while (x < s) {
+        const w = rh * (1.1 + rnd() * 1.4);
+        c.fillStyle = shade('#D8D0C2', 0.86 + rnd() * 0.2);
+        const p = 3;
+        c.beginPath();
+        c.roundRect(x + p, r * rh + p, w - 2 * p, rh - 2 * p, 6);
+        c.fill();
+        x += w;
+      }
+    }
+    speckle(c, s, 3000, 0.12);
+  } },
 };
 
 export const FLOOR_LABELS = Object.fromEntries(Object.entries(FLOORS).map(([k, d]) => [k, d.label])) as Record<FloorMaterial, string>;

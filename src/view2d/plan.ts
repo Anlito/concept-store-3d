@@ -1,7 +1,7 @@
 import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
 import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, snapTo, sub, v, area, cross } from '../model/geometry';
-import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, shopExtent, wallLength } from '../model/project';
+import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, openingStyle, shopExtent, wallLength } from '../model/project';
 import { closeDraft, placeOpening, selectPick } from "../app/actions";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
@@ -406,10 +406,19 @@ export class Plan2D {
         o.push(`<path d="${path([i0, i1, o1, o0])}" style="fill:${ghost ? 'rgba(191,78,54,.25)' : BG}"/>`);
         line(i0, o0, `stroke:${col};stroke-width:1.5`); line(i1, o1, `stroke:${col};stroke-width:1.5`);
         if (op.type === 'porte') {
-          const leafEnd = add(i0, mul(e.n, -op.width));
-          line(i0, leafEnd, `stroke:${col};stroke-width:2`);
-          const sweep = cross(sub(leafEnd, i0), sub(i1, i0)) > 0 ? 1 : 0;
-          o.push(`<path d="M${X(leafEnd.x).toFixed(1)} ${Y(leafEnd.y).toFixed(1)} A${(op.width * k).toFixed(1)} ${(op.width * k).toFixed(1)} 0 0 ${sweep} ${X(i1.x).toFixed(1)} ${Y(i1.y).toFixed(1)}" style="fill:none;stroke:${col};stroke-width:1.2;stroke-dasharray:4 3"/>`);
+          const st = openingStyle(op).value;
+          /** Vantail ouvrant vers l'intérieur : charnière en a, battant de largeur r, arc jusqu'à b. */
+          const leaf = (a: Vec2, b: Vec2, r: number) => {
+            const end = add(a, mul(e.n, -r));
+            line(a, end, `stroke:${col};stroke-width:2`);
+            const sweep = cross(sub(end, a), sub(b, a)) > 0 ? 1 : 0;
+            o.push(`<path d="M${X(end.x).toFixed(1)} ${Y(end.y).toFixed(1)} A${(r * k).toFixed(1)} ${(r * k).toFixed(1)} 0 0 ${sweep} ${X(b.x).toFixed(1)} ${Y(b.y).toFixed(1)}" style="fill:none;stroke:${col};stroke-width:1.2;stroke-dasharray:4 3"/>`);
+          };
+          if (st === 'double') { const m = add(e.a, mul(e.u, op.t)); leaf(i0, m, op.width / 2); leaf(i1, m, op.width / 2); }
+          else if (st === 'coulissante') { // deux panneaux décalés dans l'épaisseur
+            const p1 = mul(e.n, T * 0.35), p2 = mul(e.n, T * 0.65), mid = add(e.a, mul(e.u, op.t + op.width * 0.08)), mid2 = add(e.a, mul(e.u, op.t - op.width * 0.08));
+            line(add(i0, p1), add(mid, p1), `stroke:${col};stroke-width:2.5`); line(add(mid2, p2), add(i1, p2), `stroke:${col};stroke-width:2.5`);
+          } else leaf(i0, i1, op.width);
         } else {
           const n = op.type === 'vitrine' ? 3 : 2;
           for (let j = 1; j <= n; j++) { const f = j / (n + 1); line(add(i0, mul(e.n, T * f)), add(i1, mul(e.n, T * f)), `stroke:${col};stroke-width:${op.type === 'vitrine' ? 1.6 : 1.2}`); }

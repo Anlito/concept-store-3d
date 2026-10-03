@@ -120,6 +120,23 @@ export class View3D {
     this.framedOnce = true;
     this.needsRender = true;
   }
+  /** Place la caméra dans la rue, face à la façade (mur choisi, sinon celui de la porte d'entrée). */
+  facade() {
+    const d = this.ctx.store.doc, s = this.ctx.ui.s;
+    if (!d.floor) return;
+    const E = edges(d.floor.points);
+    let i = s.sel?.kind === 'wall' ? s.sel.index
+      : s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id)?.wall ?? -1
+      : s.sel?.kind === 'image' ? d.images.find(o => o.id === (s.sel as { id: string }).id)?.wall ?? -1 : -1;
+    if (i < 0) i = d.openings.find(o => o.type === 'porte')?.wall ?? d.openings.find(o => o.type === 'vitrine')?.wall ?? E.reduce((b, e) => (e.length > E[b].length ? e.i : b), 0);
+    const e = E[i], H = d.walls.height;
+    const mid = new THREE.Vector3((e.a.x + e.b.x) / 2, H * 0.45, (e.a.y + e.b.y) / 2);
+    const fov = THREE.MathUtils.degToRad(this.camera.fov), dist = Math.max((e.length * 0.62) / Math.tan(fov / 2) / Math.min(1, this.camera.aspect), 4);
+    this.ctx.ui.set({ cutaway: false });
+    this.controls.target.copy(mid);
+    this.camera.position.set(mid.x + e.n.x * dist, 1.6, mid.z + e.n.y * dist);
+    this.controls.update(); this.needsRender = true;
+  }
   zoom(f: number) {
     const off = this.camera.position.clone().sub(this.controls.target).multiplyScalar(f);
     if (off.length() < this.controls.minDistance || off.length() > this.controls.maxDistance) return;
@@ -166,7 +183,7 @@ export class View3D {
     if (key === this.imagesKey) return;
     this.imagesKey = key;
     if (this.images) { this.scene.remove(this.images.root); disposeTree(this.images.root); }
-    this.images = buildImages(d, () => { this.needsRender = true; });
+    this.images = buildImages(d, () => { this.imagesKey = ''; this.syncImages(this.ctx.store.doc); this.needsRender = true; });
     this.scene.add(this.images.root);
     for (const [w, g] of this.images.byWall) g.visible = !this.lowered.has(w);
   }

@@ -2,6 +2,8 @@ import type { Floor, Opening, OpeningType, Project, Vec2, WallStyle } from './ty
 import { bounds, dist, edges, normalizeWinding, projectOnSegment, round3, uid } from './geometry';
 
 export const DEFAULT_WALL: WallStyle = { material: 'peinture', color: '#FCFBF9' };
+/** Façade par défaut : enduit clair. */
+export const DEFAULT_OUT = { material: 'peinture' as const, color: '#F1EEE8' };
 export const WALL_LIMITS = { height: [2, 6], thickness: [0.05, 0.5] } as const;
 
 export const OPENING_DEFAULTS: Record<OpeningType, { width: number; height: number; sill: number; label: string }> = {
@@ -162,3 +164,27 @@ export function shopExtent(pts: Vec2[]) {
   return { w: b.w, h: b.h, ok: Math.max(b.w, b.h) <= MAX_SHOP.long + 1e-6 && Math.min(b.w, b.h) <= MAX_SHOP.short + 1e-6 };
 }
 export const MAX_SHOP_MSG = 'La boutique ne doit pas dépasser 10 × 7 m.';
+
+/** Styles de menuiseries proposés pour chaque type d'ouverture (le premier est celui par défaut). */
+export const OPENING_STYLES: Record<OpeningType, { value: string; label: string; color: string }[]> = {
+  porte: [
+    { value: 'pleine', label: 'Pleine', color: '#E4DCCF' },
+    { value: 'vitree', label: 'Vitrée', color: '#2E2D2B' },
+    { value: 'double', label: 'Double vitrée', color: '#2E2D2B' },
+    { value: 'coulissante', label: 'Coulissante', color: '#B8B4AD' },
+    { value: 'atelier', label: 'Atelier', color: '#2E2D2B' },
+  ],
+  fenetre: [
+    { value: 'classique', label: 'Classique', color: '#ECE9E3' },
+    { value: 'atelier', label: 'Atelier', color: '#2E2D2B' },
+    { value: 'fixe', label: 'Fixe', color: '#5B6B7A' },
+  ],
+  vitrine: [
+    { value: 'moderne', label: 'Moderne', color: '#2E2D2B' },
+    { value: 'sans-cadre', label: 'Sans cadre', color: '#B8B4AD' },
+    { value: 'atelier', label: 'Atelier', color: '#2E2D2B' },
+    { value: 'bois', label: 'Bois', color: '#8A5A3B' },
+  ],
+};
+export const openingStyle = (o: Opening) => OPENING_STYLES[o.type].find(s => s.value === o.style) ?? OPENING_STYLES[o.type][0];
+export const openingColor = (o: Opening) => o.color ?? openingStyle(o).color;

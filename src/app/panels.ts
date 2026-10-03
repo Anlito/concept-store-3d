@@ -1,14 +1,15 @@
 import type { Ctx } from './state';
-import type { FloorMaterial, OpeningType, WallMaterial } from '../model/types';
+import type { FloorMaterial, OpeningType, WallMaterial, WallStyle } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, measureRow, numberField, section, segmented, swatches, tiles, toast } from '../ui/components';
 import { area, edges, fmtArea, fmtM, isSimplePolygon, perimeter } from '../model/geometry';
-import { MAX_SHOP_MSG, OPENING_DEFAULTS, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, moveVertex, shopExtent, wallLength } from '../model/project';
+import { DEFAULT_OUT, MAX_SHOP_MSG, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, moveVertex, shopExtent, wallLength } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
 import { clearFloor, closeDraft, deleteSelection, duplicateOpening } from './actions';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
 import { thumbnail } from '../library/thumbs';
+import { FRAME_COLORS, styleThumb } from './openingStyles';
 import { alignObjects, deleteObjects, duplicateObjects, editObjects, rotateObjects, toggleLock } from './objectActions';
 
 /* Panneau de propriétés (à droite). Il est reconstruit quand l'outil ou la sélection change,
@@ -18,6 +19,7 @@ export const WALL_COLORS = [
   { name: 'Blanc cassé', hex: '#FCFBF9' }, { name: 'Sable', hex: '#E9E3D8' }, { name: 'Lin', hex: '#D9D2C6' }, { name: 'Rose poudré', hex: '#E8C8BC' },
   { name: 'Terracotta', hex: '#BF4E36' }, { name: 'Ocre', hex: '#D9A54A' }, { name: 'Sauge', hex: '#6E8B6B' }, { name: 'Bleu ciel', hex: '#BCD3DF' },
   { name: 'Bleu ardoise', hex: '#5B6B7A' }, { name: 'Noir', hex: '#2E2D2B' },
+  { name: 'Vert sapin', hex: '#3F5E4A' }, { name: 'Bleu nuit', hex: '#2F3E57' }, { name: 'Anthracite', hex: '#45474A' },
 ];
 const FLOOR_COLORS = [
   { name: 'Blanc cassé', hex: '#F6F4F0' }, { name: 'Gris clair', hex: '#D6D3CD' }, { name: 'Sable', hex: '#E3D7C3' }, { name: 'Terracotta', hex: '#C97B62' },
@@ -119,12 +121,24 @@ export function wallsPanel(ctx: Ctx): Panel {
   const sel = ui.s.sel?.kind === 'wall' ? ui.s.sel.index : -1;
   const styleOf = (i: number) => store.doc.walls.styles[i];
   const target = () => sel >= 0 ? [sel] : store.doc.walls.styles.map((_, i) => i);
-  const setStyle = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => { for (const i of target()) Object.assign(d.walls.styles[i], patch); });
+  // Face travaillée : intérieur de la boutique, ou extérieur (façade, pour attirer le client).
+  const ext = ui.s.wallFace === 'ext';
+  const matOf = (s: WallStyle) => ext ? s.outMaterial ?? DEFAULT_OUT.material : s.material;
+  const colOf = (s: WallStyle) => ext ? s.outColor ?? DEFAULT_OUT.color : s.color;
+  const setStyle = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => {
+    for (const i of target()) {
+      const st = d.walls.styles[i];
+      if (!ext) Object.assign(st, patch);
+      else { if (patch.material) st.outMaterial = patch.material; if (patch.color) st.outColor = patch.color; }
+    }
+  });
   const ref = () => styleOf(sel >= 0 ? sel : 0);
   const matTiles = tiles((Object.keys(WALL_LABELS) as WallMaterial[]).map(m => ({ value: m, label: WALL_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('w', m, '#E9E3D8'), backgroundBlendMode: 'multiply' } }) })),
-    () => ref().material, m => setStyle({ material: m }));
+    () => matOf(ref()), m => setStyle({ material: m }));
   const all = store.doc.walls.styles;
-  const mixed = sel < 0 && all.some(s => s.material !== all[0].material || s.color !== all[0].color);
+  const mixed = sel < 0 && all.some(s => matOf(s) !== matOf(all[0]) || colOf(s) !== colOf(all[0]));
+  const face = segmented<'int' | 'ext'>([{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade', icon: 'storefront' }],
+    () => ui.s.wallFace, v => ui.set({ wallFace: v, ...(v === 'ext' ? { cutaway: false } : {}) }));
   const p = shell('border_outer', sel >= 0 ? `Mur n° ${sel + 1}` : 'Murs',
     () => sel >= 0 ? `Longueur ${fmtM(wallLength(store.doc, sel))}` : `${store.doc.walls.styles.length} murs · sans toit`, [
       section('Tous les murs', h('div', { class: 'g2' },
@@ -134,8 +148,10 @@ export function wallsPanel(ctx: Ctx): Panel {
           set: v => store.update(d => { d.walls.thickness = v / 100; }) })))),
       sel < 0 ? h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour changer seulement sa matière ou sa couleur. Sinon, les réglages ci-dessous s’appliquent à tous les murs.') : null,
       mixed ? alert('info', 'Les murs sont différents', 'Choisir une matière ou une couleur ici l’applique à tous les murs.') : null,
-      section(sel >= 0 ? 'Matière (face intérieure)' : 'Matière de tous les murs', b(matTiles)),
-      wallTints(ref().material) ? section('Couleur', b(swatches(WALL_COLORS, () => ref().color, c => setStyle({ color: c })))) : null,
+      section('Face à décorer', b(face)),
+      ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Voir la façade'), ' place la caméra devant.') : null,
+      section((ext ? 'Façade' : 'Intérieur') + (sel >= 0 ? ' · matière' : ' · matière de tous les murs'), b(matTiles)),
+      wallTints(matOf(ref())) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(ref()), c => setStyle({ color: c })))) : null,
     ], sel >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à tous les murs', 'format_paint', 'btn-secondary', () => {
       const s = { ...styleOf(sel) }; store.update(d => { d.walls.styles = d.walls.styles.map(() => ({ ...s })); }); toast('Style appliqué à tous les murs.');
     })) : undefined);
@@ -157,6 +173,8 @@ export function openingsPanel(ctx: Ctx): Panel {
     const n = store.doc.openings.length;
     const p = shell('door_front', 'Portes / fenêtres', () => `${store.doc.openings.length} ouverture${store.doc.openings.length > 1 ? 's' : ''}`, [
       section('À poser', b(tiles(typeOpts, () => ui.s.placeType, t => ui.set({ placeType: t }), 3))),
+      section('Style', b(tiles(OPENING_STYLES[ui.s.placeType].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(ui.s.placeType, s.value, s.color) })),
+        () => ui.s.placeStyles[ui.s.placeType] ?? OPENING_STYLES[ui.s.placeType][0].value, v => ui.set({ placeStyles: { ...ui.s.placeStyles, [ui.s.placeType]: v } }), 2))),
       h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour y poser l’ouverture choisie. Clique ensuite sur une ouverture pour la régler ou ', h('b', null, 'glisse-la'), ' le long du mur.'),
       n === 0 ? alert('info', 'Pense à la porte d’entrée !', 'Une boutique a au moins une porte, et souvent une vitrine.') : null,
     ]);
@@ -179,7 +197,10 @@ export function openingsPanel(ctx: Ctx): Panel {
   const isDoor = () => o().type === 'porte';
   const p = shell(TYPE_ICON[o().type], OPENING_DEFAULTS[o().type].label, () => `Sur le mur n° ${o().wall + 1} · ${fmtM(L())}`, [
     section('Type', b(segmented((Object.keys(OPENING_DEFAULTS) as OpeningType[]).map(t => ({ value: t, label: OPENING_DEFAULTS[t].label })), () => o().type,
-      t => { set(x => { x.type = t; x.sill = OPENING_DEFAULTS[t].sill; }); }))),
+      t => { set(x => { x.type = t; x.sill = OPENING_DEFAULTS[t].sill; x.style = undefined; x.color = undefined; }); }))),
+    section('Style', b(tiles(OPENING_STYLES[o().type].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(o().type, s.value, o().color ?? s.color) })),
+      () => openingStyle(o()).value, v => set(x => { x.style = v; }), 2))),
+    section('Couleur de la menuiserie', b(frameSwatches(() => o().color, c => set(x => { x.color = c; })))),
     section('Dimensions', h('div', { class: 'g2' },
       b(numberField({ label: 'Largeur', unit: 'cm', min: 30, max: 1000, get: () => o().width * 100, set: v => set(x => { x.width = v / 100; }) })),
       b(numberField({ label: 'Hauteur', unit: 'cm', min: 30, max: 600, get: () => o().height * 100, set: v => set(x => { x.height = v / 100; }) })))),
@@ -303,4 +324,18 @@ function extentRow(pts: () => import('../model/types').Vec2[]): Bound {
 /** Panneau simple (en-tête, corps, pied) pour les autres modules (images…). */
 export function makePanel(ic: string, title: string, sub: () => string, body: (Node | null | false)[], foot?: HTMLElement): Panel {
   return finish(shell(ic, title, sub, body, foot), []);
+}
+
+/** Vignette d'un style de porte, fenêtre ou vitrine. */
+function thumbOf(type: OpeningType, style: string, color: string) {
+  const t = h('div', { class: 'thumb thumb-svg' });
+  t.innerHTML = styleThumb(type, style, color);
+  return t;
+}
+/** Couleurs de menuiserie, avec « Couleur du style » (aucune couleur imposée). */
+function frameSwatches(get: () => string | undefined, set: (c: string | undefined) => void): Bound {
+  const sw = swatches(FRAME_COLORS, () => get() ?? '', c => set(c));
+  const orig = h('button', { type: 'button', class: 'sw orig', title: 'Couleur du style', 'aria-label': 'Couleur du style', onclick: () => set(undefined) });
+  sw.el.prepend(orig);
+  return { el: sw.el, refresh: () => { sw.refresh(); orig.classList.toggle('on', !get()); } };
 }

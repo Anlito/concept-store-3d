@@ -1,7 +1,7 @@
 import type { Ctx } from './state';
 import type { ImageAsset, ImageTarget, PlacedImage, Project } from '../model/types';
 import { h, icon } from '../ui/dom';
-import { type Bound, alert, button, section, tiles, toast, toggle } from '../ui/components';
+import { type Bound, alert, button, section, segmented, tiles, toast, toggle } from '../ui/components';
 import { bounds, edges, uid } from '../model/geometry';
 import { fmtBytes, readImageFile, MAX_IMAGE_MB } from '../library/images';
 import { type Panel, makePanel } from './panels';
@@ -53,8 +53,11 @@ function settings(a: Access, binds: Bound[]): HTMLElement {
   const rep = toggle('Répéter l’image', 'apps', () => a.get().repeat, v => { a.set({ repeat: v }); a.end(); });
   if (im.target === 'cadre') { rep.el.setAttribute('disabled', ''); rep.el.title = 'Un cadre n’est pas répété'; }
   const tiled = im.repeat;
+  const side = segmented<'int' | 'ext'>([{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade (rue)', icon: 'storefront' }],
+    () => a.get().side ?? 'int', v => { a.set({ side: v }); a.end(); });
   return h('div', { class: 'p-sec', style: { gap: '14px' } },
     isWall ? h('label', { class: 'tf' }, 'Sur le mur', wallSel) : null,
+    isWall ? b(side) : null,
     b(slider(tiled ? 'Taille du motif' : 'Largeur', 'cm', 20, maxSize, 5, () => a.get().size * 100, (v, l) => a.set({ size: v / 100 }, l), a.end)),
     tiled ? null : b(slider(isWall ? 'Position horizontale' : 'Position gauche-droite', '%', 0, 100, 1, () => a.get().x * 100, (v, l) => a.set({ x: v / 100 }, l), a.end)),
     tiled ? null : b(slider(isWall ? 'Position verticale' : 'Position avant-arrière', '%', 0, 100, 1, () => a.get().y * 100, (v, l) => a.set({ y: v / 100 }, l), a.end)),
@@ -131,7 +134,7 @@ export function openImageDialog(ctx: Ctx) {
     });
     document.body.appendChild(input); input.click();
   }
-  const access: Access = { get: () => draft, set: p => { Object.assign(draft, p); renderPreview(); renderSettingsValues(); }, end: () => render(), doc: () => store.doc };
+  const access: Access = { get: () => draft, set: p => { Object.assign(draft, p); if (p.side === 'ext') ui.set({ cutaway: false }); renderPreview(); renderSettingsValues(); }, end: () => render(), doc: () => store.doc };
   let binds: Bound[] = [];
   function renderSettingsValues() { binds.forEach(b => b.refresh()); }
   function renderPreview() { pvCol.replaceChildren(h('div', { class: 'p-sec-t' }, 'Aperçu'), preview(store.doc, draft, asset)); }
@@ -191,7 +194,7 @@ export function imagePanel(ctx: Ctx): Panel {
   const binds: Bound[] = [];
   const access: Access = {
     get: cur,
-    set: (patch, live) => { if (live) { store.begin(); store.live(d => { Object.assign(d.images.find(i => i.id === id)!, patch); }); } else store.update(d => { Object.assign(d.images.find(i => i.id === id)!, patch); }); },
+    set: (patch, live) => { if (patch.side === 'ext') ui.set({ cutaway: false }); if (live) { store.begin(); store.live(d => { Object.assign(d.images.find(i => i.id === id)!, patch); }); } else store.update(d => { Object.assign(d.images.find(i => i.id === id)!, patch); }); },
     end: () => store.end(),
     doc: () => store.doc,
   };

@@ -28,7 +28,7 @@ export function placeOpening(ctx: Ctx, wall: number, t: number) {
   const id = uid();
   store.update(d => {
     const height = Math.min(def.height, d.walls.height - def.sill - 0.05);
-    d.openings.push({ id, wall, type, t: Math.round(at * 100) / 100, width, height, sill: def.sill });
+    d.openings.push({ id, wall, type, t: Math.round(at * 100) / 100, width, height, sill: def.sill, style: ui.s.placeStyles[type] });
   });
   ui.set({ sel: { kind: 'opening', id } });
 }

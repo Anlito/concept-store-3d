@@ -40,6 +40,10 @@ export interface UIState {
   keepRatio: boolean;
   /** Onglet affiché à l'ouverture de la bibliothèque. */
   libraryTab: 'base' | 'moi' | 'prof';
+  /** Face des murs en cours de décoration : intérieur ou façade. */
+  wallFace: 'int' | 'ext';
+  /** Style choisi pour les prochaines ouvertures posées, par type. */
+  placeStyles: Partial<Record<OpeningType, string>>;
 }
 
 type UIListener = (changed: (keyof UIState)[]) => void;
@@ -62,7 +66,7 @@ export function defaultUI(): UIState {
   try { shadows = (localStorage.getItem('cs3d-shadows') as ShadowQuality) || 'low'; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
-    grid: true, snap: true, dims: true, step: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base',
+    grid: true, snap: true, dims: true, step: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', placeStyles: {},
   };
 }
 

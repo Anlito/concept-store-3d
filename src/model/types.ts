@@ -4,10 +4,11 @@
 export interface Vec2 { x: number; y: number }
 
 export type FloorMaterial = 'parquet' | 'beton' | 'carrelage' | 'terrazzo' | 'peinture';
-export type WallMaterial = 'peinture' | 'beton' | 'carrelage' | 'brique' | 'bois';
+export type WallMaterial = 'peinture' | 'beton' | 'carrelage' | 'brique' | 'bois' | 'bardage' | 'pierre';
 export type OpeningType = 'porte' | 'fenetre' | 'vitrine';
 
-export interface WallStyle { material: WallMaterial; color: string }
+/** Revêtement d'un mur : face intérieure (material, color) et face extérieure, la façade (outMaterial, outColor). */
+export interface WallStyle { material: WallMaterial; color: string; outMaterial?: WallMaterial; outColor?: string }
 
 /** Ouverture posée sur le mur n° `wall` (le mur i va du sommet i au sommet i+1 du sol). */
 export interface Opening {
@@ -20,6 +21,10 @@ export interface Opening {
   height: number;
   /** Hauteur du bas de l'ouverture (allège), 0 pour une porte (m). */
   sill: number;
+  /** Style de menuiserie (voir OPENING_STYLES) ; absent = style par défaut du type. */
+  style?: string;
+  /** Couleur de la menuiserie (cadre, ou vantail d'une porte pleine) ; absente = couleur du style. */
+  color?: string;
 }
 
 export interface Floor {
@@ -158,4 +163,6 @@ export interface PlacedImage {
   rot: number;
   /** Répéter le motif sur tout le mur ou tout le sol. */
   repeat: boolean;
+  /** Face du mur : intérieur (par défaut) ou façade, côté rue (enseigne, vitrophanie vue de dehors…). */
+  side?: 'int' | 'ext';
 }

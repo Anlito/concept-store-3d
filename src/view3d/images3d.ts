@@ -30,7 +30,8 @@ export function buildImages(p: Project, onTexture: () => void): BuiltImages {
     const a = p.assets.find(x => x.id === im.asset); if (!a) continue;
     const ratio = a.h / a.w;
     const base = texture(a, onTexture);
-    const tex = base.clone(); if (base.image) tex.needsUpdate = true;
+    if (!base.image) continue; // image pas encore décodée : la scène sera reconstruite à son chargement
+    const tex = base.clone();
     tex.wrapS = tex.wrapT = im.repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
     const transparent = a.data.startsWith('data:image/png');
     const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, transparent, alphaTest: transparent ? 0.04 : 0, side: THREE.DoubleSide,
@@ -62,11 +63,13 @@ export function buildImages(p: Project, onTexture: () => void): BuiltImages {
     // Images murales
     const e = E[im.wall]; if (!e) continue;
     const g = new THREE.Group(); g.matrixAutoUpdate = false; g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
+    // Façade : face extérieure (z = −épaisseur), image retournée pour être lue depuis la rue.
+    const ext = im.side === 'ext', T = p.walls.thickness;
     if (im.target === 'tapisserie' && im.repeat) {
       const pos: number[] = [], uv: number[] = [];
-      for (const [u0, u1, h0, h1] of wallRects(p, im.wall)) {
+      for (const [u0, u1, h0, h1] of wallRects(p, im.wall, ext)) {
         const quad = [[u0, h0], [u1, h0], [u1, h1], [u0, h0], [u1, h1], [u0, h1]];
-        for (const [u, hh] of quad) { pos.push(u, hh, 0.002); uv.push(u, hh); }
+        for (const [u, hh] of quad) { pos.push(u, hh, ext ? -T - 0.002 : 0.002); uv.push(ext ? -u : u, hh); }
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -75,17 +78,19 @@ export function buildImages(p: Project, onTexture: () => void): BuiltImages {
       tex.repeat.set(1 / tileW, 1 / tileH); tex.offset.set(im.x, im.y); tex.rotation = THREE.MathUtils.degToRad(im.rot);
       obj = new THREE.Mesh(geo, mat);
     } else {
-      const u = im.x * e.length, v = im.y * H;
+      const u = (ext ? 1 - im.x : im.x) * e.length, v = im.y * H; // côté rue, 0 % = à gauche vu de dehors
       const holder = new THREE.Group();
-      holder.position.set(u, v, im.target === 'cadre' ? 0.03 : 0.004);
+      holder.rotation.order = 'YXZ';
+      if (ext) holder.rotation.y = Math.PI;
       holder.rotation.z = -THREE.MathUtils.degToRad(im.rot);
       holder.add(new THREE.Mesh(new THREE.PlaneGeometry(tileW, tileH), mat));
       if (im.target === 'cadre') {
         const f = Math.max(0.025, tileW * 0.05), d = 0.03;
         const bar = (w: number, hh: number, x: number, y: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), FRAME); m.position.set(x, y, -d / 2 + 0.005); m.castShadow = true; return m; };
         holder.add(bar(tileW + 2 * f, f, 0, tileH / 2 + f / 2), bar(tileW + 2 * f, f, 0, -tileH / 2 - f / 2), bar(f, tileH, -tileW / 2 - f / 2, 0), bar(f, tileH, tileW / 2 + f / 2, 0));
-        holder.position.z = 0.03;
       }
+      const off = im.target === 'cadre' ? 0.03 : 0.004;
+      holder.position.set(u, v, ext ? -T - off : off);
       obj = holder;
     }
     obj.traverse(o => { o.userData.pick = pick; });

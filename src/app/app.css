@@ -388,3 +388,5 @@
 .im-row > .ic { color: var(--disabled); font-size: 22px; }
 .fc-badge.warn { background: var(--warn); color: #3a2405; }
 .fc:hover .fc-badge.warn, .fc.on .fc-badge.warn { display: flex; left: auto; right: 40px; }
+.thumb-svg { background: #F4F2EE; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.thumb-svg svg { width: 100%; height: 100%; }

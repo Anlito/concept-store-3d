@@ -1,6 +1,6 @@
 import type { Ctx } from './state';
 import type { PlacedObject } from '../model/types';
-import { uid, snapTo } from '../model/geometry';
+import { edges, uid, snapTo } from '../model/geometry';
 import { freeSpot, normRot, snapToWall } from '../model/objects';
 import { getItem, loadProto } from '../library/library';
 import { toast } from '../ui/components';
@@ -32,7 +32,19 @@ export async function addObject(ctx: Ctx, model: string) {
   const o: PlacedObject = { id, model, x: spot.x, y: spot.y, z: 0, rot: 0, size: { ...proto.dims }, color: null, locked: false };
   if (item.plafond) o.z = Math.max(0, store.doc.walls.height - o.size.h);
   if (item.elev !== undefined) o.z = item.elev;
-  if (item.mural) snapToWall(store.doc, o, 100);
+  // Décor extérieur : devant la porte d'entrée (ou la vitrine), côté rue.
+  if (item.cat === 'exterieur') {
+    const door = store.doc.openings.find(q => q.type === 'porte') ?? store.doc.openings.find(q => q.type === 'vitrine');
+    if (door && store.doc.floor) {
+      const e = edges(store.doc.floor.points)[door.wall], off = item.mural ? 0.3 : store.doc.walls.thickness + 1;
+      const side = item.mural ? 0 : door.width / 2 + 0.6; // un chevalet se pose à côté de la porte, pas devant
+      o.x = e.a.x + e.u.x * (door.t + side) + e.n.x * off; o.y = e.a.y + e.u.y * (door.t + side) + e.n.y * off;
+      o.rot = normRot(Math.atan2(-e.n.x, e.n.y) * 180 / Math.PI);
+    }
+  }
+  if (item.mural) {
+    snapToWall(store.doc, o, 100, item.outside ? 'out' : 'in');
+  }
   // Une création gardée sur ce poste est copiée dans le projet (le fichier reste complet).
   const creation = item.source === 'moi' && !store.doc.creations.some(c => c.id === model) ? findCreation(ctx, model) : undefined;
   store.update(d => { if (creation) d.creations.push(structuredClone(creation)); d.objects.push(o); });

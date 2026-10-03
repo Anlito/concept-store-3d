@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Opening, Project } from '../model/types';
 import { edges, offsetPolygon, dot, sub } from '../model/geometry';
 import { floorMaterial, wallMaterial } from './materials';
+import { DEFAULT_OUT, openingColor, openingStyle } from '../model/project';
 
 /* Construction de la boutique en 3D à partir du modèle : sol, dalle, murs avec ouvertures, menuiseries.
    Chaque mur est un groupe dans son repère local : x le long du mur (depuis le sommet i), y vers le haut,
@@ -120,7 +121,8 @@ export function buildShop(p: Project): BuiltShop {
     g.matrixAutoUpdate = false;
     g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
     const pick: Pick = { kind: 'wall', index: i };
-    const mi = inner.mesh(wallMaterial(style.material, style.color)), mo = out.mesh(M.outer), mc = cap.mesh(M.cap);
+    const mi = inner.mesh(wallMaterial(style.material, style.color)), mc = cap.mesh(M.cap);
+    const mo = out.mesh(wallMaterial(style.outMaterial ?? DEFAULT_OUT.material, style.outColor ?? DEFAULT_OUT.color)); // façade
     for (const m of [mi, mo, mc]) { m.userData.pick = pick; pickables.push(m); g.add(m); }
     ops.forEach(o => { const f = fixture(o, T); f.userData.pick = { kind: 'opening', id: o.id } satisfies Pick; f.traverse(c => { c.userData.pick = f.userData.pick; }); pickables.push(f); g.add(f); });
 
@@ -142,39 +144,100 @@ const box = (w: number, h: number, d: number, mat: THREE.Material, x: number, y:
 /** Menuiserie d'une ouverture, dans le repère local du mur. */
 export function fixture(o: Opening, T: number): THREE.Group {
   const g = new THREE.Group(); g.name = o.type;
-  const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height, w = o.width, cz = -T / 2;
-  const f = 0.05; // largeur du cadre
+  const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height, w = o.width, H = o.height, cz = -T / 2;
+  const style = openingStyle(o).value, col = colorMat(openingColor(o));
+  const f = 0.05; // largeur du cadre dormant
+  /** Vitre (plan transparent) centrée en (x, y), dans le plan z. */
+  const glass = (gw: number, gh: number, x: number, y: number, z: number) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(gw, 0.01), Math.max(gh, 0.01)), M.glass);
+    m.position.set(x, y, z); m.renderOrder = 2; return m;
+  };
+  /** Cadre rectangulaire (4 barres) de largeur fw, profondeur d, autour de la zone x0..x1, y0..y1. */
+  const frame = (x0: number, x1: number, y0: number, y1: number, fw: number, d: number, z: number, mat: THREE.Material, bottom = true) => {
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    g.add(box(fw, y1 - y0, d, mat, x0 + fw / 2, cy, z), box(fw, y1 - y0, d, mat, x1 - fw / 2, cy, z), box(x1 - x0, fw, d, mat, cx, y1 - fw / 2, z));
+    if (bottom) g.add(box(x1 - x0, fw, d, mat, cx, y0 + fw / 2, z));
+  };
+  /** Petits bois (quadrillage atelier) : nx colonnes × ny rangées. */
+  const grid = (x0: number, x1: number, y0: number, y1: number, nx: number, ny: number, z: number, mat: THREE.Material, d = 0.03) => {
+    for (let k = 1; k < nx; k++) g.add(box(0.025, y1 - y0, d, mat, x0 + ((x1 - x0) * k) / nx, (y0 + y1) / 2, z));
+    for (let k = 1; k < ny; k++) g.add(box(x1 - x0, 0.025, d, mat, (x0 + x1) / 2, y0 + ((y1 - y0) * k) / ny, z));
+  };
+  const handle = (x: number, z: number) => { const m = box(0.025, 0.4, 0.025, M.dark, x, 1.05, z); return m; };
+
   if (o.type === 'porte') {
-    const fd = T + 0.02;
-    g.add(box(f, o.height, fd, M.dark, lo + f / 2, o.height / 2, cz), box(f, o.height, fd, M.dark, hi - f / 2, o.height / 2, cz),
-      box(w, f, fd, M.dark, o.t, top - f / 2, cz));
-    const leaf = box(w - 2 * f, o.height - f, 0.04, M.door, o.t, (o.height - f) / 2, -T + 0.04);
-    g.add(leaf);
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), M.dark);
-    knob.position.set(hi - f - 0.09, 1.0, -T + 0.04 + 0.05); g.add(knob);
-    const knob2 = knob.clone(); knob2.position.z = -T + 0.04 - 0.05; g.add(knob2);
-  } else {
-    const mat = o.type === 'vitrine' ? M.dark : M.light, fd = 0.08;
-    g.add(box(f, o.height, fd, mat, lo + f / 2, o.sill + o.height / 2, cz), box(f, o.height, fd, mat, hi - f / 2, o.sill + o.height / 2, cz),
-      box(w, f, fd, mat, o.t, top - f / 2, cz), box(w, f, fd, mat, o.t, o.sill + f / 2, cz));
-    // Montants intermédiaires (tous les 1,2 m environ)
-    const n = Math.max(1, Math.round(w / 1.2));
-    for (let k = 1; k < n; k++) g.add(box(0.04, o.height, fd * 0.8, mat, lo + (w * k) / n, o.sill + o.height / 2, cz));
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(w - 2 * f, o.height - 2 * f), M.glass);
-    glass.position.set(o.t, o.sill + o.height / 2, cz); glass.renderOrder = 2;
-    g.add(glass);
-    if (o.type === 'fenetre') g.add(box(w + 0.1, 0.03, 0.12, M.light, o.t, o.sill - 0.015, 0.04)); // appui intérieur
+    const fd = T + 0.02, dark = style === 'pleine' ? M.dark : col;
+    frame(lo, hi, 0, top, f, fd, cz, dark, false); // dormant (sans traverse basse)
+    const zl = -T + 0.04, lw = w - 2 * f, lh = H - f;
+    if (style === 'pleine') {
+      g.add(box(lw, lh, 0.04, col, o.t, lh / 2, zl));
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), M.dark);
+      knob.position.set(hi - f - 0.09, 1.0, zl + 0.05); g.add(knob);
+      const k2 = knob.clone(); k2.position.z = zl - 0.05; g.add(k2);
+    } else if (style === 'vitree' || style === 'atelier') {
+      const s = 0.08; // montants du vantail
+      frame(lo + f, hi - f, 0, lh, s, 0.045, zl, col);
+      g.add(box(lw, 0.18, 0.045, col, o.t, 0.09, zl)); // soubassement
+      g.add(glass(lw - 2 * s, lh - s - 0.18, o.t, 0.18 + (lh - s - 0.18) / 2, zl));
+      if (style === 'atelier') grid(lo + f + s, hi - f - s, 0.18, lh - s, 2, 4, zl, col);
+      g.add(handle(hi - f - s - 0.05, zl + 0.05), handle(hi - f - s - 0.05, zl - 0.05));
+    } else if (style === 'double') {
+      const s = 0.07, half = lw / 2;
+      for (const sx of [-1, 1]) {
+        const cx = o.t + (sx * half) / 2, x0 = cx - half / 2, x1 = cx + half / 2;
+        frame(x0, x1, 0, lh, s, 0.045, zl, col);
+        g.add(glass(half - 2 * s, lh - 2 * s, cx, lh / 2, zl));
+        g.add(handle(o.t + sx * (s + 0.04), zl + 0.05), handle(o.t + sx * (s + 0.04), zl - 0.05));
+      }
+    } else { // coulissante : deux panneaux vitrés décalés, rail en haut
+      const s = 0.04, pw = lw / 2 + 0.05;
+      g.add(box(lw, 0.06, 0.12, col, o.t, lh - 0.03, zl));
+      [[lo + f + pw / 2, zl - 0.03], [hi - f - pw / 2, zl + 0.03]].forEach(([cx, z]) => {
+        frame(cx - pw / 2, cx + pw / 2, 0, lh - 0.06, s, 0.03, z, col);
+        g.add(glass(pw - 2 * s, lh - 0.06 - 2 * s, cx, (lh - 0.06) / 2, z));
+      });
+    }
+    return g;
   }
+
+  // Fenêtres et vitrines
+  const fd = 0.08, y0 = o.sill, y1 = top, cy = (y0 + y1) / 2;
+  if (style === 'sans-cadre') {
+    g.add(box(w, 0.03, fd, col, o.t, y0 + 0.015, cz), box(w, 0.03, fd, col, o.t, y1 - 0.015, cz)); // profils fins haut et bas
+    const n = Math.max(1, Math.round(w / 1.5));
+    for (let k = 0; k < n; k++) g.add(glass(w / n - 0.006, H - 0.06, lo + (w * (k + 0.5)) / n, cy, cz));
+  } else {
+    const fw = style === 'fixe' ? 0.03 : f;
+    frame(lo, hi, y0, y1, fw, fd, cz, col);
+    g.add(glass(w - 2 * fw, H - 2 * fw, o.t, cy, cz));
+    if (style === 'atelier') grid(lo + fw, hi - fw, y0 + fw, y1 - fw, Math.max(2, Math.round(w / 0.4)), Math.max(2, Math.round(H / 0.45)), cz, col);
+    else if (style === 'classique' || style === 'moderne') {
+      const n = Math.max(1, Math.round(w / 1.2)); // montants tous les 1,2 m environ
+      for (let k = 1; k < n; k++) g.add(box(0.04, H, fd * 0.8, col, lo + (w * k) / n, cy, cz));
+    } else if (style === 'bois') { // devanture traditionnelle : montants et imposte
+      const n = Math.max(1, Math.round(w / 1));
+      for (let k = 1; k < n; k++) g.add(box(0.07, H, fd, col, lo + (w * k) / n, cy, cz));
+      g.add(box(w, 0.07, fd, col, o.t, y0 + H * 0.78, cz));
+      g.add(box(w + 0.16, 0.08, 0.06, col, o.t, y1 + 0.04, -T - 0.03)); // corniche côté rue
+    }
+  }
+  if (o.type === 'fenetre') g.add(box(w + 0.1, 0.03, 0.12, M.light, o.t, o.sill - 0.015, 0.04)); // appui intérieur
   return g;
 }
 
+const colorMats = new Map<string, THREE.MeshStandardMaterial>();
+const colorMat = (c: string) => { let m = colorMats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }); colorMats.set(c, m); } return m; };
+
 /** Rectangles [u0, u1, h0, h1] de la face d'un mur, ouvertures découpées (pour la tapisserie). */
-export function wallRects(p: Project, wall: number): [number, number, number, number][] {
+export function wallRects(p: Project, wall: number, outer = false): [number, number, number, number][] {
   const pts = p.floor!.points, H = p.walls.height;
   const e = edges(pts)[wall];
+  // La face extérieure déborde aux angles (raccord en onglet avec les murs voisins).
+  const op = outer ? offsetPolygon(pts, p.walls.thickness) : null;
+  const start = op ? dot(sub(op[wall], e.a), e.u) : 0, end = op ? dot(sub(op[(wall + 1) % pts.length], e.a), e.u) : e.length;
   const ops = p.openings.filter(o => o.wall === wall).sort((a, b) => a.t - b.t);
   const out: [number, number, number, number][] = [];
-  let cur = 0;
+  let cur = start;
   for (const o of ops) {
     const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height;
     if (lo > cur) out.push([cur, lo, 0, H]);
@@ -182,6 +245,6 @@ export function wallRects(p: Project, wall: number): [number, number, number, nu
     if (top < H) out.push([lo, hi, top, H]);
     cur = hi;
   }
-  if (e.length > cur) out.push([cur, e.length, 0, H]);
+  if (end > cur) out.push([cur, end, 0, H]);
   return out;
 }

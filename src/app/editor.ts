@@ -1,4 +1,5 @@
 import type { Ctx, Tool, View } from './state';
+import type { WallStyle } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { toggle } from '../ui/components';
 import { View3D } from '../view3d/view3d';
@@ -134,12 +135,15 @@ export class Editor {
   private updatePanel() {
     const { ui, store } = this.ctx, s = ui.s, d = store.doc;
     const selWall = s.sel?.kind === 'wall' ? s.sel.index : 0;
+    const ext = s.wallFace === 'ext';
+    const faceMat = (w: WallStyle) => ext ? w.outMaterial ?? 'peinture' : w.material;
+    const faceCol = (w: WallStyle) => ext ? w.outColor ?? '' : w.color;
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
-      d.walls.styles[selWall] && wallTints(d.walls.styles[selWall].material), op?.type,
-      s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat) : null,
+      s.wallFace, d.walls.styles[selWall] && wallTints(faceMat(d.walls.styles[selWall])), op?.type, op?.style, op?.color, s.placeType,
+      s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side) : null,
       s.tool === 'images' && !s.sel ? d.images.map(i => i.id + i.target + i.wall) : null,
-      s.tool === 'murs' && !s.sel && d.walls.styles.some(w => w.material !== d.walls.styles[0].material || w.color !== d.walls.styles[0].color)]);
+      s.tool === 'murs' && !s.sel && d.walls.styles.some(w => faceMat(w) !== faceMat(d.walls.styles[0]) || faceCol(w) !== faceCol(d.walls.styles[0]))]);
     if (key !== this.panelKey) {
       this.panelKey = key;
       this.panel = this.buildPanel();
@@ -168,7 +172,8 @@ export class Editor {
       const v = (e.target as HTMLSelectElement).value as 'off' | 'low' | 'high';
       ui.set({ shadows: v }); try { localStorage.setItem('cs3d-shadows', v); } catch { /* ignoré */ }
     } }, h('option', { value: 'off' }, 'Sans ombres'), h('option', { value: 'low' }, 'Ombres légères'), h('option', { value: 'high' }, 'Ombres soignées'));
-    const bar = h('div', { class: 'fbar' }, cut.el, shadows);
+    const facade = h('button', { class: 'tg', type: 'button', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Voir la façade');
+    const bar = h('div', { class: 'fbar' }, cut.el, facade, shadows);
     const el = h('div', { class: 'vp-ov', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
       h('div', { style: { pointerEvents: 'auto' } }, bar),
       h('div', { class: 'vp-hints' },

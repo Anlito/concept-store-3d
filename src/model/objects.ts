@@ -18,22 +18,27 @@ export function footprint(o: PlacedObject): Vec2[] {
 export const hitObject = (o: PlacedObject, p: Vec2) => pointInPolygon(p, footprint(o));
 export const normRot = (r: number) => ((Math.round(r * 100) / 100) % 360 + 360) % 360;
 
-/** Accroche un objet mural contre le mur le plus proche (dos au mur, face vers l'intérieur). */
-export function snapToWall(p: Project, o: PlacedObject, maxDist = 0.6): boolean {
+/** Accroche un objet mural contre la face la plus proche d'un mur, dos au mur : face intérieure (il regarde
+    la boutique) ou face extérieure, la façade (il regarde la rue : enseigne, store, applique…). */
+export function snapToWall(p: Project, o: PlacedObject, maxDist = 0.6, side?: 'in' | 'out'): boolean {
   if (!p.floor) return false;
-  let best: { d: number; e: ReturnType<typeof edges>[number]; t: number } | null = null;
+  const T = p.walls.thickness;
+  let best: { d: number; e: ReturnType<typeof edges>[number]; t: number; out: boolean } | null = null;
   for (const e of edges(p.floor.points)) {
-    const rel = sub(v(o.x, o.y), e.a), t = dot(rel, e.u), d = -dot(rel, e.n); // d > 0 : à l'intérieur
+    const rel = sub(v(o.x, o.y), e.a), t = dot(rel, e.u), s = dot(rel, e.n); // s < 0 : à l'intérieur
     if (t < -0.2 || t > e.length + 0.2) continue;
-    const dd = Math.abs(d - o.size.d / 2);
-    if (dd < maxDist && (!best || dd < best.d)) best = { d: dd, e, t };
+    for (const out of [false, true]) {
+      if (side && (side === 'out') !== out) continue;
+      const dd = Math.abs((out ? s - T : -s) - o.size.d / 2);
+      if (dd < maxDist && (!best || dd < best.d)) best = { d: dd, e, t, out };
+    }
   }
   if (!best) return false;
-  const { e } = best;
+  const { e, out } = best;
   const t = Math.min(e.length - o.size.w / 2, Math.max(o.size.w / 2, best.t));
-  const q = add(add(e.a, mul(e.u, t)), mul(e.n, -(o.size.d / 2 + 0.005)));
+  const q = add(add(e.a, mul(e.u, t)), mul(e.n, out ? T + o.size.d / 2 + 0.005 : -(o.size.d / 2 + 0.005)));
   o.x = round(q.x); o.y = round(q.y);
-  o.rot = normRot((Math.atan2(e.n.x, -e.n.y) * 180) / Math.PI);
+  o.rot = normRot((out ? Math.atan2(-e.n.x, e.n.y) : Math.atan2(e.n.x, -e.n.y)) * 180 / Math.PI);
   return true;
 }
 const round = (x: number) => Math.round(x * 1000) / 1000;
