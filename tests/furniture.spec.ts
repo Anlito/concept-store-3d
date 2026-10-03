@@ -142,3 +142,21 @@ test('les objets apparaissent dans la vue 3D', async ({ page }) => {
   expect(n).toBeGreaterThan(0);
   await expect(page.locator('.tag3d')).toContainText('cm');
 });
+
+test('couleur exacte avec la palette, puis réutilisable en couleur récente', async ({ page }) => {
+  await page.locator('.fc', { hasText: 'Canapé design' }).first().dblclick();
+  const panel = page.getByTestId('panel');
+  await expect(panel.getByRole('button', { name: 'Autre couleur…' })).toBeVisible();
+  await panel.locator('.sw-input').fill('#1e7f8c');
+  let o = (await page.evaluate(() => (window as any).cs3d.store.doc.objects[0]));
+  expect(o.color).toBe('#1E7F8C');
+  // La couleur apparaît en « couleur récente », aussi pour les murs
+  await page.locator('[data-tool="murs"]').click();
+  const recent = page.getByTestId('panel').getByRole('button', { name: 'Couleur #1E7F8C' });
+  await expect(recent).toBeVisible();
+  await recent.click();
+  const d = await page.evaluate(() => (window as any).cs3d.store.doc);
+  expect(d.walls.styles.every((s: any) => s.color === '#1E7F8C')).toBe(true);
+  o = d.objects[0];
+  expect(o.color).toBe('#1E7F8C');
+});

@@ -74,11 +74,41 @@ export function toggle(label: string, ic: string, get: () => boolean, set: (v: b
 }
 
 export interface Swatch { name: string; hex: string }
+/* Couleurs choisies avec la palette, gardées sur ce poste pour être réutilisées. */
+const RECENT_KEY = 'cs3d-couleurs', RECENT_MAX = 6;
+const recentColors = (): string[] => { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; } };
+function rememberColor(hex: string) {
+  const list = [hex, ...recentColors().filter(c => c.toLowerCase() !== hex.toLowerCase())].slice(0, RECENT_MAX);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch { /* stockage bloqué */ }
+  window.dispatchEvent(new Event('cs3d-couleurs'));
+}
+
+/**
+ * Pastilles de couleur, suivies des couleurs récentes et de « Autre couleur… » : la palette du navigateur
+ * (nuancier, pipette, code exact #RRGGBB), disponible hors ligne.
+ */
 export function swatches(list: Swatch[], get: () => string, set: (hex: string) => void, cls = ''): Bound {
   const btns = list.map(s => h('button', { type: 'button', class: 'sw', title: s.name, 'aria-label': s.name, style: { background: s.hex }, onclick: () => set(s.hex) }));
-  const el = h('div', { class: 'sws ' + cls }, btns);
-  const refresh = () => btns.forEach((b, i) => b.classList.toggle('on', list[i].hex.toLowerCase() === get().toLowerCase()));
-  refresh();
+  const recentBox = h('span', { class: 'sws-recent' });
+  const picker = h('input', { type: 'color', class: 'sw-input', 'aria-label': 'Autre couleur', tabIndex: -1 });
+  picker.addEventListener('change', () => { const hex = picker.value.toUpperCase(); rememberColor(hex); set(hex); });
+  const custom = h('button', { type: 'button', class: 'sw sw-custom', title: 'Autre couleur… (palette, code exact)', 'aria-label': 'Autre couleur…',
+    onclick: () => { const c = get(); if (/^#[0-9a-f]{6}$/i.test(c)) picker.value = c.toLowerCase(); picker.click(); } }, icon('add'));
+  const el = h('div', { class: 'sws ' + cls }, btns, recentBox, h('span', { class: 'sw-wrap' }, custom, picker));
+  const isPreset = (c: string) => list.some(s => s.hex.toLowerCase() === c.toLowerCase());
+  const renderRecent = () => recentBox.replaceChildren(...recentColors().filter(c => !isPreset(c)).map(c =>
+    h('button', { type: 'button', class: 'sw sw-recent', title: `Couleur récente ${c}`, 'aria-label': `Couleur ${c}`, style: { background: c }, onclick: () => set(c) })));
+  const refresh = () => {
+    const cur = (get() || '').toLowerCase();
+    btns.forEach((b, i) => b.classList.toggle('on', list[i].hex.toLowerCase() === cur));
+    recentBox.querySelectorAll<HTMLElement>('.sw').forEach(b => b.classList.toggle('on', (b.title.split(' ').pop() ?? '').toLowerCase() === cur));
+    // Couleur actuelle hors nuancier et hors couleurs récentes : la pastille « Autre » la montre.
+    const other = /^#[0-9a-f]{6}$/.test(cur) && !isPreset(cur) && !recentColors().some(c => c.toLowerCase() === cur);
+    custom.classList.toggle('on', other);
+    custom.style.background = other ? cur : '';
+  };
+  window.addEventListener('cs3d-couleurs', () => { if (el.isConnected) { renderRecent(); refresh(); } });
+  renderRecent(); refresh();
   return { el, refresh };
 }
 
