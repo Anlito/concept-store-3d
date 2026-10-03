@@ -3,7 +3,7 @@ import './app/app.css';
 import { Store } from './model/store';
 import { newProject, sampleProject } from './model/project';
 import type { Project } from './model/types';
-import { UIStore, defaultUI, type Ctx } from './app/state';
+import { UIStore, bindSnapSteps, defaultUI, type Ctx } from './app/state';
 import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
 import { exportScreen } from './app/exportScreen';
@@ -19,6 +19,7 @@ import { loadProfScript, restoreProfFolder } from './library/profFolder';
 const app = document.getElementById('app')!;
 const store = new Store(newProject());
 const ui = new UIStore(defaultUI());
+bindSnapSteps(ui);
 let editor: Editor | null = null;
 let inEditor = false;
 
@@ -52,7 +53,9 @@ function start(p: Project, o: StartOpts) {
   Object.assign(ctx.file, emptyFileState(), o.file ?? {});
   store.load(p, o.dirty ?? 0);
   void refreshCreations(ctx, true);
-  ui.set({ ...defaultUI(), view: o.view, tool: p.floor ? 'murs' : 'sol', saveStatus: ctx.file.savedAt ? 'saved' : 'new' });
+  // Les pas d'aimantation choisis par l'élève sont gardés d'un projet à l'autre.
+  const tool = p.floor ? 'murs' : 'sol', { stepSol, stepOther } = ui.s;
+  ui.set({ ...defaultUI(), view: o.view, tool, stepSol, stepOther, step: tool === 'sol' ? stepSol : stepOther, saveStatus: ctx.file.savedAt ? 'saved' : 'new' });
   if (!editor) editor = new Editor(ctx);
   app.replaceChildren(editor.el);
   inEditor = true;

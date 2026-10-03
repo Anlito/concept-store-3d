@@ -26,8 +26,11 @@ export interface UIState {
   grid: boolean;
   snap: boolean;
   dims: boolean;
-  /** Pas de la grille d'aimantation (m). */
+  /** Pas d'aimantation en cours (m) : celui du sol avec l'outil Sol, l'autre pour tout le reste. */
   step: number;
+  /** Pas mémorisés : tracé du sol (1 m par défaut) et placement des éléments (10 cm par défaut). */
+  stepSol: number;
+  stepOther: number;
   /** Type d'ouverture posé par un clic sur un mur. */
   placeType: OpeningType;
   shadows: ShadowQuality;
@@ -66,7 +69,7 @@ export function defaultUI(): UIState {
   try { shadows = (localStorage.getItem('cs3d-shadows') as ShadowQuality) || 'low'; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
-    grid: true, snap: true, dims: true, step: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', placeStyles: {},
+    grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', placeStyles: {},
   };
 }
 
@@ -82,4 +85,21 @@ export interface Ctx {
   file: FileState;
   /** Ouvre l'atelier de création (nouveau meuble, ou création existante à modifier). */
   openAtelier(creationId?: string): void;
+}
+
+/** Pas d'aimantation proposés (m). */
+export const STEPS = [{ v: 0.01, label: '1 cm' }, { v: 0.05, label: '5 cm' }, { v: 0.1, label: '10 cm' }, { v: 0.5, label: '50 cm' }, { v: 1, label: '1 m' }];
+
+/** Garde un pas séparé pour le sol et pour le reste : le pas suit l'outil, et un changement est mémorisé. */
+export function bindSnapSteps(ui: UIStore) {
+  ui.subscribe(ch => {
+    const s = ui.s;
+    if (ch.includes('tool')) {
+      const want = s.tool === 'sol' ? s.stepSol : s.stepOther;
+      if (want !== s.step) ui.set({ step: want });
+    } else if (ch.includes('step')) {
+      if (s.tool === 'sol' && s.stepSol !== s.step) ui.set({ stepSol: s.step });
+      if (s.tool !== 'sol' && s.stepOther !== s.step) ui.set({ stepOther: s.step });
+    }
+  });
 }

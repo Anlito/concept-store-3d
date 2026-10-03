@@ -1,4 +1,4 @@
-import type { Ctx, Tool, View } from './state';
+import { STEPS, type Ctx, type Tool, type View } from './state';
 import type { WallStyle } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { toggle } from '../ui/components';
@@ -160,6 +160,22 @@ export class Editor {
     }
   }
 
+  /** Pas d'aimantation, partout dans l'éditeur. Le sol et les autres éléments gardent chacun leur pas. */
+  private stepSelect() {
+    const { ui } = this.ctx;
+    const label = h('span', { class: 'step-l' });
+    const sel = h('select', { 'aria-label': 'Pas de l’aimantation', onchange: (e: Event) => ui.set({ step: +(e.target as HTMLSelectElement).value }) },
+      ...STEPS.map(s => h('option', { value: String(s.v) }, s.label)));
+    const el = h('label', { class: 'step', title: 'Les points, meubles et ouvertures s’accrochent sur une grille de ce pas' }, icon('grid_4x4'), label, sel);
+    const refresh = () => {
+      sel.value = String(ui.s.step);
+      label.textContent = ui.s.tool === 'sol' ? 'Pas du sol' : 'Pas';
+      el.classList.toggle('off', !ui.s.snap);
+    };
+    refresh();
+    return { el, refresh };
+  }
+
   /* ---------- Surcouches des vues ---------- */
   private overlay3d() {
     const { ui } = this.ctx;
@@ -173,7 +189,8 @@ export class Editor {
       ui.set({ shadows: v }); try { localStorage.setItem('cs3d-shadows', v); } catch { /* ignoré */ }
     } }, h('option', { value: 'off' }, 'Sans ombres'), h('option', { value: 'low' }, 'Ombres légères'), h('option', { value: 'high' }, 'Ombres soignées'));
     const facade = h('button', { class: 'tg', type: 'button', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Voir la façade');
-    const bar = h('div', { class: 'fbar' }, cut.el, facade, shadows);
+    const snap3 = toggle('Aimantation', 'join', () => ui.s.snap, v => ui.set({ snap: v })), step3 = this.stepSelect();
+    const bar = h('div', { class: 'fbar' }, cut.el, facade, shadows, snap3.el, step3.el);
     const el = h('div', { class: 'vp-ov', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
       h('div', { style: { pointerEvents: 'auto' } }, bar),
       h('div', { class: 'vp-hints' },
@@ -185,7 +202,7 @@ export class Editor {
         h('button', { type: 'button', title: 'Recentrer', onclick: () => this.view3d.frame() }, icon('center_focus_strong')),
         h('button', { type: 'button', title: 'Zoom avant', onclick: () => this.view3d.zoom(1 / 1.2) }, icon('add'))),
       empty);
-    const refresh = () => { cut.refresh(); shadows.value = ui.s.shadows; empty.style.display = this.ctx.store.doc.floor ? 'none' : ''; };
+    const refresh = () => { cut.refresh(); snap3.refresh(); step3.refresh(); shadows.value = ui.s.shadows; empty.style.display = this.ctx.store.doc.floor ? 'none' : ''; };
     ui.subscribe(refresh); this.ctx.store.subscribe(refresh); refresh();
     return el;
   }
@@ -197,11 +214,10 @@ export class Editor {
       toggle('Aimantation', 'join', () => ui.s.snap, v => ui.set({ snap: v })),
       toggle('Cotes', 'straighten', () => ui.s.dims, v => ui.set({ dims: v })),
     ];
-    const step = h('select', { 'aria-label': 'Pas de la grille', title: 'Pas de l’aimantation', onchange: (e: Event) => ui.set({ step: +(e.target as HTMLSelectElement).value }) },
-      h('option', { value: '0.1' }, '10 cm'), h('option', { value: '0.5' }, '50 cm'), h('option', { value: '1' }, '1 m'));
+    const step = this.stepSelect();
     const hint = h('div', { class: 'hintbar' });
     const el = h('div', { class: 'vp-ov', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
-      h('div', { style: { pointerEvents: 'auto' } }, h('div', { class: 'fbar' }, ...tg.map(t => t.el), step)),
+      h('div', { style: { pointerEvents: 'auto' } }, h('div', { class: 'fbar' }, ...tg.map(t => t.el), step.el)),
       h('div', { class: 'vp-zoom', style: { pointerEvents: 'auto' } },
         h('button', { type: 'button', title: 'Zoom arrière', onclick: () => this.plan.zoom(1 / 1.25) }, icon('remove')),
         h('button', { type: 'button', title: 'Tout voir', onclick: () => this.plan.fit() }, icon('center_focus_strong')),
@@ -209,7 +225,7 @@ export class Editor {
       hint);
     const H = (ic: string | null, txt: string, kbd?: string) => h('span', null, kbd ? h('kbd', null, kbd) : ic ? icon(ic) : null, txt);
     const refresh = () => {
-      tg.forEach(t => t.refresh()); step.value = String(ui.s.step);
+      tg.forEach(t => t.refresh()); step.refresh();
       const s = ui.s, d = store.doc;
       let parts: HTMLElement[];
       if (s.tool === 'sol' && !d.floor) parts = s.floorShape === 'rectangle'

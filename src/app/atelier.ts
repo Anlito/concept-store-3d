@@ -300,11 +300,14 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     h('div', { class: 'ed-body' }, left,
       h('main', { class: 'vp' }, view.el,
         h('div', { class: 'at-pills' }, h('label', { class: 'pill at-name' }, h('span', null, 'Nom'), nameTop), h('label', { class: 'pill at-name' }, h('span', null, 'Rangé dans'), catTop), total),
+        h('label', { class: 'pill at-name at-step', title: 'Les volumes glissés à la souris s’accrochent sur ce pas (Maj : 1 cm)' }, icon('grid_4x4'), h('span', null, 'Pas'),
+          h('select', { class: 'at-cat', 'aria-label': 'Pas de l’aimantation', onchange: (e: Event) => { view.step = +(e.target as HTMLSelectElement).value; } },
+            h('option', { value: '0.01' }, '1 cm'), h('option', { value: '0.05', selected: true }, '5 cm'), h('option', { value: '0.1' }, '10 cm'))),
         h('div', { class: 'vp-zoom' },
           h('button', { type: 'button', title: 'Zoom arrière', onclick: () => view.zoom(1.2) }, icon('remove')),
           h('button', { type: 'button', title: 'Recentrer', onclick: () => view.frame() }, icon('center_focus_strong')),
           h('button', { type: 'button', title: 'Zoom avant', onclick: () => view.zoom(1 / 1.2) }, icon('add'))),
-        h('div', { class: 'vp-hints' }, h('div', { class: 'pill' }, icon('open_with'), 'Glisser un volume : le déplacer'), h('div', { class: 'pill' }, icon('mouse'), 'Glisser le fond : tourner'))),
+        h('div', { class: 'vp-hints' }, h('div', { class: 'pill' }, icon('open_with'), 'Glisser un volume : le déplacer (Maj : 1 cm)'), h('div', { class: 'pill' }, icon('mouse'), 'Glisser le fond : tourner'))),
       panelHost));
 
   function renderAll() {
@@ -368,6 +371,8 @@ class AtelierView {
   private dirty = true;
   private ray = new THREE.Raycaster();
   private ro: ResizeObserver;
+  /** Pas d'aimantation pour glisser les volumes (m). */
+  step = 0.05;
 
   constructor(private st: Store<Creation>, private selected: () => string | null, private select: (id: string | null) => void) {
     const r = this.renderer;
@@ -462,7 +467,7 @@ class AtelierView {
     this.el.addEventListener('pointermove', e => {
       if (!drag) return;
       const p = rayAt(e).ray.intersectPlane(drag.plane, new THREE.Vector3()); if (!p) return;
-      const step = e.shiftKey ? 0.01 : 0.05, d = drag;
+      const step = e.shiftKey ? 0.01 : this.step, d = drag;
       const nx = Math.round((d.x + p.x - d.start.x) / step) * step, ny = Math.round((d.y + p.z - d.start.z) / step) * step;
       this.st.live(doc => { const v = doc.volumes.find(x => x.id === d.id); if (v) { v.x = r3(nx); v.y = r3(ny); } });
     });

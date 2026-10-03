@@ -186,3 +186,31 @@ test('la boutique ne dépasse pas 10 × 7 m', async ({ page }) => {
   const pts = (await doc(page)).floor.points;
   expect(Math.max(...pts.map((p: P) => p.x))).toBeLessThanOrEqual(7);
 });
+
+test('pas d’aimantation : 1 m pour le sol, 10 cm pour le reste, réglable partout', async ({ page }) => {
+  const s = () => page.evaluate(() => (window as any).cs3d.ui.s);
+  // Outil Sol : pas de 1 m, les points tombent sur les mètres
+  await expect(page.locator('.step').first()).toContainText('Pas du sol');
+  expect((await s()).step).toBe(1);
+  for (const p of [{ x: 0.3, y: 0.2 }, { x: 5.6, y: 0.1 }, { x: 5.8, y: 4.3 }, { x: 0.2, y: 3.7 }]) await clickPlan(page, p);
+  await clickPlan(page, { x: 0, y: 0 });
+  const d = await doc(page);
+  expect(d.floor.points.map((p: P) => [p.x, p.y])).toEqual([[0, 0], [6, 0], [6, 4], [0, 4]]);
+  // Les autres outils passent à 10 cm
+  await page.locator('[data-tool="mobilier"]').click();
+  expect((await s()).step).toBeCloseTo(0.1, 5);
+  // Réglage depuis la vue 3D : 50 cm pour les éléments
+  await page.keyboard.press('Escape');
+  await page.locator('button[data-view="3d"]').click();
+  await page.locator('.fbar').filter({ hasText: 'Voir la façade' }).getByLabel('Pas de l’aimantation').selectOption('0.5');
+  expect((await s())).toMatchObject({ step: 0.5, stepOther: 0.5, stepSol: 1 });
+  // Retour au sol : on retrouve 1 m ; réglé à 10 cm, il est gardé
+  await page.locator('[data-tool="sol"]').click();
+  expect((await s()).step).toBe(1);
+  await page.locator('button[data-view="2d"]').click();
+  await page.locator('.fbar').filter({ hasText: 'Grille' }).getByLabel('Pas de l’aimantation').selectOption('0.1');
+  await page.locator('[data-tool="murs"]').click();
+  expect((await s()).step).toBe(0.5);
+  await page.locator('[data-tool="sol"]').click();
+  expect((await s()).step).toBeCloseTo(0.1, 5);
+});
