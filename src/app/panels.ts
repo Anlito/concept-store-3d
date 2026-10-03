@@ -298,3 +298,8 @@ function extentRow(pts: () => import('../model/types').Vec2[]): Bound {
   r.refresh();
   return r;
 }
+
+/** Panneau simple (en-tête, corps, pied) pour les autres modules (images…). */
+export function makePanel(ic: string, title: string, sub: () => string, body: (Node | null | false)[], foot?: HTMLElement): Panel {
+  return finish(shell(ic, title, sub, body, foot), []);
+}

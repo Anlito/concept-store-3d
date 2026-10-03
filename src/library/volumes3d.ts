@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import type { Volume, VolumeType } from '../model/types';
 import { uid } from '../model/geometry';
+import { meshParts } from './objImport';
 
 /* Volumes de l'atelier : valeurs par défaut, encombrement, et construction en 3D.
    Repère du meuble : x et y au sol (y = profondeur), z vers le haut ; en 3D : (x, z, y). */
 
 export const VOLUME_LABEL: Record<VolumeType, string> = {
   boite: 'Boîte', cylindre: 'Cylindre', plan: 'Plan', arche: 'Arche', boule: 'Boule', cone: 'Cône', tube: 'Tube', demirond: 'Demi-rond', prisme: 'Prisme',
+  modele: 'Modèle importé',
 };
-export const VOLUME_TYPES = Object.keys(VOLUME_LABEL) as VolumeType[];
+/** Formes proposées dans l'atelier (le « modèle importé » vient d'un fichier Tinkercad). */
+export const VOLUME_TYPES = (Object.keys(VOLUME_LABEL) as VolumeType[]).filter(t => t !== 'modele');
 
 export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volume {
   const base = { id: uid(), type, name: `${VOLUME_LABEL[type]} ${n}`, x: 0, y: 0, z: 0, t: 0.03, turned: false, rot: 0, color };
@@ -22,13 +25,14 @@ export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volum
     case 'tube': return { ...base, w: 0.4, d: 0.4, h: 0.6, t: 0.03 };
     case 'demirond': return { ...base, w: 0.8, d: 0.4, h: 1 };
     case 'prisme': return { ...base, w: 1, d: 0.4, h: 0.5 };
+    case 'modele': return { ...base, w: 0.5, d: 0.5, h: 0.5, color: '' };
   }
 }
 
 /** Encombrement du volume avant rotation : largeur (x), profondeur (y), hauteur (z). */
 export function volumeBox(v: Volume): { bw: number; bd: number; bh: number } {
   switch (v.type) {
-    case 'boite': case 'arche': case 'prisme': return { bw: v.w, bd: v.d, bh: v.h };
+    case 'boite': case 'arche': case 'prisme': case 'modele': return { bw: v.w, bd: v.d, bh: v.h };
     case 'cylindre': case 'tube': return v.turned ? { bw: v.h, bd: v.w, bh: v.w } : { bw: v.w, bd: v.w, bh: v.h };
     case 'boule': return { bw: v.w, bd: v.w, bh: v.w };
     case 'cone': { const m = Math.max(v.w, v.d); return { bw: m, bd: m, bh: v.h }; }
@@ -54,8 +58,25 @@ const mats = new Map<string, THREE.MeshStandardMaterial>();
 const mat = (c: string) => { let m = mats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }); m.name = c; mats.set(c, m); } return m; };
 
 /** Maille d'un volume, centrée sur son encombrement puis placée et tournée. */
-export function volumeMesh(v: Volume): THREE.Mesh {
+export function volumeMesh(v: Volume): THREE.Object3D {
   const { bw, bd, bh } = volumeBox(v);
+  const r = THREE.MathUtils.degToRad;
+  if (v.type === 'modele') {
+    // Modèle importé : une maille par couleur, mise à la taille voulue (w, h, d).
+    const g = new THREE.Group();
+    const m = v.mesh;
+    if (m) for (const p of meshParts(m)) {
+      const mesh = new THREE.Mesh(p.geo, flatMat(v.color || p.color));
+      mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.volume = v.id;
+      g.add(mesh);
+    }
+    if (m) g.scale.set(v.w / m.size[0], v.h / m.size[1], v.d / m.size[2]);
+    const holder = new THREE.Group(); holder.add(g);
+    holder.position.set(v.x + bw / 2, v.z + bh / 2, v.y + bd / 2);
+    holder.rotation.set(r(v.tiltX ?? 0), -r(v.rot), -r(v.tiltY ?? 0), 'YXZ');
+    holder.userData.volume = v.id;
+    return holder;
+  }
   let g: THREE.BufferGeometry;
   switch (v.type) {
     case 'boite': g = new THREE.BoxGeometry(v.w, v.h, v.d); break;
@@ -72,7 +93,6 @@ export function volumeMesh(v: Volume): THREE.Mesh {
   const m = new THREE.Mesh(g, mat(v.color));
   m.position.set(v.x + bw / 2, v.z + bh / 2, v.y + bd / 2);
   // Inclinaisons d'abord (dans le repère du volume), puis rotation vue de dessus.
-  const r = THREE.MathUtils.degToRad;
   m.rotation.set(r(v.tiltX ?? 0), -r(v.rot), -r(v.tiltY ?? 0), 'YXZ');
   m.castShadow = true; m.receiveShadow = true;
   m.userData.volume = v.id;
@@ -121,3 +141,6 @@ function prismGeometry(w: number, d: number, h: number, corner: boolean) {
   const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(w, 0); s.lineTo(corner ? 0 : w / 2, h); s.lineTo(0, 0);
   return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
 }
+const flatMats = new Map<string, THREE.MeshStandardMaterial>();
+/** Matériau à facettes (les modèles Tinkercad ont des arêtes vives). */
+const flatMat = (c: string) => { let m = flatMats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, flatShading: true }); flatMats.set(c, m); } return m; };

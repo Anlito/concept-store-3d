@@ -7,7 +7,7 @@ import { floorMaterial, wallMaterial } from './materials';
    Chaque mur est un groupe dans son repère local : x le long du mur (depuis le sommet i), y vers le haut,
    z vers l'intérieur de la boutique. La face intérieure est en z = 0, la face extérieure en z = −épaisseur. */
 
-export type Pick = { kind: 'wall'; index: number } | { kind: 'opening'; id: string } | { kind: 'floor' } | { kind: 'object'; id: string };
+export type Pick = { kind: 'wall'; index: number } | { kind: 'opening'; id: string } | { kind: 'floor' } | { kind: 'object'; id: string } | { kind: 'image'; id: string };
 
 const M = {
   outer: new THREE.MeshStandardMaterial({ color: '#F4F2EE', roughness: 0.95, side: THREE.DoubleSide }),
@@ -166,4 +166,22 @@ export function fixture(o: Opening, T: number): THREE.Group {
     if (o.type === 'fenetre') g.add(box(w + 0.1, 0.03, 0.12, M.light, o.t, o.sill - 0.015, 0.04)); // appui intérieur
   }
   return g;
+}
+
+/** Rectangles [u0, u1, h0, h1] de la face d'un mur, ouvertures découpées (pour la tapisserie). */
+export function wallRects(p: Project, wall: number): [number, number, number, number][] {
+  const pts = p.floor!.points, H = p.walls.height;
+  const e = edges(pts)[wall];
+  const ops = p.openings.filter(o => o.wall === wall).sort((a, b) => a.t - b.t);
+  const out: [number, number, number, number][] = [];
+  let cur = 0;
+  for (const o of ops) {
+    const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height;
+    if (lo > cur) out.push([cur, lo, 0, H]);
+    if (o.sill > 0) out.push([lo, hi, 0, o.sill]);
+    if (top < H) out.push([lo, hi, top, H]);
+    cur = hi;
+  }
+  if (e.length > cur) out.push([cur, e.length, 0, H]);
+  return out;
 }

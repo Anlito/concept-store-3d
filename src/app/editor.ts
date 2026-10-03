@@ -3,8 +3,9 @@ import { h, icon } from '../ui/dom';
 import { toggle } from '../ui/components';
 import { View3D } from '../view3d/view3d';
 import { Plan2D } from '../view2d/plan';
-import { type Panel, emptyPanel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
+import { type Panel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
 import { libraryDrawer } from './libraryDrawer';
+import { imagePanel, imagesPanel } from './imagesUi';
 import { saveProject } from './files';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection } from './actions';
@@ -15,7 +16,7 @@ const TOOLS: { id: Tool; icon: string; label: string; soon?: boolean }[] = [
   { id: 'murs', icon: 'border_outer', label: 'Murs' },
   { id: 'ouvertures', icon: 'door_front', label: 'Portes / fenêtres' },
   { id: 'mobilier', icon: 'chair', label: 'Mobilier' },
-  { id: 'images', icon: 'image', label: 'Images', soon: true },
+  { id: 'images', icon: 'image', label: 'Images' },
 ];
 
 /** Éditeur : barre du haut, barre d'outils, vue (3D ou plan 2D) et panneau de propriétés. */
@@ -122,6 +123,7 @@ export class Editor {
     if (!s) return;
     const n = d.floor?.points.length ?? 0;
     if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || ((s.kind === 'wall' || s.kind === 'vertex') && s.index >= n)) ui.set({ sel: null });
+    if (s.kind === 'image' && !d.images.some(i => i.id === s.id)) ui.set({ sel: null });
     if (s.kind === 'objects') {
       const ids = s.ids.filter(id => d.objects.some(o => o.id === id));
       if (ids.length !== s.ids.length) ui.set({ sel: ids.length ? { kind: 'objects', ids } : null });
@@ -135,6 +137,8 @@ export class Editor {
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
       d.walls.styles[selWall] && wallTints(d.walls.styles[selWall].material), op?.type,
+      s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat) : null,
+      s.tool === 'images' && !s.sel ? d.images.map(i => i.id + i.target + i.wall) : null,
       s.tool === 'murs' && !s.sel && d.walls.styles.some(w => w.material !== d.walls.styles[0].material || w.color !== d.walls.styles[0].color)]);
     if (key !== this.panelKey) {
       this.panelKey = key;
@@ -148,7 +152,7 @@ export class Editor {
       case 'murs': return wallsPanel(this.ctx);
       case 'ouvertures': return openingsPanel(this.ctx);
       case 'mobilier': return this.ctx.ui.s.sel?.kind === 'objects' ? objectPanel(this.ctx) : furniturePanel(this.ctx);
-      case 'images': return emptyPanel('image', 'Images', 'Cadres, tapisseries, tapis et vitrophanies à partir de tes images PNG ou JPG.', this.ctx, true);
+      case 'images': return this.ctx.ui.s.sel?.kind === 'image' ? imagePanel(this.ctx) : imagesPanel(this.ctx);
     }
   }
 

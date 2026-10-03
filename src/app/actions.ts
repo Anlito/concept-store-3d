@@ -10,6 +10,8 @@ import { toast } from '../ui/components';
 
 export function selectPick(ctx: Ctx, p: Pick | null) {
   if (!p || p.kind === 'floor') { ctx.ui.set({ sel: null }); return; }
+  if (p.kind === 'image') { ctx.ui.set({ sel: { kind: 'image', id: p.id }, tool: 'images', libraryOpen: false }); return; }
+  if (p.kind === 'object') return;
   if (p.kind === 'wall') ctx.ui.set({ sel: { kind: 'wall', index: p.index }, tool: ctx.ui.s.tool === 'ouvertures' ? 'ouvertures' : 'murs' });
   else ctx.ui.set({ sel: { kind: 'opening', id: p.id }, tool: 'ouvertures' });
 }
@@ -46,6 +48,7 @@ export function deleteSelection(ctx: Ctx) {
   const { store, ui } = ctx, sel = ui.s.sel;
   if (!sel) return;
   if (sel.kind === 'objects') { deleteObjects(ctx); return; }
+  if (sel.kind === 'image') { deleteImage(ctx, sel.id); return; }
   if (sel.kind === 'opening') {
     const o = store.doc.openings.find(q => q.id === sel.id);
     store.update(d => { d.openings = d.openings.filter(q => q.id !== sel.id); });
@@ -85,4 +88,14 @@ export function clearFloor(ctx: Ctx) {
   ctx.store.update(d => { d.floor = null; d.walls.styles = []; d.openings = []; });
   ctx.ui.set({ sel: null, draft: [], tool: 'sol', view: '2d' });
   toast('Sol effacé : trace un nouveau sol.', { label: 'Annuler', run: () => ctx.store.undo() });
+}
+
+/** Supprime une image posée ; l'image importée est retirée du projet si plus rien ne l'utilise. */
+export function deleteImage(ctx: Ctx, id: string) {
+  ctx.store.update(d => {
+    d.images = d.images.filter(i => i.id !== id);
+    d.assets = d.assets.filter(a => d.images.some(i => i.asset === a.id));
+  });
+  ctx.ui.set({ sel: null });
+  toast('Image supprimée', { label: 'Annuler', run: () => ctx.store.undo() });
 }

@@ -50,6 +50,9 @@ export interface Project {
   objects: PlacedObject[];
   /** Meubles créés par l'équipe (atelier), enregistrés avec le projet. */
   creations: Creation[];
+  /** Images importées et images posées. */
+  assets: ImageAsset[];
+  images: PlacedImage[];
   /** Projet modèle fourni par l'enseignant : ne jamais l'écraser. */
   isTemplate?: boolean;
 }
@@ -74,7 +77,7 @@ export interface PlacedObject {
 }
 
 /* ---------- Atelier de création (niveau B) ---------- */
-export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'cone' | 'tube' | 'demirond' | 'prisme';
+export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'cone' | 'tube' | 'demirond' | 'prisme' | 'modele';
 
 /** Volume simple d'une création. Longueurs en mètres, repère du meuble : x et y au sol, z vers le haut. */
 export interface Volume {
@@ -100,6 +103,20 @@ export interface Volume {
   color: string;
   /** Masqué dans l'atelier seulement (pour travailler sur les volumes cachés). */
   hidden?: boolean;
+  /** Modèle importé (Tinkercad) : w, d, h = taille voulue ; color vide = couleurs d'origine. */
+  mesh?: ImportedMesh;
+}
+
+/** Maillage importé d'un fichier OBJ, en mètres, dans les axes 3D (x largeur, y hauteur, z profondeur).
+    Les positions sont quantifiées sur 16 bits et encodées en base64 pour garder le fichier projet léger. */
+export interface ImportedMesh {
+  id: string;
+  /** Nom du fichier d'origine. */
+  source: string;
+  /** Taille d'origine (m) après conversion des millimètres : [largeur, hauteur, profondeur]. */
+  size: [number, number, number];
+  triangles: number;
+  parts: { color: string; pos: string }[];
 }
 
 /** Meuble créé par l'équipe dans l'atelier (« Mes créations »). */
@@ -110,4 +127,35 @@ export interface Creation {
   team: string;
   volumes: Volume[];
   updated: number;
+}
+
+/* ---------- Images importées (PNG / JPG) ---------- */
+export type ImageTarget = 'cadre' | 'tapisserie' | 'tapis' | 'vitrine';
+
+/** Image importée par l'élève, réduite à 2048 px au plus, gardée dans le projet. */
+export interface ImageAsset {
+  id: string;
+  name: string;
+  /** data URL (PNG si l'image a de la transparence, JPEG sinon). */
+  data: string;
+  w: number;
+  h: number;
+}
+
+/** Image posée dans la boutique (visible en 3D seulement, jamais sur le plan A3). */
+export interface PlacedImage {
+  id: string;
+  asset: string;
+  target: ImageTarget;
+  /** Mur porteur (cadre, tapisserie, vitrine). */
+  wall: number;
+  /** Position du centre : 0 à 1 le long du mur (ou du sol en largeur), 0 à 1 en hauteur (ou en profondeur). */
+  x: number;
+  y: number;
+  /** Largeur de l'image, ou d'un motif quand elle est répétée (m). */
+  size: number;
+  /** Rotation dans son plan (degrés). */
+  rot: number;
+  /** Répéter le motif sur tout le mur ou tout le sol. */
+  repeat: boolean;
 }

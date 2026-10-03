@@ -9,7 +9,8 @@ export type Selection =
   | { kind: 'wall'; index: number }
   | { kind: 'opening'; id: string }
   | { kind: 'vertex'; index: number }
-  | { kind: 'objects'; ids: string[] };
+  | { kind: 'objects'; ids: string[] }
+  | { kind: 'image'; id: string };
 export type ShadowQuality = 'off' | 'low' | 'high';
 export type SaveStatus = 'new' | 'saved' | 'unsaved' | 'saving';
 

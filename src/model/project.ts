@@ -21,6 +21,8 @@ export function newProject(name = 'Ma boutique'): Project {
     openings: [],
     objects: [],
     creations: [],
+    assets: [],
+    images: [],
   };
 }
 
@@ -51,6 +53,7 @@ export function setFloorPoints(p: Project, pts: Vec2[]) {
   p.floor = { points, material: old?.material ?? 'parquet', color: old?.color ?? '#EFE9DF' } as Floor;
   p.walls.styles = points.map((_, i) => ({ ...(p.walls.styles[i] ?? DEFAULT_WALL) }));
   p.openings = [];
+  p.images = p.images.filter(im => im.target === 'tapis'); // les murs changent : on retire les images murales
 }
 
 /** Déplace un sommet ; les ouvertures restent sur leur mur et sont recadrées. */
@@ -70,6 +73,7 @@ export function insertVertex(p: Project, i: number, at: Vec2) {
     if (o.wall > i) o.wall++;
     else if (o.wall === i && o.t > cut) { o.wall = i + 1; o.t -= cut; }
   }
+  for (const im of p.images) if (im.target !== 'tapis' && im.wall > i) im.wall++;
   clampAllOpenings(p);
 }
 
@@ -90,6 +94,7 @@ export function deleteVertex(p: Project, i: number) {
   const newIndex = i === 0 ? n - 2 : prev; // indice du mur fusionné après suppression
   for (const o of p.openings) if (o.wall > i) o.wall--;
   for (const { o, t } of moved) { o.wall = newIndex; o.t = t; }
+  for (const im of p.images) if (im.target !== 'tapis') { if (im.wall === i || im.wall === prev) im.wall = newIndex; else if (im.wall > i) im.wall--; }
   clampAllOpenings(p);
   return true;
 }
@@ -143,6 +148,8 @@ export function sanitizeProject(raw: unknown): Project {
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));
   p.creations = (p.creations || []).filter(c => c && Array.isArray(c.volumes)).map(c => ({ ...c, volumes: c.volumes.map(v => ({ ...v })) }));
+  p.assets = (p.assets || []).filter(a => a && typeof a.data === 'string' && a.data.startsWith('data:image/'));
+  p.images = (p.images || []).filter(i => p.assets.some(a => a.id === i.asset)).map(i => ({ ...i }));
   clampAllOpenings(p);
   return p;
 }

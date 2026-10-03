@@ -7,6 +7,7 @@ import { OPENING_DEFAULTS, findFreeT, wallLength } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
 import { placeOpening, selectPick } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
+import { buildImages, type BuiltImages } from './images3d';
 
 const ACCENT = '#BF4E36';
 const LOW_WALL = 0.35; // hauteur des murs abaissés (m)
@@ -29,6 +30,8 @@ export class View3D {
   private framedOnce = false;
   private lowered = new Set<number>();
   readonly objects: ObjectLayer;
+  private images: BuiltImages | null = null;
+  private imagesKey = '';
 
   constructor(private ctx: Ctx) {
     this.el = document.createElement('div');
@@ -151,9 +154,21 @@ export class View3D {
       this.updateCutaway(true);
       if (d.floor && !this.framedOnce && this.active) this.frame();
     }
+    this.syncImages(d);
     this.objects.sync();
     this.drawSelection();
     this.needsRender = true;
+  }
+
+  /** Images posées : reconstruites seulement si elles, ou les murs, changent. */
+  private syncImages(d: Project) {
+    const key = JSON.stringify([d.floor, d.walls, d.openings, d.images, d.assets.map(a => a.id)]);
+    if (key === this.imagesKey) return;
+    this.imagesKey = key;
+    if (this.images) { this.scene.remove(this.images.root); disposeTree(this.images.root); }
+    this.images = buildImages(d, () => { this.needsRender = true; });
+    this.scene.add(this.images.root);
+    for (const [w, g] of this.images.byWall) g.visible = !this.lowered.has(w);
   }
 
   private fitSun(d: Project) {
@@ -177,6 +192,7 @@ export class View3D {
       if (low !== this.lowered.has(w.index) || force) {
         if (low) this.lowered.add(w.index); else this.lowered.delete(w.index);
         w.group.scale.y = low ? LOW_WALL / w.height : 1;
+        const ig = this.images?.byWall.get(w.index); if (ig) ig.visible = !low;
         changed = true;
       }
     }
@@ -215,7 +231,7 @@ export class View3D {
   private pick(e: PointerEvent): { pick: Pick; point: THREE.Vector3; object: THREE.Object3D } | null {
     if (!this.shop) return null;
     this.raycaster.ray.copy(this.rayFrom(e));
-    const hits = this.raycaster.intersectObjects([...this.shop.pickables, this.objects.group], true);
+    const hits = this.raycaster.intersectObjects([...this.shop.pickables, ...(this.images?.pickables ?? []), this.objects.group], true).filter(h => h.object.visible && isShown(h.object));
     for (const h of hits) { const p = h.object.userData.pick as Pick | undefined; if (p) return { pick: p, point: h.point, object: h.object }; }
     return null;
   }
@@ -255,6 +271,7 @@ export class View3D {
         if (this.objects.onObjectDown(e, hit.pick.id)) cv.setPointerCapture(e.pointerId);
         return;
       }
+      if (hit.pick.kind === 'image') { selectPick(this.ctx, hit.pick); return; }
       if (hit.pick.kind === "opening") {
         const o = store.doc.openings.find(q => q.id === (hit.pick as { id: string }).id)!;
         selectPick(this.ctx, hit.pick);
@@ -325,4 +342,10 @@ function disposeTree(o: THREE.Object3D) {
     const m = c as THREE.Mesh;
     if (m.geometry) m.geometry.dispose();
   });
+}
+
+/** Vrai si l'objet et tous ses parents sont visibles (une image d'un mur abaissé ne se choisit pas). */
+function isShown(o: THREE.Object3D | null): boolean {
+  for (; o; o = o.parent) if (!o.visible) return false;
+  return true;
 }

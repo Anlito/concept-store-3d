@@ -1,0 +1,4 @@
+newmtl color_rouge
+Kd 0.75 0.30 0.21
+newmtl color_bleu
+Kd 0.36 0.42 0.48

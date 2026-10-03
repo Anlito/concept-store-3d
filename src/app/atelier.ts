@@ -5,7 +5,8 @@ import type { Creation, Volume, VolumeType } from '../model/types';
 import { Store } from '../model/store';
 import { uid } from '../model/geometry';
 import { h, icon } from '../ui/dom';
-import { type Bound, button, choose, numberField, section, swatches, toast, toggle } from '../ui/components';
+import { type Bound, alert, button, choose, numberField, section, swatches, toast, toggle } from '../ui/components';
+import { HEAVY_TRIANGLES, importObjFiles } from '../library/objImport';
 import { CATEGORIES } from '../library/library';
 import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh } from '../library/volumes3d';
 import { saveCreation } from './creations';
@@ -29,6 +30,7 @@ const PICTO: Record<VolumeType, string> = {
   tube: '<ellipse cx="24" cy="12" rx="12" ry="5"/><ellipse cx="24" cy="12" rx="6" ry="2.5"/><path d="M12 12v22c0 3 5 5 12 5s12-2 12-5V12"/>',
   demirond: '<path d="M8 14h32c0 7-7 11-16 11S8 21 8 14z"/><path d="M8 14v20c0 7 7 9 16 9s16-2 16-9V14"/>',
   prisme: '<path d="M6 38 20 12l22 6-14 26z"/><path d="M20 12l8 32"/>',
+  modele: '',
 };
 const cmStr = (m: number) => String(Math.round(m * 100));
 
@@ -56,7 +58,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     section('Ajouter un volume', h('div', { class: 'at-tiles' }, ...VOLUME_TYPES.map(addTile))),
     h('div', { class: 'p-sec', style: { flex: '1', minHeight: '0' } }, listTitle, list),
     h('div', { class: 'p-sec' },
-      h('button', { class: 'btn at-import', type: 'button', onclick: () => toast('L’import des fichiers Tinkercad (OBJ) arrive à la prochaine étape.') }, icon('upload_file'), 'Importer un fichier Tinkercad (OBJ)'),
+      h('button', { class: 'btn at-import', type: 'button', onclick: () => pickObj() }, icon('upload_file'), 'Importer un fichier Tinkercad (OBJ)'),
       h('p', { class: 'p-help', style: { textAlign: 'center' } }, 'Fichier .obj · 5 Mo maximum')));
 
   function addVolume(t: VolumeType) {
@@ -71,7 +73,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     listTitle.textContent = `Mon meuble · ${st.doc.volumes.length} volume${st.doc.volumes.length > 1 ? 's' : ''}`;
     if (!st.doc.volumes.length) { list.replaceChildren(h('p', { class: 'p-help' }, 'Ajoute un premier volume avec les boutons ci-dessus.')); return; }
     list.replaceChildren(...st.doc.volumes.map(v => h('div', { class: 'at-row' + (v.id === sel ? ' on' : ''), onclick: () => { sel = v.id; renderAll(); } },
-      h('span', { class: 'at-dot', style: { background: v.color } }), h('span', { class: 'at-name' }, v.name),
+      h('span', { class: 'at-dot', style: { background: v.color || 'conic-gradient(#BF4E36 0 25%, #6E8B6B 0 50%, #C9A97E 0 75%, #5B6B7A 0)' } }), h('span', { class: 'at-name' }, v.name),
       h('button', { class: 'btn btn-ghost btn-icon', type: 'button', title: v.hidden ? 'Afficher' : 'Masquer (dans l’atelier seulement)',
         onclick: (e: MouseEvent) => { e.stopPropagation(); st.update(d => { const x = d.volumes.find(q => q.id === v.id)!; x.hidden = !x.hidden; }); } }, icon(v.hidden ? 'visibility_off' : 'visibility')))));
   }
@@ -103,6 +105,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         tube: () => h('div', { class: 'g3' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h'), nf('Épaisseur', 't', 1, 100)),
         demirond: () => h('div', { class: 'g2' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h')),
         prisme: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')),
+        modele: () => modelDims(),
       };
       const nameIn = h('input', { value: v.name, 'aria-label': 'Nom du volume', maxLength: 40 });
       nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') nameIn.blur(); });
@@ -127,7 +130,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
             b(numberField({ label: 'Pencher vers la droite', unit: '°', min: -180, max: 180, get: () => vol()?.tiltY ?? 0, set: a => edit(x => { x.tiltY = a; }) }))),
           h('p', { class: 'p-help' }, 'Un angle négatif penche vers l’arrière ou vers la gauche. Après une inclinaison, « Au sol » ou « Dessus » recalent le volume.'),
           button('Remettre droit', 'restart_alt', 'btn-ghost', () => edit(x => { x.rot = 0; x.tiltX = 0; x.tiltY = 0; }))),
-        section('Couleur du volume', b(swatches(COLORS, () => vol()?.color ?? '', c => edit(x => { x.color = c; }), 'sws6'))),
+        section('Couleur du volume', colorPicker(v)),
         h('div', { class: 'g2' }, button('Dupliquer', 'content_copy', 'btn-secondary', () => duplicate()), button('Supprimer', 'delete', 'btn-danger', () => remove())),
       ];
     } else {
@@ -150,6 +153,65 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
       h('div', { class: 'pn-f' }, saveBtn)));
     binds.forEach(x => x.refresh());
   }
+  /** Pastilles de couleur ; un modèle importé peut garder ses couleurs d'origine (couleur vide). */
+  function colorPicker(v: Volume): HTMLElement {
+    const sw = swatches(COLORS, () => vol()?.color ?? '', c => edit(x => { x.color = c; }), 'sws6');
+    binds.push(sw);
+    if (v.type === 'modele') {
+      const orig = h('button', { type: 'button', class: 'sw orig', title: 'Couleurs d’origine', 'aria-label': 'Couleurs d’origine', onclick: () => edit(x => { x.color = ''; }) });
+      sw.el.prepend(orig);
+      binds.push({ el: orig, refresh: () => orig.classList.toggle('on', !vol()?.color) });
+    }
+    return sw.el;
+  }
+
+  /* ---------- Modèle importé de Tinkercad ---------- */
+  let modelRatio = true;
+  function pickObj() {
+    const input = h('input', { type: 'file', accept: '.zip,.obj,.mtl', multiple: true, style: { display: 'none' } });
+    input.addEventListener('change', async () => {
+      const files = [...(input.files ?? [])]; input.remove();
+      if (!files.length) return;
+      try {
+        const r = await importObjFiles(files);
+        const [w, hgt, d] = r.mesh.size;
+        const v: Volume = { ...newVolume('modele', 1), name: r.name, w, h: hgt, d, mesh: r.mesh };
+        if (st.doc.volumes.length) { const s = totalSize(st.doc.volumes); v.x = Math.round((s.w + 0.1) * 100) / 100; }
+        st.update(doc => { doc.volumes.push(v); });
+        sel = v.id; renderAll(); view.frame();
+        const dims = `${cmStr(w)} × ${cmStr(d)} × ${cmStr(hgt)} cm`;
+        if (r.warnings.length) toast(r.warnings.join(' '), undefined, 'warning');
+        else toast(`« ${r.name} » importé : ${dims}, ${r.mesh.triangles.toLocaleString('fr-FR')} triangles.`);
+      } catch (e) {
+        toast((e as Error).message, undefined, 'warning');
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+  /** Dimensions d'un modèle importé : proportions gardées par défaut, taille d'origine Tinkercad. */
+  function modelDims(): HTMLElement {
+    const v = vol()!, m = v.mesh!;
+    const setDim = (k: 'w' | 'd' | 'h', val: number) => edit(x => {
+      const f = val / 100 / x[k];
+      if (modelRatio) { x.w = r3(x.w * f); x.d = r3(x.d * f); x.h = r3(x.h * f); }
+      x[k] = val / 100;
+    });
+    const field = (label: string, k: 'w' | 'd' | 'h') => numberField({ label, unit: 'cm', min: 1, max: 600, get: () => (vol()?.[k] ?? 0) * 100, set: val => setDim(k, val) });
+    const fw = field('Longueur', 'w'), fd = field('Profondeur', 'd'), fh = field('Hauteur', 'h');
+    binds.push(fw, fd, fh);
+    const ratio = h('input', { type: 'checkbox', checked: modelRatio, onchange: (e: Event) => { modelRatio = (e.target as HTMLInputElement).checked; } });
+    const mm = (x: number) => Math.round(x * 1000);
+    return h('div', { class: 'p-sec' },
+      h('label', { class: 'chk' }, ratio, 'Garder les proportions'),
+      h('div', { class: 'g3' }, fw.el, fd.el, fh.el),
+      h('p', { class: 'p-help' }, `Taille dans Tinkercad : ${mm(m.size[0])} × ${mm(m.size[2])} × ${mm(m.size[1])} mm · ${m.triangles.toLocaleString('fr-FR')} triangles`),
+      m.triangles > HEAVY_TRIANGLES ? alert('warning', 'Modèle lourd', 'Il peut ralentir les PC du collège. Simplifie-le dans Tinkercad si la 3D devient lente.') : null,
+      h('div', { class: 'g2' },
+        button('Taille d’origine', 'restart_alt', 'btn-secondary', () => edit(x => { x.w = m.size[0]; x.h = m.size[1]; x.d = m.size[2]; })),
+        button('Redresser', 'rotate_right', 'btn-secondary', () => { edit(x => { x.tiltX = ((x.tiltX ?? 0) + 90) % 360; }); align('sol'); })));
+  }
+
   /** « Placer par rapport à » : centrer, poser dessus, coller à côté d'un autre volume. */
   function placeRelative(v: Volume): HTMLElement {
     const others = st.doc.volumes.filter(x => x.id !== v.id);
@@ -344,12 +406,12 @@ class AtelierView {
   }
   zoom(f: number) {
     const off = this.camera.position.clone().sub(this.controls.target).multiplyScalar(f);
-    if (off.length() < 0.3 || off.length() > 30) return;
+    if (off.length() < 0.1 || off.length() > 30) return;
     this.camera.position.copy(this.controls.target).add(off); this.dirty = true;
   }
   frame() {
     this.resize();
-    const s = totalSize(this.st.doc.volumes), r = Math.max(s.w, s.d, s.h, 1.2);
+    const s = totalSize(this.st.doc.volumes), r = Math.max(s.w, s.d, s.h, 0.3);
     const c = new THREE.Vector3(s.w / 2, s.h / 3, s.d / 2);
     this.controls.target.copy(c);
     this.camera.position.copy(c).add(new THREE.Vector3(0.9, 0.75, 1.3).normalize().multiplyScalar(r * 2.4));
@@ -387,7 +449,7 @@ class AtelierView {
     this.el.addEventListener('pointerdown', e => {
       if (e.button !== 0) return;
       down = { x: e.clientX, y: e.clientY };
-      const hit = rayAt(e).intersectObjects(this.group.children, false)[0];
+      const hit = rayAt(e).intersectObjects(this.group.children, true)[0];
       if (!hit) return;
       const id = hit.object.userData.volume as string;
       this.select(id);
