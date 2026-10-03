@@ -1,0 +1,37 @@
+CONCEPT STORE 3D - DOSSIER « MOBILIER » DU PROFESSEUR
+=====================================================
+
+Ce dossier contient les modèles 3D ajoutés par l'enseignant. Les élèves les retrouvent dans
+la bibliothèque, onglet « Ajouts du professeur ». Conseil : mettre ce dossier en lecture seule
+pour les élèves sur le réseau.
+
+AJOUTER UN MODÈLE
+-----------------
+1. Déposer le fichier .glb (glTF binaire) dans ce dossier.
+   - Pour le ranger dans une catégorie, le mettre dans un sous-dossier nommé :
+     Assises, Rangements, Comptoirs, Tables, Portants, Plantes, Luminaires ou Decor.
+   - Pour fixer sa hauteur réelle, finir son nom par la hauteur en cm :
+     « Mannequin_170cm.glb » fera 1,70 m de haut.
+     Sinon, l'outil devine l'échelle (modèles faits en cm ou en mm convertis en mètres).
+2. Double-cliquer sur « Mettre-a-jour-le-mobilier.bat ».
+   Il crée le fichier « mobilier-prof.js » que l'outil lit tout seul au démarrage.
+3. Relancer l'outil (double-clic sur index.html) : les modèles apparaissent.
+
+Avec Chrome ou Edge, on peut aussi, sans lancer le script, cliquer dans la bibliothèque sur
+« Charger le dossier du professeur » et choisir ce dossier. Le poste s'en souvient.
+
+POIDS DES MODÈLES
+-----------------
+Les PC du collège n'ont pas de carte graphique dédiée : préférer des modèles légers
+(moins de 5 Mo et moins de 50 000 triangles). Au-delà, l'outil affiche un avertissement ;
+au-delà de 25 Mo, le modèle est ignoré.
+
+LICENCES
+--------
+N'ajouter que des modèles sous licence CC0 ou CC-BY, et noter leur source et leur auteur
+(fiche du modèle) : la page « Crédits » de l'outil doit citer les modèles CC-BY.
+
+OÙ TROUVER DES MODÈLES .GLB
+---------------------------
+- Kenney (kenney.nl), Quaternius (quaternius.com), KayKit (kaylousberg.com) : CC0.
+- Poly Pizza (poly.pizza) : vérifier la licence de chaque modèle.

@@ -9,7 +9,7 @@ countertops table_restaurant checkroom potted_plant light interests handyman add
 visibility visibility_off filter_frames wallpaper texture warning download crop_landscape open_with lock lock_open content_paste
 computer speed memory info error folder description refresh monitor cancel window edit palette select_all deselect
 frame_person height open_in_full drag_pan pan_tool_alt home settings tune pin_drop crop_square circle
-web architecture category add_photo_alternate restart_alt align_horizontal_center align_vertical_center align_vertical_bottom filter_center_focus vertical_align_top west east north south library_add ink_eraser vertical_align_bottom group ungroup format_paint light_mode contrast
+web architecture category tune add_photo_alternate restart_alt align_horizontal_center align_vertical_center align_vertical_bottom filter_center_focus vertical_align_top west east north south library_add ink_eraser vertical_align_bottom group ungroup format_paint light_mode contrast
 `.split(/\s+/).filter(Boolean);
 
 const dir = 'node_modules/@material-symbols/svg-400/rounded/';

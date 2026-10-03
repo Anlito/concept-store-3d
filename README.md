@@ -48,3 +48,13 @@ Crédits : Kenney « Furniture Kit » (CC0, kenney.nl) · Kay Lousberg « KayKit
   sur le réseau.
 - Copie de secours automatique dans le navigateur (IndexedDB) ; « Projets récents » sur l'accueil ;
   avertissement si on ferme l'onglet sans enregistrer.
+
+## Dossier « Mobilier » du professeur (niveau C)
+
+Le livrable `dist/` contient un dossier `Mobilier/` (voir `Mobilier/LISEZMOI.txt`) :
+- déposer des `.glb` (sous-dossiers = catégories ; `_170cm` à la fin du nom = hauteur réelle) ;
+- double-cliquer sur `Mettre-a-jour-le-mobilier.bat` : il génère `mobilier-prof.js`, lu au démarrage
+  (un `.js` voisin reste lisible en double-clic, contrairement à un `.json`) ;
+- ou, sous Chrome / Edge, « Charger le dossier du professeur » dans la bibliothèque (dossier mémorisé).
+Échelle devinée (modèle en cm ou en mm), correction possible sur la carte ; avertissement au-delà
+de 5 Mo ou 50 000 triangles, modèle ignoré au-delà de 25 Mo.

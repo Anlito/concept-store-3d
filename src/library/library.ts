@@ -27,6 +27,9 @@ export interface LibItem {
   pack: string;
   mural?: boolean; elev?: number; plafond?: boolean;
   glb?: string;            // modèle GLB en base64
+  glbBuffer?: ArrayBuffer; // ou octets du fichier (dossier du professeur)
+  /** Dossier du professeur : chemin du fichier, poids, redressé, échelle devinée (cm / mm → m). */
+  profPath?: string; bytes?: number; upright?: boolean; autoScale?: boolean;
   parts?: Part[];          // ou volumes simples (meubles de l'outil)
   volumes?: Volume[];      // ou volumes de l'atelier (créations des élèves)
   /** Création : enregistrée dans le projet ouvert, ou seulement sur ce poste. */
@@ -61,8 +64,21 @@ export function setCreations(inProject: Creation[], onComputer: Creation[]) {
   creations.clear(); for (const [id, it] of next) creations.set(id, it);
 }
 
-export const libraryItems = () => [...items, ...[...creations.values()].sort((a, b) => (a.where === b.where ? 0 : a.where === 'projet' ? -1 : 1))];
-export const getItem = (id: string) => byId.get(id) ?? creations.get(id);
+export const libraryItems = () => [...items, ...profItems.values(), ...[...creations.values()].sort((a, b) => (a.where === b.where ? 0 : a.where === 'projet' ? -1 : 1))];
+export const getItem = (id: string) => byId.get(id) ?? creations.get(id) ?? profItems.get(id);
+
+/* ---------- Ajouts du professeur (dossier « Mobilier ») ---------- */
+const profItems = new Map<string, LibItem>();
+export function setProfItems(list: LibItem[]) {
+  const before = new Map(profItems);
+  profItems.clear();
+  for (const it of list) profItems.set(it.id, it);
+  for (const id of new Set([...before.keys(), ...profItems.keys()])) {
+    const a = before.get(id), b = profItems.get(id);
+    if (!a || !b || a.bytes !== b.bytes || a.target?.h !== b.target?.h || a.upright !== b.upright) forgetProto(id);
+  }
+}
+export const profCount = () => profItems.size;
 export const PACKS = catalogue.packs as Record<string, { nom: string; auteur: string; licence: string; source: string }>;
 
 /* ---------- Prototypes 3D ---------- */
@@ -72,6 +88,9 @@ export interface Proto {
   dims: { w: number; d: number; h: number };
   /** Matériau « principal » (plus grande surface), remplacé quand l'élève choisit une couleur. */
   main: THREE.MeshStandardMaterial | null;
+  triangles?: number;
+  /** Modèle introuvable remplacé par une boîte grise. */
+  missing?: boolean;
 }
 
 const loader = new GLTFLoader();
@@ -126,10 +145,16 @@ function prepare(root: THREE.Object3D): THREE.MeshStandardMaterial | null {
 /** Recentre (x/z), pose au sol et met à l'échelle cible. */
 function normalize(obj: THREE.Object3D, item: LibItem): Proto['dims'] {
   if (item.rot) obj.rotation.y = THREE.MathUtils.degToRad(item.rot);
+  if (item.upright) obj.rotation.x = -Math.PI / 2; // modèle couché (axe z vers le haut) : on le redresse
   obj.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3());
   let k = 1;
+  if (item.autoScale && !item.target?.h) {
+    // Le glTF est en mètres ; un modèle de plus de 20 « mètres » a sans doute été fait en cm, ou en mm au-delà de 200.
+    const m = Math.max(size.x, size.y, size.z);
+    k = m > 200 ? 0.001 : m > 20 ? 0.01 : 1;
+  }
   if (item.target?.h) k = item.target.h / Math.max(size.y, 1e-6);
   else if (item.target?.w) k = item.target.w / Math.max(size.x, size.z, 1e-6);
   obj.scale.multiplyScalar(k);
@@ -162,19 +187,22 @@ export function loadProto(id: string): Promise<Proto> {
   let p = protos.get(id);
   if (p) return p;
   const item = getItem(id);
+  if (!item) return placeholder(id); // modèle absent (dossier du professeur non chargé) : pas de cache
   p = (async (): Promise<Proto> => {
     if (!item) throw new Error('Modèle inconnu : ' + id);
+    let triangles = 0;
     let obj: THREE.Object3D;
     if (item.parts) obj = buildParts(item.parts);
     else if (item.volumes) obj = buildVolumes(item.volumes);
-    else if (item.glb) {
-      const gltf = await loader.parseAsync(dataUrlToBuffer(item.glb), '');
+    else if (item.glb || item.glbBuffer) {
+      const gltf = await loader.parseAsync(item.glbBuffer ?? dataUrlToBuffer(item.glb!), '');
       obj = gltf.scene;
     } else throw new Error('Modèle vide : ' + id);
     const main = prepare(obj);
+    obj.traverse(o => { const g = (o as THREE.Mesh).geometry; if (g) triangles += (g.index ? g.index.count : g.getAttribute('position')?.count ?? 0) / 3; });
     const dims = normalize(obj, item);
     const root = new THREE.Group(); root.add(obj);
-    return { object: root, dims, main };
+    return { object: root, dims, main, triangles: Math.round(triangles) };
   })();
   protos.set(id, p);
   return p;
@@ -201,3 +229,12 @@ export async function defaultDims(id: string) { return (await loadProto(id)).dim
 export function forgetProto(id: string) { protos.delete(id); onForget.forEach(f => f(id)); }
 const onForget = new Set<(id: string) => void>();
 export const onProtoForgotten = (f: (id: string) => void) => onForget.add(f);
+
+/** Boîte grise à la place d'un modèle introuvable (ex. ajout du professeur sur un autre poste). */
+function placeholder(id: string): Promise<Proto> {
+  void id;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: '#CFCCC6', roughness: 1, transparent: true, opacity: 0.7 }));
+  m.position.y = 0.25;
+  const root = new THREE.Group(); root.add(m);
+  return Promise.resolve({ object: root, dims: { w: 0.5, d: 0.5, h: 0.5 }, main: null, missing: true });
+}

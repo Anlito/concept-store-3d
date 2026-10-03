@@ -12,6 +12,7 @@ import { emptyFileState, pickProjectFile, reopenHandle, saveProject, type Opened
 import { deleteBackup, putBackup, type Backup } from './storage/backup';
 import { atelierScreen } from './app/atelier';
 import { findCreation, refreshCreations } from './app/creations';
+import { loadProfScript, restoreProfFolder } from './library/profFolder';
 
 /* Point d'entrée : accueil puis éditeur. Un seul fichier HTML, aucun accès réseau. */
 
@@ -135,4 +136,6 @@ window.addEventListener('beforeunload', e => {
 (async () => {
   try { await Promise.all([600, 700, 800].map(w => document.fonts.load(`${w} 16px Nunito`))); } catch { /* police de secours */ }
   showHome();
+  // Ajouts du professeur : fichier « Mobilier/mobilier-prof.js » s'il existe, sinon dossier mémorisé (Chrome / Edge).
+  if (!(await loadProfScript())) void restoreProfFolder(false);
 })();

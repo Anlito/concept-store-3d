@@ -1,9 +1,10 @@
 /* Base IndexedDB de l'outil (sur ce poste uniquement) :
    - backups   : copies de secours des projets
-   - creations : meubles créés dans l'atelier, réutilisables dans les autres projets du poste */
+   - creations : meubles créés dans l'atelier, réutilisables dans les autres projets du poste
+   - settings  : réglages du poste (dossier « Mobilier » du professeur) */
 
-const NAME = 'concept-store-3d', VERSION = 2;
-export type StoreName = 'backups' | 'creations';
+const NAME = 'concept-store-3d', VERSION = 3;
+export type StoreName = 'backups' | 'creations' | 'settings';
 let dbp: Promise<IDBDatabase | null> | null = null;
 
 export function db(): Promise<IDBDatabase | null> {
@@ -11,7 +12,7 @@ export function db(): Promise<IDBDatabase | null> {
     try {
       const r = indexedDB.open(NAME, VERSION);
       r.onupgradeneeded = () => {
-        for (const s of ['backups', 'creations']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' });
+        for (const s of ['backups', 'creations', 'settings']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' });
       };
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => resolve(null);

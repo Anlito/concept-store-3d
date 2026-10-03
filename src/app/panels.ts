@@ -260,6 +260,7 @@ export function objectPanel(ctx: Ctx): Panel {
   const row = (a: string, extra: Node) => h('span', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' } }, a, extra);
   const p = shell(one ? 'chair' : 'select_all', one ? (item?.name ?? 'Objet') : `${objs().length} objets`,
     () => one ? `${categoryLabel(item?.cat ?? '')} · ${SOURCE_LABEL[item?.source ?? 'base']}` : 'Sélection multiple', [
+      one && !item ? alert('warning', 'Modèle introuvable', 'Ce meuble vient du dossier du professeur, qui n’est pas chargé sur ce poste. Ouvre la bibliothèque, onglet « Ajouts du professeur ».') : null,
       one ? section(row('Dimensions', h('label', { class: 'chk' }, ratio, 'Garder les proportions')),
         h('div', { class: 'g3' },
           b(numberField({ label: 'Longueur', unit: 'cm', min: 1, max: 2000, get: () => o().size.w * 100, set: v => setSize('w', v) })),
