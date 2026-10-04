@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- Fiche élève A4 (une page). Source : scripts/build-fiche.mjs remplace les marqueurs ic, font et version,
+     puis imprime dist/Fiche-eleve.pdf. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Concept Store 3D — Fiche élève</title>
+<style>
+@font-face { font-family: 'Nunito'; font-weight: 600; src: url({{font:600}}) format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 700; src: url({{font:700}}) format('woff2'); }
+@font-face { font-family: 'Nunito'; font-weight: 800; src: url({{font:800}}) format('woff2'); }
+@page { size: A4; margin: 0; }
+:root { --accent: #BF4E36; --soft: #F8E7E1; --ink: #22211F; --t2: #4A4945; --t3: #6A6863; --line: #E4E2DD; --bg: #F4F3F0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 210mm; height: 297mm; }
+body { font-family: Nunito, Arial, sans-serif; font-weight: 600; color: var(--ink); font-size: 9.2pt; line-height: 1.3;
+  padding: 8mm 11mm 7mm; display: flex; flex-direction: column; gap: 3.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+svg.ic { width: 1.25em; height: 1.25em; fill: currentColor; flex: none; vertical-align: -0.25em; }
+b { font-weight: 800; }
+h2 { font-size: 10.5pt; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2mm;
+  display: flex; align-items: center; gap: 1.5mm; }
+.box { border: 1px solid var(--line); border-radius: 3mm; padding: 3mm 3.5mm; }
+
+header { display: flex; align-items: center; gap: 4mm; }
+.logo { width: 14mm; height: 14mm; border-radius: 3mm; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.logo svg { width: 9mm; height: 9mm; }
+.title { flex: 1; }
+.title h1 { font-size: 19pt; font-weight: 800; line-height: 1.1; }
+.title p { color: var(--t3); }
+.who { display: grid; grid-template-columns: auto 46mm; gap: 1.6mm 2mm; align-items: end; font-weight: 700; color: var(--t2); }
+.who span:nth-child(even) { border-bottom: 1px solid #B9B6AF; height: 5mm; }
+
+.open { display: flex; gap: 3mm; background: var(--bg); border-radius: 3mm; padding: 2.5mm 3.5mm; align-items: center; }
+.open svg.ic { color: var(--accent); width: 6mm; height: 6mm; }
+
+ol.steps { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 4mm; }
+ol.steps li { display: grid; grid-template-columns: 7mm 1fr; gap: 2.5mm; border: 1px solid var(--line); border-radius: 3mm; padding: 2mm 3mm; }
+.n { width: 7mm; height: 7mm; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 10pt; }
+.st > b { display: flex; align-items: center; gap: 1.2mm; font-size: 10.3pt; margin-bottom: .6mm; }
+.st > b svg { color: var(--accent); }
+.st p { color: var(--t2); }
+.st p + p { margin-top: .6mm; }
+ol.steps li.last { grid-column: 1 / -1; background: var(--soft); border-color: #E9C9C0; }
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+ul.rules { list-style: none; display: grid; gap: 1.5mm; }
+ul.rules li { display: flex; gap: 2mm; }
+ul.rules svg.ic { color: var(--accent); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: .7mm 2.5mm; align-items: center; }
+kbd { font-family: inherit; font-weight: 800; font-size: 8.4pt; background: var(--bg); border: 1px solid #D5D2CB; border-bottom-width: 2px;
+  border-radius: 1.5mm; padding: .2mm 1.6mm; white-space: nowrap; justify-self: start; }
+.check { list-style: none; display: grid; gap: 1.6mm; }
+.check li { display: flex; gap: 2mm; align-items: flex-start; }
+.check li::before { content: ''; width: 3.6mm; height: 3.6mm; border: 1.4px solid var(--t2); border-radius: .8mm; flex: none; margin-top: .3mm; }
+footer { margin-top: auto; display: flex; justify-content: space-between; color: var(--t3); font-size: 8pt; border-top: 1px solid var(--line); padding-top: 2mm; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">{{ic:storefront}}</div>
+  <div class="title"><h1>Concept Store 3D</h1><p>Fiche élève · Dessine, aménage et présente ta boutique</p></div>
+  <div class="who"><span>Équipe</span><span></span><span>Classe</span><span></span><span>Fichier</span><span></span></div>
+</header>
+
+<div class="open">{{ic:mouse}}<div><b>Ouvrir l’outil :</b> double-clique sur <b>index.html</b> (Chrome ou Edge). Puis <b>Nouveau projet</b>,
+  <b>Ouvrir un projet</b> (le fichier .json de ton équipe) ou <b>Projet modèle</b> si ton professeur en a préparé un.</div></div>
+
+<section>
+  <h2>{{ic:architecture}} Les étapes du projet</h2>
+  <ol class="steps">
+    <li><span class="n">1</span><div class="st"><b>{{ic:grid_on}} Trace le sol</b>
+      <p>Outil <b>Sol</b>, en <b>Plan 2D</b> : un clic par coin, puis clic sur le point de <b>Départ</b> pour fermer (ou dessine un rectangle).</p>
+      <p>Tu peux taper une longueur au clavier puis Entrée. Maximum <b>10 × 7 m</b>.</p></div></li>
+    <li><span class="n">2</span><div class="st"><b>{{ic:border_outer}} Règle les murs</b>
+      <p>Outil <b>Murs</b> : hauteur, matière et couleur. Choisis <b>Intérieur</b> ou <b>Façade</b> pour décorer le côté rue et attirer les clients.</p></div></li>
+    <li><span class="n">3</span><div class="st"><b>{{ic:door_front}} Pose portes et vitrines</b>
+      <p>Outil <b>Portes / fenêtres</b> : choisis le type et le style, puis clique sur un mur. Glisse-les pour les déplacer, règle les cotes dans le panneau.</p></div></li>
+    <li><span class="n">4</span><div class="st"><b>{{ic:chair}} Aménage la boutique</b>
+      <p>Outil <b>Mobilier</b> : prends un meuble dans la bibliothèque, glisse-le, tourne-le (<b>R</b>), change sa taille et sa couleur.</p>
+      <p>Il manque un meuble ? <b>Créer un meuble</b> ouvre l’<b>Atelier</b> (formes simples ou fichier <b>Tinkercad OBJ</b>).</p></div></li>
+    <li><span class="n">5</span><div class="st"><b>{{ic:image}} Ajoute tes images</b>
+      <p>Outil <b>Images</b> : cadre, tapisserie, tapis, vitrophanie (logo sur la vitrine). PNG ou JPG <b>faits par toi ou libres de droits</b>.</p></div></li>
+    <li><span class="n">6</span><div class="st"><b>{{ic:view_in_ar}} Vérifie en 3D</b>
+      <p><b>Vue 3D</b> pour visiter. <b>Façade</b> : la boutique vue de la rue. <b>Photo</b> : images PNG/JPG du rendu pour ta présentation.</p></div></li>
+    <li class="last"><span class="n">7</span><div class="st"><b>{{ic:print}} Imprime le plan A3 pour la maquette</b>
+      <p>Bouton <b>Plan A3</b> : échelle <b>1 m = 3 cm</b>, remplis le cartouche (noms, classe), télécharge le PDF. Imprime en <b>«&nbsp;Taille&nbsp;réelle&nbsp;» / 100&nbsp;%</b>,
+      puis vérifie à la règle : la barre d’échelle doit mesurer <b>9 cm</b>. Les murs de 10 cm deviennent du <b>carton de 3 mm</b>.</p></div></li>
+  </ol>
+</section>
+
+<div class="cols">
+  <section class="box">
+    <h2>{{ic:keyboard}} Raccourcis utiles</h2>
+    <div class="keys">
+      <kbd>Ctrl+S</kbd><span>Enregistrer</span>
+      <kbd>Ctrl+Z</kbd><span>Annuler (Ctrl+Y : rétablir)</span>
+      <kbd>Suppr</kbd><span>Supprimer l’élément choisi</span>
+      <kbd>Échap</kbd><span>Désélectionner / arrêter le tracé</span>
+      <kbd>Ctrl+D</kbd><span>Dupliquer un meuble</span>
+      <kbd>Ctrl+C / Ctrl+V</kbd><span>Copier / coller</span>
+      <kbd>R</kbd><span>Tourner de 15° (angle exact : panneau)</span>
+      <kbd>Flèches</kbd><span>Déplacer un meuble</span>
+      <kbd>Molette</kbd><span>Zoomer</span>
+      <kbd>Clic droit + glisser</kbd><span>Tourner la vue 3D</span>
+      <kbd>Maj + glisser</kbd><span>Déplacer la vue</span>
+    </div>
+  </section>
+  <section class="box">
+    <h2>{{ic:info}} Bon à savoir</h2>
+    <ul class="rules">
+      <li>{{ic:grid_4x4}}<span><b>Pas</b> (barre du haut) : les objets s’accrochent tous les 1 m pour le sol, 10 cm pour le reste. Change-le si besoin.</span></li>
+      <li>{{ic:palette}}<span>Pas la bonne couleur ? <b>+</b> au bout des pastilles : choisis une couleur exacte.</span></li>
+      <li>{{ic:speed}}<span>3D lente ? Baisse les <b>Ombres</b> dans la barre de la vue 3D.</span></li>
+      <li>{{ic:restart_alt}}<span>Fermé sans enregistrer ? Ton projet est dans <b>Projets récents</b> sur l’accueil (même poste).</span></li>
+      <li>{{ic:help}}<span>Le bouton <b>?</b> en haut à droite ouvre l’aide.</span></li>
+    </ul>
+  </section>
+</div>
+
+<section class="box">
+  <h2>{{ic:save}} Avant de quitter la séance</h2>
+  <ul class="check" style="grid-template-columns: 1fr 1fr; display: grid;">
+    <li><span>J’ai enregistré avec <b>Ctrl+S</b> (« Enregistré » s’affiche).</span></li>
+    <li><span>Le fichier .json est dans le <b>dossier de mon équipe</b>.</span></li>
+    <li><span>Le nom du fichier contient le nom de l’équipe.</span></li>
+    <li><span>Mes images et photos utiles sont rangées dans ce dossier.</span></li>
+  </ul>
+</section>
+
+<footer><span>Aucune donnée n’est envoyée sur Internet : tes projets restent dans le dossier de ton équipe.</span><span>Concept Store 3D · v{{version}}</span></footer>
+</body>
+</html>

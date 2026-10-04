@@ -13,6 +13,8 @@ CONTENU
 -------
 - index.html        : l'outil (fichier unique : tout est dedans).
 - diagnostic.html   : test du poste.
+- Fiche-eleve.pdf   : fiche élève A4 à imprimer (étapes, raccourcis, rappels).
+                      Elle peut aussi être distribuée dans le dossier de la classe.
 - Mobilier/         : modèles 3D ajoutés par le professeur (voir Mobilier/LISEZMOI.txt).
                       À mettre en lecture seule pour les élèves.
 

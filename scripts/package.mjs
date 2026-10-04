@@ -5,7 +5,7 @@ import { zipSync } from 'fflate';
 
 const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
 const files = {};
-const walk = d => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else files['Concept-Store-3D/' + relative('dist', p).split(sep).join('/')] = readFileSync(p); } };
+const walk = d => { for (const f of readdirSync(d)) { if (f.startsWith('.')) continue; const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else files['Concept-Store-3D/' + relative('dist', p).split(sep).join('/')] = readFileSync(p); } };
 walk('dist');
 mkdirSync('livrables', { recursive: true });
 const out = `livrables/Concept-Store-3D-${version}.zip`;
