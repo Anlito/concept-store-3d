@@ -1,0 +1,33 @@
+CONCEPT STORE 3D - DÉPLOIEMENT DANS LES DOSSIERS DES CLASSES
+============================================================
+
+Chaque classe n'a accès qu'à son propre dossier : l'outil doit donc être copié dans chacun.
+Ce script le fait pour vous, en une fois.
+
+PREMIÈRE FOIS
+-------------
+1. Dézipper ce dossier dans VOTRE dossier de professeur (pas dans celui d'une classe).
+   C'est la copie « maître » : on ne travaille que sur elle.
+2. Ouvrir « classes.txt » et écrire le dossier de chaque classe, un par ligne
+   (copier le chemin depuis la barre d'adresse de l'Explorateur), puis enregistrer.
+3. Double-cliquer sur « Deployer-dans-les-classes.bat ».
+   Chaque classe reçoit un dossier « Concept-Store-3D » ; la fenêtre affiche OK ou ÉCHEC par classe.
+4. Les élèves ouvrent « Concept-Store-3D\index.html » dans le dossier de leur classe.
+
+ENSUITE
+-------
+Relancer « Deployer-dans-les-classes.bat » après chaque changement dans la copie maître :
+- nouvelle version de l'outil : remplacer les fichiers du dossier « Concept-Store-3D » par les nouveaux ;
+- mobilier ajouté dans « Concept-Store-3D\Mobilier » (la liste est mise à jour automatiquement) ;
+- projet modèle (« modele-….json ») déposé dans « Concept-Store-3D » : il est copié dans toutes les classes.
+
+Seuls les fichiers nouveaux ou modifiés sont recopiés : quelques secondes par classe.
+Le script ne supprime rien : les projets des élèves ne sont jamais touchés.
+
+BON À SAVOIR
+------------
+- Les élèves enregistrent leurs projets dans le dossier de leur classe ou de leur équipe,
+  pas dans « Concept-Store-3D » (qui peut être mis en lecture seule pour eux).
+- Copier un seul dossier de classe à la main marche aussi : copier le dossier « Concept-Store-3D ».
+- Ne pas copier le dossier du code source de l'outil (des dizaines de milliers de fichiers) :
+  seul ce dossier de déploiement est nécessaire.

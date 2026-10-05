@@ -1,0 +1,9 @@
+# Concept Store 3D - dossiers des classes
+# Un dossier par ligne (copier le chemin depuis la barre d'adresse de l'Explorateur).
+# L'outil sera copie dans un sous-dossier « Concept-Store-3D » de chaque dossier.
+# Les lignes qui commencent par # sont ignorees. Exemples :
+#
+# \\serveur\classes\4A\Technologie
+# \\serveur\classes\4B\Technologie
+# P:\3C\Techno
+
