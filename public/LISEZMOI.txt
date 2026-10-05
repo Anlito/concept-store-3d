@@ -3,9 +3,10 @@ CONCEPT STORE 3D - INSTALLATION AU COLLÈGE
 
 Aucune installation, aucun droit administrateur, aucun accès Internet.
 
-1. Copier ce dossier entier sur le réseau du collège, dans le dossier de la classe.
-   Plusieurs classes : utiliser « Deployer-dans-les-classes.bat », livré à côté de ce dossier
-   (voir LISEZMOI-PROFESSEUR.txt) ; il copie l’outil dans toutes les classes en une fois.
+1. Copier ce dossier entier (7 fichiers, environ 1 Mo) sur le serveur de chaque classe,
+   par exemple avec une clé USB. Pour une mise à jour, le recoller par-dessus (« Remplacer ») :
+   les projets des élèves, rangés dans leurs dossiers d'équipe, ne sont pas touchés.
+   Ne pas copier le dossier du code source de l'outil (des dizaines de milliers de fichiers).
 2. Avant la première séance, sur un PC du collège : double-cliquer sur « diagnostic.html ».
    La page teste le navigateur, la 3D et l'enregistrement, puis donne un rapport à garder.
    Elle règle aussi la qualité des ombres conseillée pour ce poste.
