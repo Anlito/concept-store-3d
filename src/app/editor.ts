@@ -210,7 +210,7 @@ export class Editor {
       h('div', { style: { pointerEvents: 'auto' } }, bar),
       h('div', { class: 'vp-hints' },
         h('div', { class: 'pill' }, icon('mouse'), 'Glisser : tourner'),
-        h('div', { class: 'pill' }, icon('pan_tool_alt'), 'Maj + glisser : déplacer'),
+        h('div', { class: 'pill' }, icon('pan_tool_alt'), 'Clic molette + glisser : déplacer'),
         h('div', { class: 'pill' }, icon('zoom_in'), 'Molette : zoom')),
       h('div', { class: 'vp-zoom', style: { pointerEvents: 'auto' } },
         h('button', { type: 'button', title: 'Zoom arrière', onclick: () => this.view3d.zoom(1.2) }, icon('remove')),

@@ -446,6 +446,7 @@ class AtelierView {
   private bind() {
     const cv = this.renderer.domElement;
     cv.addEventListener('contextmenu', e => e.preventDefault());
+    cv.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // molette : déplacer, sans défilement automatique
     let drag: { id: string; plane: THREE.Plane; start: THREE.Vector3; x: number; y: number } | null = null;
     let down: { x: number; y: number } | null = null;
     const rayAt = (e: PointerEvent) => {

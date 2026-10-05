@@ -109,3 +109,18 @@ test('image côté rue et bouton « Façade » de la vue 3D', async ({ page }) =
   await page.locator('.fbar').getByRole('button', { name: 'Façade', exact: true }).click();
   expect((await ui(page)).cutaway).toBe(false);
 });
+
+test('vue 3D : clic molette + glisser déplace la vue sans toucher aux meubles', async ({ page }) => {
+  await expect(page.locator('.vp-hints')).toContainText('Clic molette + glisser : déplacer');
+  const target = () => page.evaluate(() => (window as any).cs3d.editor.view3d.controls.target.toArray() as number[]);
+  const before = await target(), objs = JSON.stringify((await doc(page)).objects);
+  const box = (await page.locator('.vp canvas').first().boundingBox())!;
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down({ button: 'middle' });
+  for (let i = 1; i <= 10; i++) await page.mouse.move(cx + i * 15, cy + i * 6);
+  await page.mouse.up({ button: 'middle' });
+  const after = await target();
+  expect(Math.hypot(after[0] - before[0], after[2] - before[2])).toBeGreaterThan(0.3);
+  expect(JSON.stringify((await doc(page)).objects)).toBe(objs);
+});

@@ -148,6 +148,7 @@ export class Plan2D {
   private bind() {
     const svg = this.svg;
     svg.addEventListener('contextmenu', e => e.preventDefault());
+    svg.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // molette : déplacer, sans défilement automatique
     svg.addEventListener('wheel', e => {
       e.preventDefault();
       const r = svg.getBoundingClientRect();

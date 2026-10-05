@@ -350,6 +350,8 @@ export class View3D {
   private bindPointer() {
     const cv = this.renderer.domElement;
     cv.addEventListener('contextmenu', e => e.preventDefault());
+    // Bouton molette : déplacer la vue, sans le défilement automatique de Chrome.
+    cv.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });
     let down: { x: number; y: number; empty: boolean } | null = null;
     let drag: { id: string; wall: number; dt: number } | null = null;
     // Écouteur en phase de capture : il passe avant OrbitControls et peut le désactiver pendant un glisser.

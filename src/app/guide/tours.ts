@@ -67,7 +67,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.vp', title: 'Seulement en 3D', text: 'Les images se voient en **Vue 3D** et sur les photos, pas sur le plan A3. Clique sur une image pour la régler.' },
     ];
     case 'vue3d': return [
-      { at: '.vp', title: 'Visiter la boutique', text: '**Glisse** pour tourner autour, [[Maj]] + glisser pour te déplacer, **molette** pour zoomer.', prepare: v3d },
+      { at: '.vp', title: 'Visiter la boutique', text: '**Glisse** pour tourner autour, **clique avec la molette** et glisse pour te déplacer, **tourne la molette** pour zoomer.', prepare: v3d },
       { at: '[data-tour=cut]', title: 'Murs abaissés', text: 'Abaisse les murs placés devant la caméra pour voir l’intérieur.' },
       { at: '[data-tour=facade]', title: 'Façade', text: 'La boutique vue de la rue, comme un client qui passe devant.' },
       { at: '[data-tour=photo]', title: 'Photo', text: 'Des images **PNG ou JPG** du rendu, sous plusieurs angles, pour ta présentation ou le site.' },

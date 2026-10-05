@@ -63,7 +63,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Pourquoi mes images ne sont pas sur le plan A3 ?', a: 'Le plan ne montre que les murs et les ouvertures. Les images se voient en **3D** et sur les **photos**.' },
   ],
   vue3d: [
-    { q: 'Comment me déplacer en 3D ?', a: '**Glisse** pour tourner, [[Maj]] + glisser pour te déplacer, **molette** pour zoomer. Le bouton du milieu, en bas à droite, recentre la vue.' },
+    { q: 'Comment me déplacer en 3D ?', a: '**Glisse** pour tourner, **clique avec la molette** et glisse pour te déplacer, **tourne la molette** pour zoomer. Le bouton du milieu, en bas à droite, recentre la vue.' },
     { q: 'Comment voir l’intérieur ?', a: 'Active **Murs abaissés** : les murs devant la caméra s’abaissent.' },
     { q: 'Comment voir la boutique depuis la rue ?', a: 'Bouton **Façade**.' },
     { q: 'Comment faire une image de mon rendu ?', a: 'Bouton **Photo** : choisis l’angle (façade, 3/4, intérieur, dessus ou les 4 en .zip), la taille et **PNG ou JPG**.' },
