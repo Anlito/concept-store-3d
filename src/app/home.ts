@@ -1,5 +1,6 @@
 import { h, icon } from '../ui/dom';
-import { openCredits, openHelp } from './help';
+import { openCredits } from './help';
+import { closeOffer, helpButton } from './guide/guide';
 import type { Project } from '../model/types';
 import { bounds, offsetPolygon } from '../model/geometry';
 import { listBackups, type Backup } from '../storage/backup';
@@ -14,12 +15,13 @@ export interface HomeActions {
 
 /** Écran d'accueil (maquette 01) avec les projets récents de ce poste. */
 export function homeScreen(a: HomeActions) {
+  closeOffer();
   const recents = h('div', { class: 'recents', 'data-testid': 'recents' });
   const recentSec = h('section', { class: 'home-sec', style: { display: 'none' } }, h('h2', null, 'Projets récents'), recents);
   const el = h('div', { class: 'home' },
     h('header', { class: 'home-h' },
       h('div', { class: 'home-brand' }, h('div', { class: 'home-logo' }, icon('storefront')), 'Concept Store 3D'),
-      h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => openHelp() }, icon('help'), 'Aide')),
+      helpButton()),
     h('main', { class: 'home-m' },
       h('h1', null, 'Que veux-tu faire ?'),
       h('div', { class: 'home-cards' },

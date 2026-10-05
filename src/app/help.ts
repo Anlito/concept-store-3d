@@ -2,7 +2,7 @@ import { h, icon } from '../ui/dom';
 import inventaire from '../../library/inventaire.json';
 import { PACKS } from '../library/library';
 
-/* Aide intégrée et page « Crédits » (obligatoire pour tout modèle CC-BY, bonne pratique pour le CC0). */
+/* Page « Crédits » (obligatoire pour tout modèle CC-BY, bonne pratique pour le CC0). L'aide est dans guide/. */
 
 function modal(title: string, body: (Node | null)[], wide = false) {
   const close = () => { veil.remove(); document.removeEventListener('keydown', onKey, true); };
@@ -14,32 +14,6 @@ function modal(title: string, body: (Node | null)[], wide = false) {
   document.addEventListener('keydown', onKey, true);
   document.body.appendChild(veil);
   return close;
-}
-
-const STEPS: [string, string, string][] = [
-  ['grid_on', 'Trace le sol', 'Outil Sol, en Plan 2D : un clic par coin, puis clic sur « Départ » (ou un rectangle). Maximum 10 × 7 m. Tu peux taper une longueur au clavier.'],
-  ['border_outer', 'Règle les murs', 'Outil Murs : hauteur, épaisseur, matière et couleur, à l’intérieur et sur la façade.'],
-  ['door_front', 'Pose portes et vitrines', 'Outil Portes / fenêtres : choisis le type et le style, puis clique sur un mur. Glisse-les pour les déplacer.'],
-  ['chair', 'Aménage ta boutique', 'Outil Mobilier : bibliothèque, puis glisse, tourne (R) et règle les meubles. Crée les tiens dans l’atelier.'],
-  ['image', 'Ajoute tes images', 'Outil Images : cadres, tapisserie, tapis, vitrophanie… (PNG ou JPG faits par toi ou libres de droits).'],
-  ['print', 'Imprime le plan A3', 'Bouton Plan A3 : choisis l’échelle (1 m = 3 cm), remplis le cartouche, télécharge le PDF et imprime en taille réelle.'],
-  ['save', 'Enregistre', 'Ctrl+S : dans le dossier de ton équipe. Une copie de secours est aussi gardée sur le poste.'],
-];
-const KEYS: [string, string][] = [
-  ['Ctrl+Z / Ctrl+Y', 'Annuler / rétablir'], ['Ctrl+S', 'Enregistrer'], ['Suppr', 'Supprimer l’élément choisi'], ['Échap', 'Désélectionner / annuler le tracé'],
-  ['Ctrl+C / Ctrl+V', 'Copier / coller des meubles'], ['Ctrl+D', 'Dupliquer'], ['R', 'Tourner un meuble de 15°'], ['Flèches', 'Déplacer un meuble'],
-  ['Maj', 'Pendant un glisser : sans pas de 15° ou plus fin'], ['Molette', 'Zoomer'], ['Clic droit + glisser', 'Tourner la vue 3D'], ['Maj + glisser', 'Déplacer la vue'],
-];
-
-export function openHelp() {
-  const close = modal('Aide · Concept Store 3D', [
-    h('ol', { class: 'hp-steps' }, ...STEPS.map(([ic, t, d], i) => h('li', null,
-      h('span', { class: 'hp-n' }, String(i + 1)), h('span', { class: 'hp-ic' }, icon(ic)), h('span', null, h('b', null, t), h('span', null, d))))),
-    h('h3', null, 'Raccourcis clavier'),
-    h('div', { class: 'hp-keys' }, ...KEYS.flatMap(([k, d]) => [h('kbd', null, k), h('span', null, d)])),
-    h('p', { class: 'p-help' }, 'Aucune donnée n’est envoyée sur Internet : tes projets restent dans le dossier de ton équipe. ',
-      h('button', { class: 'linkbtn', type: 'button', onclick: () => { close(); openCredits(); } }, 'Crédits et licences')),
-  ]);
 }
 
 interface Inv { id: string; nom: string; pack: string; auteur: string; licence: string; source: string }

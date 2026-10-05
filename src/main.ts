@@ -4,6 +4,7 @@ import { Store } from './model/store';
 import { newProject, sampleProject } from './model/project';
 import type { Project } from './model/types';
 import { UIStore, bindSnapSteps, defaultUI, type Ctx } from './app/state';
+import { closeHelp, closeOffer, initGuide, offerTour, startTour } from './app/guide/guide';
 import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
 import { exportScreen } from './app/exportScreen';
@@ -26,8 +27,9 @@ let inEditor = false;
 const ctx: Ctx = {
   store, ui, file: emptyFileState(),
   home: () => void leaveToHome(),
-  exportPlan: () => app.replaceChildren(exportScreen(ctx, backToEditor)),
+  exportPlan: () => { leaveScreen(); app.replaceChildren(exportScreen(ctx, backToEditor)); },
   openAtelier: id => {
+    leaveScreen();
     const creation = id ? findCreation(ctx, id) : undefined;
     app.replaceChildren(atelierScreen(ctx, {
       creation, back: backToEditor,
@@ -35,10 +37,14 @@ const ctx: Ctx = {
     }));
   },
 };
-function backToEditor() { if (editor) app.replaceChildren(editor.el); }
+initGuide(ctx);
+/** Changement d'écran : la carte de visite et le panneau d'aide de l'écran précédent se ferment. */
+function leaveScreen() { closeOffer(); closeHelp(); }
+function backToEditor() { leaveScreen(); if (editor) app.replaceChildren(editor.el); }
 
 function showHome() {
   inEditor = false;
+  leaveScreen();
   app.replaceChildren(homeScreen({
     newProject: () => start(newProject(), { view: '2d' }),
     openProject: async () => { const f = await pickProjectFile(); if (f) openFile(f); },
@@ -57,8 +63,10 @@ function start(p: Project, o: StartOpts) {
   const tool = p.floor ? 'murs' : 'sol', { stepSol, stepOther } = ui.s;
   ui.set({ ...defaultUI(), view: o.view, tool, stepSol, stepOther, step: tool === 'sol' ? stepSol : stepOther, saveStatus: ctx.file.savedAt ? 'saved' : 'new' });
   if (!editor) editor = new Editor(ctx);
+  leaveScreen();
   app.replaceChildren(editor.el);
   inEditor = true;
+  offerTour(tool);
   if (o.view === '3d') requestAnimationFrame(() => editor!.view3d.frame());
   else requestAnimationFrame(() => editor!.plan.fit());
 }
@@ -132,7 +140,7 @@ window.addEventListener('beforeunload', e => {
 
 // Accès pour les tests automatisés et le débogage.
 (window as unknown as { cs3d: unknown }).cs3d = {
-  store, ui, ctx, get editor() { return editor; }, backupNow,
+  store, ui, ctx, get editor() { return editor; }, backupNow, startTour,
   start: (which: 'new' | 'sample') => start(which === 'new' ? newProject() : sampleProject(), { view: which === 'new' ? '2d' : '3d' }),
 };
 

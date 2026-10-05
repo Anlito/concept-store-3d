@@ -9,7 +9,7 @@ import { libraryDrawer } from './libraryDrawer';
 import { imagePanel, imagesPanel } from './imagesUi';
 import { saveProject } from './files';
 import { openPhotoDialog } from './photoDialog';
-import { openHelp } from './help';
+import { helpButton, offerTour } from './guide/guide';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection } from './actions';
 import { floorTints, wallTints } from '../view3d/materials';
@@ -44,21 +44,21 @@ export class Editor {
     const status = h('div', { class: 'tb-status' });
     const vbtn = (v: View, ic: string, label: string) => h('button', { type: 'button', 'data-view': v, onclick: () => ui.set({ view: v }) }, icon(ic), label);
     const b2d = vbtn('2d', 'grid_on', 'Plan 2D'), b3d = vbtn('3d', 'view_in_ar', 'Vue 3D');
-    const undo = h('button', { class: 'btn btn-ghost', type: 'button', title: 'Annuler (Ctrl+Z)', onclick: () => this.undo() }, icon('undo'), 'Annuler');
+    const undo = h('button', { class: 'btn btn-ghost', type: 'button', 'data-tour': 'undo', title: 'Annuler (Ctrl+Z)', onclick: () => this.undo() }, icon('undo'), 'Annuler');
     const redo = h('button', { class: 'btn btn-ghost', type: 'button', title: 'Rétablir (Ctrl+Y)', onclick: () => store.redo() }, icon('redo'), 'Rétablir');
     const topbar = h('header', { class: 'tb' },
       h('div', { class: 'tb-l' },
         h('button', { class: 'tb-logo', type: 'button', title: 'Accueil', onclick: () => ctx.home() }, icon('storefront')),
         h('div', { class: 'tb-title' }, name, status)),
-      h('div', { class: 'tb-c' }, h('div', { class: 'vsw' }, b2d, b3d)),
-      h('div', { class: 'tb-r' }, h('button', { class: 'btn btn-ghost btn-icon', type: 'button', title: 'Aide', 'aria-label': 'Aide', onclick: () => openHelp() }, icon('help')), undo, redo, h('div', { class: 'tb-sep' }),
+      h('div', { class: 'tb-c' }, h('div', { class: 'vsw', 'data-tour': 'view' }, b2d, b3d)),
+      h('div', { class: 'tb-r' }, helpButton(), undo, redo, h('div', { class: 'tb-sep' }),
         h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.exportPlan() }, icon('print'), 'Plan A3'),
         this.saveGroup()));
 
     // --- Barre d'outils
     const toolBtns = TOOLS.map(t => h('button', { type: 'button', class: t.soon ? 'soon' : '', 'data-tool': t.id, title: t.soon ? 'Bientôt disponible' : t.label,
       onclick: () => ui.set({ tool: t.id, sel: null, libraryOpen: t.id === 'mobilier' }) }, icon(t.icon), t.label));
-    const rail = h('nav', { class: 'tr' }, toolBtns);
+    const rail = h('nav', { class: 'tr', 'data-tour': 'rail' }, toolBtns);
 
     // --- Vue
     this.vp = h('main', { class: 'vp' }, this.view3d.el, this.plan.el);
@@ -98,6 +98,15 @@ export class Editor {
     refreshChrome();
     this.updatePanel();
     this.bindKeys();
+    // Visite guidée proposée la première fois qu'une partie est ouverte (outil, puis vue 3D).
+    let lastTool = ui.s.tool, lastView = ui.s.view;
+    ui.subscribe(() => {
+      const s = ui.s;
+      if (!this.el.isConnected) return;
+      if (s.tool !== lastTool) offerTour(s.tool);
+      else if (s.view !== lastView && s.view === '3d' && store.doc.floor) offerTour('vue3d');
+      lastTool = s.tool; lastView = s.view;
+    });
   }
 
   /** Bouton « Enregistrer » + menu (Enregistrer sous, Enregistrer comme modèle pour le professeur). */
@@ -107,7 +116,7 @@ export class Editor {
       h('button', { type: 'button', role: 'menuitem', onclick: () => { close(); void saveProject(this.ctx, 'template'); } }, icon('bookmark_add'), 'Enregistrer comme modèle (professeur)'));
     const close = () => { menu.classList.remove('open'); document.removeEventListener('pointerdown', outside, true); };
     const outside = (e: Event) => { if (!wrap.contains(e.target as Node)) close(); };
-    const wrap = h('div', { class: 'split' },
+    const wrap = h('div', { class: 'split', 'data-tour': 'save' },
       h('button', { class: 'btn btn-primary split-main', type: 'button', title: 'Enregistrer (Ctrl+S)', onclick: () => void saveProject(this.ctx, 'save') }, icon('save'), 'Enregistrer'),
       h('button', { class: 'btn btn-primary split-more', type: 'button', title: 'Autres façons d’enregistrer', 'aria-label': 'Autres façons d’enregistrer',
         onclick: () => { if (menu.classList.toggle('open')) document.addEventListener('pointerdown', outside, true); else close(); } }, icon('keyboard_arrow_down')),
@@ -186,15 +195,16 @@ export class Editor {
       h('p', null, 'Trace la surface de ta boutique sur le plan 2D : les murs se créeront tout seuls.'),
       h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => ui.set({ view: '2d', tool: 'sol' }) }, icon('grid_on'), 'Tracer le sol')));
     const cut = toggle('Murs abaissés', 'vertical_align_bottom', () => ui.s.cutaway, v => ui.set({ cutaway: v }));
+    cut.el.dataset.tour = 'cut';
     cut.el.title = 'Abaisser les murs entre la caméra et la boutique pour voir l’intérieur';
-    const shadows = h('select', { 'aria-label': 'Ombres', title: 'Qualité des ombres (à baisser si la 3D est lente)', onchange: (e: Event) => {
+    const shadows = h('select', { 'aria-label': 'Ombres', 'data-tour': 'shadows', title: 'Qualité des ombres (à baisser si la 3D est lente)', onchange: (e: Event) => {
       const v = (e.target as HTMLSelectElement).value as 'off' | 'low' | 'high';
       ui.set({ shadows: v }); try { localStorage.setItem('cs3d-shadows', v); } catch { /* ignoré */ }
     } }, h('option', { value: 'off' }, 'Sans ombres'), h('option', { value: 'low' }, 'Ombres légères'), h('option', { value: 'high' }, 'Ombres soignées'));
-    const facade = h('button', { class: 'tg', type: 'button', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Façade');
+    const facade = h('button', { class: 'tg', type: 'button', 'data-tour': 'facade', title: 'Voir la boutique depuis la rue', onclick: () => this.view3d.facade() }, icon('storefront'), 'Façade');
     const snap3 = toggle('Aimanter', 'join', () => ui.s.snap, v => ui.set({ snap: v })), step3 = this.stepSelect();
     snap3.el.title = 'Aimantation des meubles et ouvertures sur la grille';
-    const photo = h('button', { class: 'tg', type: 'button', title: 'Images PNG ou JPG du rendu 3D', onclick: () => openPhotoDialog(this.ctx, this.view3d) }, icon('photo_camera'), 'Photo');
+    const photo = h('button', { class: 'tg', type: 'button', 'data-tour': 'photo', title: 'Images PNG ou JPG du rendu 3D', onclick: () => openPhotoDialog(this.ctx, this.view3d) }, icon('photo_camera'), 'Photo');
     const bar = h('div', { class: 'fbar' }, cut.el, facade, photo, shadows, snap3.el, step3.el);
     const el = h('div', { class: 'vp-ov', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
       h('div', { style: { pointerEvents: 'auto' } }, bar),

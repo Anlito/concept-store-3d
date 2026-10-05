@@ -3,6 +3,7 @@ import { h, icon } from '../ui/dom';
 import { alert, segmented, toast, toggle } from '../ui/components';
 import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
+import { helpButton, offerTour } from './guide/guide';
 
 /* Écran « Plan A3 à imprimer » (maquette 07) : aperçu de la feuille, échelle, cartouche, téléchargement. */
 
@@ -45,18 +46,18 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
         h('button', { class: 'btn btn-secondary', type: 'button', onclick: back }, icon('arrow_back'), 'Retour à l’éditeur'),
         h('div', { class: 'tb-title' }, h('div', { class: 'tb-name', style: { pointerEvents: 'none' } }, 'Plan A3 à imprimer'),
           h('div', { class: 'tb-status', style: { color: 'var(--text-3)' } }, d.name))),
-      h('div'), h('div')),
+      h('div'), h('div', { class: 'tb-r' }, helpButton())),
     h('div', { class: 'ed-body' },
       h('main', { class: 'ex-main' }, sheetBox,
         h('div', { class: 'ex-chip' }, icon('crop_landscape'), 'A3 paysage · 420 × 297 mm')),
       h('aside', { class: 'pn', style: { width: '340px' } },
         h('div', { class: 'pn-b', style: { gap: '22px' } },
-          h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Échelle'), scaleSeg.el, perM),
+          h('div', { class: 'p-sec', 'data-tour': 'ex-scale' }, h('div', { class: 'p-sec-t' }, 'Échelle'), scaleSeg.el, perM),
           status,
           h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Sur la feuille'), legend, cotesTg.el),
-          h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Équipe (cartouche)'),
+          h('div', { class: 'p-sec', 'data-tour': 'ex-team' }, h('div', { class: 'p-sec-t' }, 'Équipe (cartouche)'),
             field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B')),
-          alert('info', 'Pour imprimer', 'Choisis « Taille réelle » ou « 100 % » et désactive « Ajuster à la page ». Vérifie ensuite la barre de 10 cm à la règle.')),
+          alert('info', 'Pour imprimer', 'Choisis « Taille réelle » ou « 100 % » et désactive « Ajuster à la page ». Vérifie ensuite à la règle la longueur de la barre d’échelle, écrite à côté d’elle.')),
         h('div', { class: 'pn-f' }, dl))));
 
   function render() {
@@ -96,5 +97,6 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   }
 
   render();
+  offerTour('plan');
   return el;
 }

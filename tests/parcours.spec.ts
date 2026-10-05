@@ -63,8 +63,8 @@ test('parcours complet d’une équipe, de l’accueil au PDF A3 et à la photo'
 test('aide intégrée et page Crédits', async ({ page }) => {
   await page.goto(distUrl('index.html'));
   await page.getByRole('button', { name: 'Aide' }).click();
-  const help = page.getByRole('dialog', { name: 'Aide · Concept Store 3D' });
-  await expect(help).toContainText('Trace le sol');
+  const help = page.getByRole('dialog', { name: 'Aide' });
+  await expect(help).toContainText('Où est enregistré mon projet ?');
   await expect(help).toContainText('Ctrl+S');
   await help.getByRole('button', { name: 'Crédits et licences' }).click();
   const cr = page.getByRole('dialog', { name: 'Crédits et licences' });

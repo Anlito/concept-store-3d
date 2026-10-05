@@ -35,7 +35,7 @@ export function libraryDrawer(ctx: Ctx) {
       h('button', { class: 'btn btn-ghost btn-icon', type: 'button', title: 'Fermer', onclick: close }, icon('close'))),
     h('div', { class: 'lib-tools' },
       h('label', { class: 'lib-search' }, icon('search'), search),
-      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.openAtelier() }, icon('handyman'), 'Créer un meuble')),
+      h('button', { class: 'btn btn-secondary', type: 'button', 'data-tour': 'lib-create', onclick: () => ctx.openAtelier() }, icon('handyman'), 'Créer un meuble')),
     tabsEl,
     h('div', { class: 'lib-body' }, catsEl, grid),
     h('div', { class: 'lib-foot' }, h('div', { class: 'lib-sel' }, footName, footDims), place));

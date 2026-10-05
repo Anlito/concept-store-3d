@@ -10,6 +10,7 @@ import { HEAVY_TRIANGLES, importObjFiles } from '../library/objImport';
 import { CATEGORIES } from '../library/library';
 import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh } from '../library/volumes3d';
 import { saveCreation } from './creations';
+import { helpButton, offerTour } from './guide/guide';
 
 /* Atelier de création de mobilier (maquette 05) : l'élève assemble des volumes simples (boîte, cylindre,
    plan, arche), règle leurs dimensions au clavier, leur couleur, puis enregistre le meuble dans
@@ -296,7 +297,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         h('div', { class: 'tb-title' }, h('div', { class: 'tb-name', style: { pointerEvents: 'none' } }, 'Atelier de mobilier'),
           h('div', { class: 'tb-status', style: { color: 'var(--text-3)' } }, editing ? 'Modifier une création' : 'Nouveau meuble'))),
       h('div'),
-      h('div', { class: 'tb-r' }, undo, redo)),
+      h('div', { class: 'tb-r' }, helpButton(), undo, redo)),
     h('div', { class: 'ed-body' }, left,
       h('main', { class: 'vp' }, view.el,
         h('div', { class: 'at-pills' }, h('label', { class: 'pill at-name' }, h('span', null, 'Nom'), nameTop), h('label', { class: 'pill at-name' }, h('span', null, 'Rangé dans'), catTop), total),
@@ -350,6 +351,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
 
   renderAll();
   requestAnimationFrame(() => view.frame());
+  offerTour('atelier');
   return el;
 }
 const r3 = (x: number) => Math.round(x * 1000) / 1000;
