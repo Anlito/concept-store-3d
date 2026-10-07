@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Ctx, ShadowQuality } from '../app/state';
 import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
-import { OPENING_DEFAULTS, findFreeT, wallLength } from '../model/project';
+import { OPENING_DEFAULTS, findFreeT, wallHeight, wallLength, wallSegs } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
 import { placeOpening, selectPick } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
@@ -199,11 +199,13 @@ export class View3D {
   facade(forPhoto = false) {
     const d = this.ctx.store.doc, s = this.ctx.ui.s;
     if (!d.floor) return;
-    const E = edges(d.floor.points);
+    const E = edges(d.floor.points), n = E.length;
     let i = s.sel?.kind === 'wall' ? s.sel.index
       : s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id)?.wall ?? -1
       : s.sel?.kind === 'image' ? d.images.find(o => o.id === (s.sel as { id: string }).id)?.wall ?? -1 : -1;
-    if (i < 0) i = d.openings.find(o => o.type === 'porte')?.wall ?? d.openings.find(o => o.type === 'vitrine')?.wall ?? E.reduce((b, e) => (e.length > E[b].length ? e.i : b), 0);
+    if (i >= n) i = -1; // une cloison n'a pas de façade
+    const front = (t: string) => d.openings.find(o => o.type === t && o.wall < n)?.wall;
+    if (i < 0) i = front('porte') ?? front('vitrine') ?? E.reduce((b, e) => (e.length > E[b].length ? e.i : b), 0);
     const e = E[i], H = d.walls.height;
     const mid = new THREE.Vector3((e.a.x + e.b.x) / 2, H * 0.45, (e.a.y + e.b.y) / 2);
     const fov = THREE.MathUtils.degToRad(this.camera.fov), dist = Math.max((e.length * (forPhoto ? 0.56 : 0.62)) / Math.tan(fov / 2) / this.camera.aspect, 4);
@@ -235,7 +237,7 @@ export class View3D {
   /** Reconstruit la boutique si le sol, les murs ou les ouvertures ont changé. */
   private sync() {
     const d = this.ctx.store.doc;
-    const key = JSON.stringify([d.floor, d.walls, d.openings]);
+    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.openings]);
     if (key !== this.shopKey) {
       this.shopKey = key;
       if (this.shop) { this.scene.remove(this.shop.root); disposeTree(this.shop.root); }
@@ -254,7 +256,7 @@ export class View3D {
 
   /** Images posées : reconstruites seulement si elles, ou les murs, changent. */
   private syncImages(d: Project) {
-    const key = JSON.stringify([d.floor, d.walls, d.openings, d.images, d.assets.map(a => a.id)]);
+    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.openings, d.images, d.assets.map(a => a.id)]);
     if (key === this.imagesKey) return;
     this.imagesKey = key;
     if (this.images) { this.scene.remove(this.images.root); disposeTree(this.images.root); }
@@ -280,7 +282,7 @@ export class View3D {
     const on = this.cutOverride ?? this.ctx.ui.s.cutaway;
     let changed = false;
     for (const w of this.shop.walls) {
-      const low = on && cam.clone().sub(w.mid).dot(w.normal) > 0.3;
+      const low = on && !w.partition && cam.clone().sub(w.mid).dot(w.normal) > 0.3;
       if (low !== this.lowered.has(w.index) || force) {
         if (low) this.lowered.add(w.index); else this.lowered.delete(w.index);
         w.group.scale.y = low ? LOW_WALL / w.height : 1;
@@ -296,12 +298,13 @@ export class View3D {
     disposeTree(this.overlay); this.overlay.clear();
     const d = this.ctx.store.doc, sel = this.ctx.ui.s.sel;
     if (!d.floor || !sel || !this.shop) { this.needsRender = true; return; }
-    const E = edges(d.floor.points);
+    const E = wallSegs(d);
     const T = d.walls.thickness;
     const mat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
     const line = new THREE.LineBasicMaterial({ color: ACCENT });
     const addRect = (wall: number, u0: number, u1: number, h0: number, h1: number) => {
-      const e = E[wall], k = this.lowered.has(wall) ? LOW_WALL / d.walls.height : 1;
+      const e = E[wall]; if (!e) return;
+      const k = this.lowered.has(wall) ? LOW_WALL / e.H : 1;
       const g = new THREE.Group(); g.matrixAutoUpdate = false; g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
       for (const z of [0.004, -T - 0.004]) {
         const pl = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, (h1 - h0) * k), mat);
@@ -311,7 +314,7 @@ export class View3D {
       }
       this.overlay.add(g);
     };
-    if (sel.kind === 'wall' && E[sel.index]) addRect(sel.index, 0, E[sel.index].length, 0, d.walls.height);
+    if (sel.kind === 'wall' && E[sel.index]) addRect(sel.index, 0, E[sel.index].length, 0, E[sel.index].H);
     if (sel.kind === 'opening') {
       const o = d.openings.find(q => q.id === sel.id);
       if (o) addRect(o.wall, o.t - o.width / 2, o.t + o.width / 2, o.sill, o.sill + o.height);
@@ -335,12 +338,12 @@ export class View3D {
   }
   /** Position le long du mur i (m) d'un point 3D. */
   private tOnWall(i: number, p: THREE.Vector3) {
-    const e = edges(this.ctx.store.doc.floor!.points)[i];
+    const e = wallSegs(this.ctx.store.doc)[i];
     return (p.x - e.a.x) * e.u.x + (p.z - e.a.y) * e.u.y;
   }
   /** Intersection du rayon souris avec le plan intérieur du mur i. */
   private rayOnWall(e: PointerEvent, i: number) {
-    const ed = edges(this.ctx.store.doc.floor!.points)[i];
+    const ed = wallSegs(this.ctx.store.doc)[i];
     const r = this.renderer.domElement.getBoundingClientRect();
     this.raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(ed.n.x, 0, ed.n.y), new THREE.Vector3(ed.a.x, 0, ed.a.y));
@@ -411,13 +414,13 @@ export class View3D {
     const t = findFreeT(store.doc, i, width, this.tOnWall(i, hit.point));
     this.el.style.cursor = t === null ? 'not-allowed' : 'copy';
     if (t === null) { this.setGhost(null); return; }
-    const height = Math.min(def.height, store.doc.walls.height - def.sill - 0.05);
+    const height = Math.min(def.height, wallHeight(store.doc, i) - def.sill - 0.05);
     this.setGhost({ wall: i, o: { id: 'ghost', wall: i, type: ui.s.placeType, t, width, height, sill: def.sill } });
   }
   private setGhost(g: { wall: number; o: import('../model/types').Opening } | null) {
     if (this.ghost) { this.scene.remove(this.ghost); disposeTree(this.ghost); this.ghost = null; }
     if (g && this.ctx.store.doc.floor) {
-      const e = edges(this.ctx.store.doc.floor.points)[g.wall], T = this.ctx.store.doc.walls.thickness;
+      const e = wallSegs(this.ctx.store.doc)[g.wall], T = this.ctx.store.doc.walls.thickness;
       const grp = new THREE.Group(); grp.matrixAutoUpdate = false; grp.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
       const f = fixture(g.o, T);
       f.traverse(c => { const m = c as THREE.Mesh; if (m.isMesh) { m.material = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.55, depthTest: false }); m.renderOrder = 5; } });

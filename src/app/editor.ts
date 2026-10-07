@@ -11,7 +11,8 @@ import { saveProject } from './files';
 import { openPhotoDialog } from './photoDialog';
 import { helpButton, offerTour } from './guide/guide';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
-import { closeDraft, deleteSelection } from './actions';
+import { closeDraft, deleteSelection, stopPartitions } from './actions';
+import { wallSegs, wallStyleOf } from '../model/project';
 import { floorTints, wallTints } from '../view3d/materials';
 
 const TOOLS: { id: Tool; icon: string; label: string; soon?: boolean }[] = [
@@ -57,7 +58,7 @@ export class Editor {
 
     // --- Barre d'outils
     const toolBtns = TOOLS.map(t => h('button', { type: 'button', class: t.soon ? 'soon' : '', 'data-tool': t.id, title: t.soon ? 'Bientôt disponible' : t.label,
-      onclick: () => ui.set({ tool: t.id, sel: null, libraryOpen: t.id === 'mobilier' }) }, icon(t.icon), t.label));
+      onclick: () => ui.set({ tool: t.id, sel: null, libraryOpen: t.id === 'mobilier', ...(ui.s.partDraw ? { partDraw: false, draft: [], cursor: null } : {}) }) }, icon(t.icon), t.label));
     const rail = h('nav', { class: 'tr', 'data-tour': 'rail' }, toolBtns);
 
     // --- Vue
@@ -134,7 +135,7 @@ export class Editor {
     const { ui, store } = this.ctx, s = ui.s.sel, d = store.doc;
     if (!s) return;
     const n = d.floor?.points.length ?? 0;
-    if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || ((s.kind === 'wall' || s.kind === 'vertex') && s.index >= n)) ui.set({ sel: null });
+    if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || (s.kind === 'vertex' && s.index >= n) || (s.kind === 'wall' && s.index >= wallSegs(d).length)) ui.set({ sel: null });
     if (s.kind === 'image' && !d.images.some(i => i.id === s.id)) ui.set({ sel: null });
     if (s.kind === 'objects') {
       const ids = s.ids.filter(id => d.objects.some(o => o.id === id));
@@ -151,8 +152,8 @@ export class Editor {
     const faceCol = (w: WallStyle) => ext ? w.outColor ?? '' : w.color;
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
-      s.wallFace, d.walls.styles[selWall] && wallTints(faceMat(d.walls.styles[selWall])), op?.type, op?.style, op?.color, s.placeType,
-      s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side) : null,
+      s.wallFace, s.partDraw, s.tool === 'murs' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, s.placeType,
+      s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side + i.wall) : null,
       s.tool === 'images' && !s.sel ? d.images.map(i => i.id + i.target + i.wall) : null,
       s.tool === 'murs' && !s.sel && d.walls.styles.some(w => faceMat(w) !== faceMat(d.walls.styles[0]) || faceCol(w) !== faceCol(d.walls.styles[0]))]);
     if (key !== this.panelKey) {
@@ -249,7 +250,8 @@ export class Editor {
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
       else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('open_with', 'Glisser : déplacer')];
       else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
-      else parts = [H('left_click', 'Clic sur un mur : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
+      else if (s.tool === 'murs' && s.partDraw) parts = [H('left_click', s.draft.length ? 'Clic : fin de la cloison' : 'Clic : début de la cloison'), H(null, '45°', 'Maj'), H(null, 'terminer', 'Échap')];
+      else parts = [H('left_click', 'Clic sur un mur ou une cloison : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
       hint.replaceChildren(...parts);
     };
     ui.subscribe(refresh); store.subscribe(refresh); refresh();
@@ -272,7 +274,8 @@ export class Editor {
       if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); return; }
       if (e.key === 'Escape') {
         if (this.plan.cancelDrag() || this.view3d.objects.cancel()) return;
-        if (ui.s.libraryOpen) ui.set({ libraryOpen: false });
+        if (ui.s.partDraw) stopPartitions(this.ctx);
+        else if (ui.s.libraryOpen) ui.set({ libraryOpen: false });
         else if (ui.s.draft.length) ui.set({ draft: [] }); else ui.set({ sel: null });
         return;
       }

@@ -29,13 +29,13 @@ test('la visite est proposée une fois par partie, peut être refusée ou suivie
   await expect(offer).toContainText('« Murs »');
   await offer.getByRole('button', { name: 'Faire la visite' }).click();
   const bubble = page.getByRole('dialog', { name: 'Visite guidée · Murs' });
-  await expect(bubble).toContainText('1 / 5');
+  await expect(bubble).toContainText('1 / 6');
   await expect(page.locator('.tour-spot')).toBeVisible();
   await bubble.getByRole('button', { name: 'Suivant' }).click();
-  await expect(bubble).toContainText('2 / 5');
+  await expect(bubble).toContainText('2 / 6');
   await bubble.getByRole('button', { name: 'Précédent' }).click();
-  await expect(bubble).toContainText('1 / 5');
-  for (let i = 0; i < 4; i++) await bubble.getByRole('button', { name: 'Suivant' }).click();
+  await expect(bubble).toContainText('1 / 6');
+  for (let i = 0; i < 5; i++) await bubble.getByRole('button', { name: 'Suivant' }).click();
   await bubble.getByRole('button', { name: 'Terminer' }).click();
   await expect(bubble).toBeHidden();
 

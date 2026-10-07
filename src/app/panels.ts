@@ -2,10 +2,10 @@ import type { Ctx } from './state';
 import type { FloorMaterial, OpeningType, WallMaterial, WallStyle } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, measureRow, numberField, section, segmented, swatches, tiles, toast } from '../ui/components';
-import { area, edges, fmtArea, fmtM, isSimplePolygon, perimeter } from '../model/geometry';
-import { DEFAULT_OUT, MAX_SHOP_MSG, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, findFreeT, moveVertex, shopExtent, wallLength } from '../model/project';
+import { add, area, dist, edges, fmtArea, fmtM, isSimplePolygon, mul, norm, perimeter, sub } from '../model/geometry';
+import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
-import { clearFloor, closeDraft, deleteSelection, duplicateOpening } from './actions';
+import { clearFloor, closeDraft, deleteSelection, duplicateOpening, startPartitions, stopPartitions } from './actions';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
 import { thumbnail } from '../library/thumbs';
@@ -118,7 +118,9 @@ export function wallsPanel(ctx: Ctx): Panel {
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
   if (!store.doc.floor) return emptyPanel('border_outer', 'Murs', 'Les murs se créent tout seuls autour du sol. Commence par tracer le sol.', ctx);
+  if (ui.s.partDraw) return partitionDrawPanel(ctx);
   const sel = ui.s.sel?.kind === 'wall' ? ui.s.sel.index : -1;
+  if (sel >= contourCount(store.doc)) return partitionPanel(ctx, sel);
   const styleOf = (i: number) => store.doc.walls.styles[i];
   const target = () => sel >= 0 ? [sel] : store.doc.walls.styles.map((_, i) => i);
   // Face travaillée : intérieur de la boutique, ou extérieur (façade, pour attirer le client).
@@ -152,12 +154,75 @@ export function wallsPanel(ctx: Ctx): Panel {
       ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Façade'), ' de la vue 3D place la caméra devant.') : null,
       section((ext ? 'Façade' : 'Intérieur') + (sel >= 0 ? ' · matière' : ' · matière de tous les murs'), b(matTiles)),
       wallTints(matOf(ref())) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(ref()), c => setStyle({ color: c })))) : null,
+      sel < 0 ? section('Cloisons',
+        h('p', { class: 'p-help' }, 'Sépare des espaces dans ta boutique : réserve, cabines d’essayage, caisse… ',
+          store.doc.partitions.length ? `${store.doc.partitions.length} cloison${store.doc.partitions.length > 1 ? 's' : ''} pour l’instant : clique sur une cloison pour la régler.` : ''),
+        button('Tracer une cloison', 'add', 'btn-secondary', () => startPartitions(ctx))) : null,
     ], sel >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à tous les murs', 'format_paint', 'btn-secondary', () => {
       const s = { ...styleOf(sel) }; store.update(d => { d.walls.styles = d.walls.styles.map(() => ({ ...s })); }); toast('Style appliqué à tous les murs.');
     })) : undefined);
   const fin = finish(p, binds);
   // La couleur n'existe que pour les matières teintables : on reconstruit si besoin.
   return fin;
+}
+
+/* ---------- Cloisons ---------- */
+/** Tracé en cours : consignes et longueur du segment. */
+function partitionDrawPanel(ctx: Ctx): Panel {
+  const { ui } = ctx;
+  const len = () => { const a = ui.s.draft[0], c = ui.s.cursor; return a && c ? dist(a, c) : 0; };
+  const p = shell('add', 'Tracer une cloison', () => (ui.s.draft.length ? `Longueur : ${fmtM(len())}` : 'Clique au point de départ'), [
+    h('p', { class: 'p-help' }, h('b', null, 'Clique'), ' au point de départ sur le plan, puis ', h('b', null, 'clique'), ' au point d’arrivée. La cloison suivante part de là : continue pour fermer un espace.'),
+    h('p', { class: 'p-help' }, 'Les extrémités s’accrochent aux murs, aux autres cloisons et à la grille. ', h('b', null, 'Maj'), ' : angles de 45°.'),
+    h('p', { class: 'p-help' }, h('b', null, 'Échap'), ' ou double-clic : arrêter le tracé.'),
+    alert('info', 'Épaisseur', 'Une cloison a la même épaisseur que les murs (10 cm : le carton de 3 mm de la maquette).'),
+  ], h('div', { class: 'pn-f' }, button('Terminer le tracé', 'check', 'btn-primary btn-lg', () => stopPartitions(ctx))));
+  return finish(p, []);
+}
+
+/** Cloison choisie : longueur, hauteur, revêtement de chaque côté, suppression. */
+function partitionPanel(ctx: Ctx, wall: number): Panel {
+  const { store, ui } = ctx;
+  const binds: Bound[] = [];
+  const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
+  const j = wall - contourCount(store.doc);
+  const c = () => store.doc.partitions[j];
+  const side2 = ui.s.wallFace === 'ext';
+  const matOf = (st: WallStyle) => side2 ? st.outMaterial ?? st.material : st.material;
+  const colOf = (st: WallStyle) => side2 ? st.outColor ?? st.color : st.color;
+  const setStyle = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => {
+    const st = d.partitions[j].style;
+    if (!side2) Object.assign(st, patch);
+    else { if (patch.material) st.outMaterial = patch.material; if (patch.color) st.outColor = patch.color; }
+  });
+  const setLength = (l: number) => {
+    let ok = true;
+    store.update(d => {
+      const x = d.partitions[j], nb = add(x.a, mul(norm(sub(x.b, x.a)), l));
+      if (!insideFloor(d, nb)) { ok = false; return false; }
+      x.b = { x: Math.round(nb.x * 1000) / 1000, y: Math.round(nb.y * 1000) / 1000 };
+      clampAllOpenings(d);
+    });
+    if (!ok) toast('La cloison sortirait de la boutique.', undefined, 'warning');
+  };
+  const face = segmented<'int' | 'ext'>([{ value: 'int', label: 'Côté 1' }, { value: 'ext', label: 'Côté 2' }], () => ui.s.wallFace, v => ui.set({ wallFace: v }));
+  const matTiles = tiles((Object.keys(WALL_LABELS) as WallMaterial[]).map(m => ({ value: m, label: WALL_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('w', m, '#E9E3D8'), backgroundBlendMode: 'multiply' } }) })),
+    () => matOf(c().style), m => setStyle({ material: m }));
+  const p = shell('border_outer', `Cloison n° ${j + 1}`, () => (c() ? `Longueur ${fmtM(dist(c().a, c().b))}` : ''), [
+    section('Dimensions', h('div', { class: 'g2' },
+      b(numberField({ label: 'Longueur', unit: 'cm', min: MIN_PARTITION * 100, max: 1300, get: () => dist(c().a, c().b) * 100, set: v => setLength(v / 100),
+        title: 'La cloison s’allonge ou se raccourcit depuis son point de départ' })),
+      b(numberField({ label: 'Hauteur', unit: 'cm', min: 50, max: WALL_LIMITS.height[1] * 100, get: () => wallHeight(store.doc, wall) * 100,
+        set: v => store.update(d => { const x = d.partitions[j]; x.height = Math.abs(v / 100 - d.walls.height) < 1e-6 ? undefined : v / 100; clampAllOpenings(d); }),
+        title: 'Une cloison basse (comptoir, muret) peut être moins haute que les murs' })))),
+    h('p', { class: 'p-help' }, 'Sur le plan 2D, ', h('b', null, 'glisse'), ' la cloison ou ses extrémités pour la déplacer. Pour une porte ou un passage : outil ', h('b', null, 'Portes / fenêtres'), ', puis clic sur la cloison.'),
+    section('Côté à décorer', b(face), h('p', { class: 'p-help' }, 'Les côtés 1 et 2 sont repérés sur le plan 2D.')),
+    section((side2 ? 'Côté 2' : 'Côté 1') + ' · matière', b(matTiles)),
+    wallTints(matOf(c().style)) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(c().style), col => setStyle({ color: col })))) : null,
+  ], h('div', { class: 'pn-f two' },
+    button('Nouvelle cloison', 'add', 'btn-secondary', () => startPartitions(ctx)),
+    button('Supprimer', 'delete', 'btn-danger', () => deleteSelection(ctx))));
+  return finish(p, binds);
 }
 
 /* ---------- Portes et fenêtres ---------- */
@@ -187,7 +252,7 @@ export function openingsPanel(ctx: Ctx): Panel {
     store.update(d => {
       const x = d.openings.find(q => q.id === sel)!; fn(x);
       x.width = Math.max(0.3, Math.min(x.width, wallLength(d, x.wall) - 0.2));
-      x.height = Math.max(0.3, Math.min(x.height, d.walls.height - x.sill - 0.05));
+      x.height = Math.max(0.3, Math.min(x.height, wallHeight(d, x.wall) - x.sill - 0.05));
       const t = findFreeT(d, x.wall, x.width, x.t, x.id);
       if (t === null) { msg = 'Pas assez de place sur ce mur.'; return false; }
       x.t = t;
@@ -195,7 +260,7 @@ export function openingsPanel(ctx: Ctx): Panel {
     if (msg) toast(msg, undefined, 'warning');
   };
   const isDoor = () => o().type === 'porte';
-  const p = shell(TYPE_ICON[o().type], OPENING_DEFAULTS[o().type].label, () => `Sur le mur n° ${o().wall + 1} · ${fmtM(L())}`, [
+  const p = shell(TYPE_ICON[o().type], OPENING_DEFAULTS[o().type].label, () => `Sur ${isPartition(store.doc, o().wall) ? 'la' : 'le'} ${wallName(store.doc, o().wall)} · ${fmtM(L())}`, [
     section('Type', b(segmented((Object.keys(OPENING_DEFAULTS) as OpeningType[]).map(t => ({ value: t, label: OPENING_DEFAULTS[t].label })), () => o().type,
       t => { set(x => { x.type = t; x.sill = OPENING_DEFAULTS[t].sill; x.style = undefined; x.color = undefined; }); }))),
     section('Style', b(tiles(OPENING_STYLES[o().type].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(o().type, s.value, o().color ?? s.color) })),

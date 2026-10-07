@@ -38,6 +38,9 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Comment décorer l’extérieur de la boutique ?', a: 'Dans **Face à décorer**, choisis **Façade** : matière (bardage, pierre…) et couleur du côté rue.' },
     { q: 'Comment donner le même aspect à tous les murs ?', a: 'Règle un mur, puis **Appliquer à tous les murs**.' },
     { q: 'Comment mettre une affiche ou un papier peint ?', a: 'Avec l’outil **Images** : cadre ou tapisserie murale.' },
+    { q: 'Comment séparer des espaces (réserve, cabines, caisse) ?', a: 'Outil **Murs** › **Tracer une cloison**, puis sur le plan 2D : un clic au départ, un clic à l’arrivée. La cloison suivante part de là ; [[Échap]] pour arrêter.' },
+    { q: 'Comment modifier ou supprimer une cloison ?', a: 'Clique dessus (outil **Murs**) : longueur, hauteur, matière de chaque côté. Sur le plan, **glisse** la cloison ou ses extrémités. [[Suppr]] la supprime.' },
+    { q: 'Comment faire une cloison basse (muret, comptoir) ?', a: 'Clique sur la cloison et baisse sa **Hauteur** dans le panneau.' },
   ],
   ouvertures: [
     { q: 'Comment poser une porte, une fenêtre ou une vitrine ?', a: 'Outil **Portes / fenêtres** : choisis le type et le style, puis **clique sur un mur**.' },
@@ -45,6 +48,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'C’est quoi l’allège ?', a: 'La hauteur entre le sol et le bas de la fenêtre ou de la vitrine.' },
     { q: 'Comment changer la couleur du cadre ?', a: 'Clique sur l’ouverture › **Couleur de la menuiserie**.' },
     { q: 'Comment supprimer une ouverture ?', a: 'Clique dessus, puis [[Suppr]] ou le bouton **Supprimer**.' },
+    { q: 'Comment faire une ouverture sans porte entre deux espaces ?', a: 'Choisis **Porte**, style **Passage (sans porte)**, puis clique sur la cloison.' },
   ],
   mobilier: [
     { q: 'Comment ajouter un meuble ?', a: 'Ouvre la **bibliothèque**, choisis un meuble et **glisse-le** dans la boutique, ou clique sur **Placer dans la boutique**.' },

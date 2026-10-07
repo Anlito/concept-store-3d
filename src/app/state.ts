@@ -18,7 +18,7 @@ export interface UIState {
   view: View;
   tool: Tool;
   sel: Selection;
-  /** Tracé du sol en cours (avant fermeture). */
+  /** Tracé en cours : sol (avant fermeture) ou cloison (son point de départ). */
   draft: Vec2[];
   /** Position aimantée du curseur dans le plan (pour les cotes en direct). */
   cursor: Vec2 | null;
@@ -45,6 +45,8 @@ export interface UIState {
   libraryTab: 'base' | 'moi' | 'prof';
   /** Face des murs en cours de décoration : intérieur ou façade. */
   wallFace: 'int' | 'ext';
+  /** Tracé de cloisons en cours (outil Murs, plan 2D). */
+  partDraw: boolean;
   /** Style choisi pour les prochaines ouvertures posées, par type. */
   placeStyles: Partial<Record<OpeningType, string>>;
 }
@@ -70,7 +72,7 @@ export function defaultUI(): UIState {
   try { shadows = (localStorage.getItem('cs3d-shadows') ?? localStorage.getItem('cs3d-shadows-reco') ?? 'low') as ShadowQuality; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
-    grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', placeStyles: {},
+    grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', partDraw: false, placeStyles: {},
   };
 }
 

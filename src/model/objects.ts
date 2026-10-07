@@ -1,5 +1,6 @@
 import type { PlacedObject, Project, Vec2 } from './types';
-import { add, centroidOf, dot, edges, mul, pointInPolygon, snapTo, sub, v } from './geometry';
+import { add, centroidOf, dot, mul, pointInPolygon, snapTo, sub, v } from './geometry';
+import { wallSegs, type WallSeg } from './project';
 
 /* Géométrie des objets posés : emprise au sol, aimantation, accroche aux murs. */
 
@@ -19,16 +20,18 @@ export const hitObject = (o: PlacedObject, p: Vec2) => pointInPolygon(p, footpri
 export const normRot = (r: number) => ((Math.round(r * 100) / 100) % 360 + 360) % 360;
 
 /** Accroche un objet mural contre la face la plus proche d'un mur, dos au mur : face intérieure (il regarde
-    la boutique) ou face extérieure, la façade (il regarde la rue : enseigne, store, applique…). */
+    la boutique) ou face extérieure, la façade (il regarde la rue : enseigne, store, applique…).
+    Les deux côtés d'une cloison comptent comme des faces intérieures. */
 export function snapToWall(p: Project, o: PlacedObject, maxDist = 0.6, side?: 'in' | 'out'): boolean {
   if (!p.floor) return false;
   const T = p.walls.thickness;
-  let best: { d: number; e: ReturnType<typeof edges>[number]; t: number; out: boolean } | null = null;
-  for (const e of edges(p.floor.points)) {
+  let best: { d: number; e: WallSeg; t: number; out: boolean } | null = null;
+  for (const e of wallSegs(p)) {
     const rel = sub(v(o.x, o.y), e.a), t = dot(rel, e.u), s = dot(rel, e.n); // s < 0 : à l'intérieur
     if (t < -0.2 || t > e.length + 0.2) continue;
     for (const out of [false, true]) {
-      if (side && (side === 'out') !== out) continue;
+      if (side && (side === 'out') !== out && e.part < 0) continue;
+      if (side === 'out' && e.part >= 0) continue; // décor de rue : jamais sur une cloison
       const dd = Math.abs((out ? s - T : -s) - o.size.d / 2);
       if (dd < maxDist && (!best || dd < best.d)) best = { d: dd, e, t, out };
     }

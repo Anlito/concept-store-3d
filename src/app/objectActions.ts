@@ -2,6 +2,7 @@ import type { Ctx } from './state';
 import type { PlacedObject } from '../model/types';
 import { edges, uid, snapTo } from '../model/geometry';
 import { freeSpot, normRot, snapToWall } from '../model/objects';
+import { contourCount } from '../model/project';
 import { getItem, loadProto } from '../library/library';
 import { toast } from '../ui/components';
 import { findCreation } from './creations';
@@ -34,7 +35,8 @@ export async function addObject(ctx: Ctx, model: string) {
   if (item.elev !== undefined) o.z = item.elev;
   // Décor extérieur : devant la porte d'entrée (ou la vitrine), côté rue.
   if (item.cat === 'exterieur') {
-    const door = store.doc.openings.find(q => q.type === 'porte') ?? store.doc.openings.find(q => q.type === 'vitrine');
+    const n = contourCount(store.doc), front = (t: string) => store.doc.openings.find(q => q.type === t && q.wall < n); // pas sur une cloison
+    const door = front('porte') ?? front('vitrine');
     if (door && store.doc.floor) {
       const e = edges(store.doc.floor.points)[door.wall], off = item.mural ? 0.3 : store.doc.walls.thickness + 1;
       const side = item.mural ? 0 : door.width / 2 + 0.6; // un chevalet se pose à côté de la porte, pas devant

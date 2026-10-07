@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ImageAsset, Project } from '../model/types';
-import { bounds, edges } from '../model/geometry';
+import { bounds } from '../model/geometry';
+import { wallSegs } from '../model/project';
 import { wallMatrix, wallRects, type Pick } from './build';
 
 /* Images posées dans la boutique, en 3D seulement : cadre, tapisserie (murale), tapis (au sol), vitrine (autocollant).
@@ -25,7 +26,7 @@ export function buildImages(p: Project, onTexture: () => void): BuiltImages {
   const root = new THREE.Group(); root.name = 'images';
   const byWall = new Map<number, THREE.Group>(), pickables: THREE.Object3D[] = [];
   if (!p.floor) return { root, byWall, pickables };
-  const E = edges(p.floor.points), H = p.walls.height;
+  const E = wallSegs(p);
   for (const im of p.images) {
     const a = p.assets.find(x => x.id === im.asset); if (!a) continue;
     const ratio = a.h / a.w;
@@ -62,6 +63,7 @@ export function buildImages(p: Project, onTexture: () => void): BuiltImages {
 
     // Images murales
     const e = E[im.wall]; if (!e) continue;
+    const H = e.H;
     const g = new THREE.Group(); g.matrixAutoUpdate = false; g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
     // Façade : face extérieure (z = −épaisseur), image retournée pour être lue depuis la rue.
     const ext = im.side === 'ext', T = p.walls.thickness;

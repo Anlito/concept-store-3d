@@ -1,23 +1,27 @@
 import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
-import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, snapTo, sub, v, area, cross } from '../model/geometry';
-import { OPENING_DEFAULTS, findFreeT, insertVertex, moveVertex, openingStyle, shopExtent, wallLength } from '../model/project';
-import { closeDraft, placeOpening, selectPick } from "../app/actions";
+import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, projectOnSegment, snapTo, sub, v, area, cross } from '../model/geometry';
+import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, insertVertex, insideFloor, moveVertex, openingStyle, shopExtent, wallLength, wallSegs } from '../model/project';
+import { closeDraft, createPartition, placeOpening, selectPick, stopPartitions } from "../app/actions";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
 import { getItem } from "../library/library";
 import { ICONS } from "../ui/icons.gen";
+import { toast } from "../ui/components";
 
 /* Plan 2D vu de dessus (SVG). Écran = (m − origine) × k, k en pixels par mètre. */
 
 const A = '#BF4E36', INK = '#22211F', BG = '#FBFAF8', WARN = '#D99A2B';
 const SNAP_PX = 12, ALIGN_PX = 8;
+const r3 = (x: number) => Math.round(x * 1000) / 1000;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-interface Snapped { p: Vec2; kind: 'point' | 'grid' | 'free'; guides: { x?: number; y?: number } }
+interface Snapped { p: Vec2; kind: 'point' | 'wall' | 'grid' | 'free'; guides: { x?: number; y?: number } }
 type Drag =
   | { kind: 'pan'; x: number; y: number; ox: number; oy: number; moved: boolean; click: boolean }
   | { kind: 'vertex'; index: number; moved: boolean }
+  | { kind: 'pend'; j: number; end: 'a' | 'b' }
+  | { kind: 'pmove'; j: number; start: Vec2; a0: Vec2; b0: Vec2 }
   | { kind: "opening"; id: string; dt: number }
   | { kind: "objects"; start: Vec2; orig: Map<string, Vec2>; primary: string }
   | { kind: "rotate"; c: Vec2; a0: number; orig: Map<string, number> }
@@ -87,6 +91,15 @@ export class Plan2D {
   }
 
   private get drawing() { const s = this.ctx.ui.s; return s.tool === 'sol' && !this.ctx.store.doc.floor; }
+  /** Tracé de cloisons en cours (outil Murs). */
+  private get partDrawing() { const s = this.ctx.ui.s; return s.partDraw && s.tool === 'murs' && !!this.ctx.store.doc.floor; }
+  /** Rang de la cloison choisie avec l'outil Murs, ou −1. */
+  private get selPartition() {
+    const s = this.ctx.ui.s, d = this.ctx.store.doc;
+    if (s.tool !== 'murs' || s.sel?.kind !== 'wall') return -1;
+    const j = s.sel.index - contourCount(d);
+    return j >= 0 && j < d.partitions.length ? j : -1;
+  }
 
   /* ---------- Aimantation ---------- */
   private refs(excludeVertex?: number): Vec2[] {
@@ -117,15 +130,60 @@ export class Plan2D {
     return { p: q, kind: 'grid', guides };
   }
 
+  /** Aimantation d'une extrémité de cloison : points (coins, bouts de cloisons), face intérieure des murs,
+      axe des autres cloisons (raccord en T), puis grille. `skip` : extrémité en cours de déplacement. */
+  private snapPart(p: Vec2, opts: { from?: Vec2; shift?: boolean; skip?: { j: number; end?: 'a' | 'b' } } = {}): Snapped {
+    const s = this.ctx.ui.s, d = this.ctx.store.doc;
+    if (opts.shift && opts.from) return this.snap(p, opts);
+    if (!s.snap) return { p: v(snapTo(p.x, 0.01), snapTo(p.y, 0.01)), kind: 'free', guides: {} };
+    const sk = opts.skip;
+    const refs: Vec2[] = [...(d.floor?.points ?? []), ...s.draft];
+    d.partitions.forEach((c, j) => {
+      if (!sk || sk.j !== j || (sk.end && sk.end !== 'a')) refs.push(c.a);
+      if (!sk || sk.j !== j || (sk.end && sk.end !== 'b')) refs.push(c.b);
+    });
+    let best: Vec2 | null = null, bd = SNAP_PX / this.k;
+    for (const r of refs) { const dd = dist(r, p); if (dd < bd) { bd = dd; best = r; } }
+    if (best) return { p: { ...best }, kind: 'point', guides: {} };
+    // Point de grille, puis ramené sur la ligne la plus proche (face intérieure d'un mur, axe d'une cloison).
+    const g = v(snapTo(p.x, s.step), snapTo(p.y, s.step));
+    const lines: [Vec2, Vec2][] = d.floor ? edges(d.floor.points).map(e => [e.a, e.b]) : [];
+    d.partitions.forEach((c, j) => { if (!sk || sk.j !== j) lines.push([c.a, c.b]); });
+    let line: { q: Vec2; d: number } | null = null;
+    for (const [a, b] of lines) {
+      const pr = projectOnSegment(p, a, b);
+      if (pr.d < SNAP_PX / this.k && (!line || pr.d < line.d)) {
+        const pg = projectOnSegment(g, a, b); // le point de grille projeté garde des cotes rondes le long d'un mur droit
+        line = { q: v(snapTo(pg.q.x, 0.01), snapTo(pg.q.y, 0.01)), d: pr.d };
+      }
+    }
+    if (line) return { p: line.q, kind: 'wall', guides: {} };
+    const guides: Snapped['guides'] = {};
+    let ax = ALIGN_PX / this.k, ay = ALIGN_PX / this.k;
+    for (const r of refs) {
+      if (Math.abs(r.x - p.x) < ax) { ax = Math.abs(r.x - p.x); g.x = r.x; guides.x = r.x; }
+      if (Math.abs(r.y - p.y) < ay) { ay = Math.abs(r.y - p.y); g.y = r.y; guides.y = r.y; }
+    }
+    return { p: g, kind: 'grid', guides };
+  }
+
   /* ---------- Tests de survol ---------- */
+  /** Mur du contour ou cloison sous le point : numéro et position t le long de sa face de départ. */
   private hitWall(p: Vec2) {
     const d = this.ctx.store.doc; if (!d.floor) return null;
-    const T = d.walls.thickness, tol = 6 / this.k;
-    for (const e of edges(d.floor.points)) {
+    const tol = 6 / this.k;
+    // Les cloisons d'abord : leurs bouts touchent les murs.
+    for (const e of [...wallSegs(d)].reverse()) {
       const t = dot(sub(p, e.a), e.u), s = dot(sub(p, e.a), e.n);
-      if (t >= -tol && t <= e.length + tol && s >= -tol && s <= T + tol) return { wall: e.i, t };
+      if (t >= -tol && t <= e.length + tol && s >= -tol && s <= e.T + tol) return { wall: e.i, t };
     }
     return null;
+  }
+  /** Extrémité de la cloison choisie sous le point. */
+  private hitPartEnd(p: Vec2): 'a' | 'b' | null {
+    const j = this.selPartition; if (j < 0) return null;
+    const c = this.ctx.store.doc.partitions[j], r = 11 / this.k;
+    return dist(c.a, p) < r ? 'a' : dist(c.b, p) < r ? 'b' : null;
   }
   private hitOpening(p: Vec2) {
     const w = this.hitWall(p); if (!w) return null;
@@ -164,6 +222,27 @@ export class Plan2D {
       const pan = (click: boolean) => { this.drag = { kind: 'pan', x: e.clientX, y: e.clientY, ox: this.ox, oy: this.oy, moved: false, click }; };
       if (e.button === 1 || e.button === 2 || this.space) { pan(false); return; }
       if (e.button !== 0) return;
+      if (this.partDrawing) {
+        const last = s.draft[0];
+        const sn = this.snapPart(p, { from: last, shift: e.shiftKey });
+        if (e.detail >= 2) return; // le double-clic termine le tracé (dblclick)
+        if (!last) {
+          if (insideFloor(store.doc, sn.p)) ui.set({ draft: [sn.p], cursor: sn.p });
+          else toast('Commence la cloison à l’intérieur de la boutique.', undefined, 'warning');
+          return;
+        }
+        if (dist(last, sn.p) < MIN_PARTITION) return;
+        if (createPartition(this.ctx, last, sn.p)) ui.set({ draft: [sn.p], cursor: sn.p }); // la suivante part d'ici
+        return;
+      }
+      // Cloison choisie : glisser une extrémité, ou toute la cloison.
+      const pe = this.hitPartEnd(p), pj = this.selPartition;
+      if (pe) { store.begin(); this.drag = { kind: 'pend', j: pj, end: pe }; return; }
+      if (pj >= 0 && !this.hitOpening(p) && this.hitWall(p)?.wall === contourCount(store.doc) + pj) {
+        const c = store.doc.partitions[pj];
+        store.begin(); this.drag = { kind: 'pmove', j: pj, start: p, a0: { ...c.a }, b0: { ...c.b } };
+        return;
+      }
       if (this.drawing) {
         const last = s.draft[s.draft.length - 1];
         const sn = this.snap(p, { from: last, shift: e.shiftKey });
@@ -198,7 +277,7 @@ export class Plan2D {
       const op = this.hitOpening(p);
       if (op) {
         selectPick(this.ctx, { kind: 'opening', id: op.id });
-        const e0 = edges(store.doc.floor!.points)[op.wall];
+        const e0 = wallSegs(store.doc)[op.wall];
         store.begin();
         this.drag = { kind: 'opening', id: op.id, dt: op.t - dot(sub(p, e0.a), e0.u) };
         return;
@@ -214,7 +293,7 @@ export class Plan2D {
       pan(true);
     });
 
-    svg.addEventListener('dblclick', () => { if (this.drawing && this.ctx.ui.s.floorShape === 'libre' && this.ctx.ui.s.draft.length >= 3) closeDraft(this.ctx); });
+    svg.addEventListener('dblclick', () => { if (this.partDrawing) { stopPartitions(this.ctx); return; } if (this.drawing && this.ctx.ui.s.floorShape === 'libre' && this.ctx.ui.s.draft.length >= 3) closeDraft(this.ctx); });
 
     svg.addEventListener('pointermove', e => {
       const p = this.toPlan(e);
@@ -233,9 +312,24 @@ export class Plan2D {
         d.moved = true; this.schedule(); return;
       }
       if (d?.kind === "objects" || d?.kind === "rotate" || d?.kind === "band") { this.objectDrag(d, p, e.shiftKey); return; }
+      if (d?.kind === 'pend') {
+        const c0 = store.doc.partitions[d.j]; if (!c0) return;
+        const other = d.end === 'a' ? c0.b : c0.a;
+        const sn = this.snapPart(p, { from: other, shift: e.shiftKey, skip: { j: d.j, end: d.end } }); this.snapInfo = sn;
+        if (insideFloor(store.doc, sn.p) && dist(sn.p, other) >= MIN_PARTITION)
+          store.live(doc => { doc.partitions[d.j][d.end] = { x: r3(sn.p.x), y: r3(sn.p.y) }; clampAllOpenings(doc); });
+        this.schedule(); return;
+      }
+      if (d?.kind === 'pmove') {
+        let dx = p.x - d.start.x, dy = p.y - d.start.y;
+        if (s.snap) { dx = snapTo(d.a0.x + dx, s.step) - d.a0.x; dy = snapTo(d.a0.y + dy, s.step) - d.a0.y; }
+        const a = v(r3(d.a0.x + dx), r3(d.a0.y + dy)), b = v(r3(d.b0.x + dx), r3(d.b0.y + dy));
+        if (insideFloor(store.doc, a) && insideFloor(store.doc, b)) store.live(doc => { doc.partitions[d.j].a = a; doc.partitions[d.j].b = b; });
+        return;
+      }
       if (d?.kind === "opening") {
         const o = store.doc.openings.find(q => q.id === d.id); if (!o) return;
-        const e0 = edges(store.doc.floor!.points)[o.wall];
+        const e0 = wallSegs(store.doc)[o.wall];
         let t = dot(sub(p, e0.a), e0.u) + d.dt;
         if (s.snap) t = snapTo(t - o.width / 2, s.step) + o.width / 2;
         const ft = findFreeT(store.doc, o.wall, o.width, t, o.id);
@@ -250,6 +344,12 @@ export class Plan2D {
         svg.style.cursor = 'crosshair';
         this.schedule(); return;
       }
+      if (this.partDrawing) {
+        this.snapInfo = this.snapPart(p, { from: s.draft[0], shift: e.shiftKey });
+        ui.set({ cursor: this.snapInfo.p });
+        svg.style.cursor = 'crosshair';
+        this.schedule(); return;
+      }
       this.snapInfo = null;
       this.hoverGhost = null; this.hoverMid = null;
       let cursor = '';
@@ -257,6 +357,8 @@ export class Plan2D {
         if (this.hitVertex(p) >= 0) cursor = 'move';
         else { const mi = this.hitMid(p); if (mi >= 0) { this.hoverMid = mi; cursor = 'copy'; } }
       }
+      if (!cursor && this.hitPartEnd(p)) cursor = 'move';
+      if (!cursor && this.selPartition >= 0 && this.hitWall(p)?.wall === contourCount(store.doc) + this.selPartition && !this.hitOpening(p)) cursor = 'move';
       if (!cursor && this.rotHandleHit(p)) cursor = "alias";
       if (!cursor && this.topObject(p)) cursor = this.topObject(p)!.locked ? "not-allowed" : "move";
       if (!cursor) {
@@ -292,7 +394,7 @@ export class Plan2D {
     };
     svg.addEventListener('pointerup', up);
     svg.addEventListener('pointercancel', up);
-    svg.addEventListener('pointerleave', () => { if (this.drawing) this.ctx.ui.set({ cursor: null }); this.hoverGhost = null; this.schedule(); });
+    svg.addEventListener('pointerleave', () => { if (this.drawing || this.partDrawing) this.ctx.ui.set({ cursor: null }); this.hoverGhost = null; this.schedule(); });
   }
 
   /* ---------- Objets ---------- */
@@ -398,9 +500,13 @@ export class Plan2D {
       const pts = d.floor.points, T = d.walls.thickness, outer = offsetPolygon(pts, T), E = edges(pts);
       o.push(`<path d="${path(pts)}" style="fill:#F3EEE6"/>`);
       o.push(`<path d="${path(outer)} ${path(pts)}" style="fill:#3A3936;fill-rule:evenodd" data-testid="walls"/>`);
+      // Cloisons (même trait que les murs)
+      const S = wallSegs(d), parts = S.filter(w => w.part >= 0);
+      const prect = (w: typeof S[number]) => [w.a, w.b, add(w.b, mul(w.n, w.T)), add(w.a, mul(w.n, w.T))];
+      for (const w of parts) o.push(`<path d="${path(prect(w))}" style="fill:#3A3936" data-partition="${w.part}"/>`);
       // Ouvertures
       const opening = (op: Opening, ghost = false) => {
-        const e = E[op.wall]; if (!e) return;
+        const e = S[op.wall]; if (!e) return;
         const lo = op.t - op.width / 2, hi = op.t + op.width / 2;
         const i0 = add(e.a, mul(e.u, lo)), i1 = add(e.a, mul(e.u, hi)), o0 = add(i0, mul(e.n, T)), o1 = add(i1, mul(e.n, T));
         const col = ghost ? A : INK;
@@ -415,7 +521,8 @@ export class Plan2D {
             const sweep = cross(sub(end, a), sub(b, a)) > 0 ? 1 : 0;
             o.push(`<path d="M${X(end.x).toFixed(1)} ${Y(end.y).toFixed(1)} A${(r * k).toFixed(1)} ${(r * k).toFixed(1)} 0 0 ${sweep} ${X(b.x).toFixed(1)} ${Y(b.y).toFixed(1)}" style="fill:none;stroke:${col};stroke-width:1.2;stroke-dasharray:4 3"/>`);
           };
-          if (st === 'double') { const m = add(e.a, mul(e.u, op.t)); leaf(i0, m, op.width / 2); leaf(i1, m, op.width / 2); }
+          if (st === 'passage') { /* ouverture nue : pas de vantail */ }
+          else if (st === 'double') { const m = add(e.a, mul(e.u, op.t)); leaf(i0, m, op.width / 2); leaf(i1, m, op.width / 2); }
           else if (st === 'coulissante') { // deux panneaux décalés dans l'épaisseur
             const p1 = mul(e.n, T * 0.35), p2 = mul(e.n, T * 0.65), mid = add(e.a, mul(e.u, op.t + op.width * 0.08)), mid2 = add(e.a, mul(e.u, op.t - op.width * 0.08));
             line(add(i0, p1), add(mid, p1), `stroke:${col};stroke-width:2.5`); line(add(mid2, p2), add(i1, p2), `stroke:${col};stroke-width:2.5`);
@@ -462,12 +569,24 @@ export class Plan2D {
         const e = E[sel.index], ob = outer[sel.index], oe = outer[(sel.index + 1) % pts.length];
         o.push(`<path d="${path([e.a, e.b, oe, ob])}" style="fill:rgba(191,78,54,.35);stroke:${A};stroke-width:2.5;stroke-linejoin:round"/>`);
       }
+      if (sel?.kind === 'wall' && S[sel.index]?.part >= 0) {
+        const w = S[sel.index], at = (u: number, sd: number) => add(add(w.a, mul(w.u, u)), mul(w.n, sd));
+        o.push(`<path d="${path(prect(w))}" style="fill:rgba(191,78,54,.55);stroke:${A};stroke-width:2.5;stroke-linejoin:round"/>`);
+        // Repères des deux côtés (panneau : « Côté 1 », « Côté 2 »)
+        const um = Math.min(w.length * 0.2, 0.6), c1 = at(um, -16 / k), c2 = at(um, w.T + 16 / k); // près du départ : le milieu porte la cote
+        for (const [q, lab] of [[c1, '1'], [c2, '2']] as const) {
+          o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="10" style="fill:#fff;stroke:${A};stroke-width:2"/>`);
+          text(X(q.x), Y(q.y) + 0.5, lab, `font-size:12px;font-weight:800;fill:${A}`);
+        }
+        if (s.tool === 'murs') for (const q of [d.partitions[w.part].a, d.partitions[w.part].b])
+          o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="7" style="fill:#fff;stroke:${INK};stroke-width:3" data-partition-end="1"/>`);
+      }
       if (sel?.kind === 'opening') {
-        const op = d.openings.find(q => q.id === sel.id), e = op && E[op.wall];
+        const op = d.openings.find(q => q.id === sel.id), e = op && S[op.wall];
         if (op && e) {
           const lo = op.t - op.width / 2, hi = op.t + op.width / 2, pad = 4 / k;
           const i0 = add(add(e.a, mul(e.u, lo - pad)), mul(e.n, -pad)), i1 = add(add(e.a, mul(e.u, hi + pad)), mul(e.n, -pad));
-          o.push(`<path d="${path([i0, i1, add(i1, mul(e.n, T + 2 * pad)), add(i0, mul(e.n, T + 2 * pad))])}" style="fill:none;stroke:${A};stroke-width:2.5;stroke-linejoin:round"/>`);
+          o.push(`<path d="${path([i0, i1, add(i1, mul(e.n, e.T + 2 * pad)), add(i0, mul(e.n, e.T + 2 * pad))])}" style="fill:none;stroke:${A};stroke-width:2.5;stroke-linejoin:round"/>`);
           // Cotes de position : distance aux deux angles du mur
           if (s.dims) {
             const off = -0.45, pa = add(e.a, mul(e.n, off)), pl = add(add(e.a, mul(e.u, lo)), mul(e.n, off)), ph = add(add(e.a, mul(e.u, hi)), mul(e.n, off)), pb = add(e.b, mul(e.n, off));
@@ -480,6 +599,12 @@ export class Plan2D {
         }
       }
 
+      // Longueur des cloisons, écrite sur la cloison
+      if (s.dims) for (const w of parts) {
+        if (w.length * k < 50) continue;
+        const m = add(add(w.a, mul(w.u, w.length / 2)), mul(w.n, w.T + 15 / k)); // à côté de la cloison, pour ne pas cacher ses ouvertures
+        pill(X(m.x), Y(m.y), fmtM(w.length), BG, '#4A4945', 12, readable(w.a, w.b));
+      }
       // Cotes des murs (longueur intérieure)
       if (s.dims) {
         E.forEach(e => {
@@ -514,6 +639,31 @@ export class Plan2D {
       }
     }
 
+    // Cloison en cours de tracé
+    if (this.partDrawing && d.floor) {
+      const st = s.draft[0], cur = s.cursor, T = d.walls.thickness;
+      if (st && cur && dist(st, cur) > 0.01) {
+        const u = norm(sub(cur, st)), n = v(u.y, -u.x), h = mul(n, T / 2);
+        const ok = insideFloor(d, cur) && dist(st, cur) >= MIN_PARTITION, col = ok ? A : WARN;
+        o.push(`<path d="${path([sub(st, h), sub(cur, h), add(cur, h), add(st, h)])}" style="fill:${col};opacity:.85"/>`);
+        const m = add(mul(add(st, cur), 0.5), mul(n, 26 / k));
+        pill(X(m.x), Y(m.y), fmtM(dist(st, cur)), col, '#fff', 16, readable(st, cur));
+      }
+      if (st) o.push(`<circle cx="${X(st.x).toFixed(1)}" cy="${Y(st.y).toFixed(1)}" r="8" style="fill:#fff;stroke:${A};stroke-width:3"/>`);
+      if (cur) {
+        const sn = this.snapInfo;
+        if (sn?.guides.x !== undefined) o.push(`<line x1="${X(sn.guides.x).toFixed(1)}" y1="0" x2="${X(sn.guides.x).toFixed(1)}" y2="${H}" style="stroke:${A};stroke-width:1;stroke-dasharray:6 6;opacity:.45"/>`);
+        if (sn?.guides.y !== undefined) o.push(`<line x1="0" y1="${Y(sn.guides.y).toFixed(1)}" x2="${W}" y2="${Y(sn.guides.y).toFixed(1)}" style="stroke:${A};stroke-width:1;stroke-dasharray:6 6;opacity:.45"/>`);
+        const cx = X(cur.x), cy = Y(cur.y);
+        o.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="14" style="fill:rgba(191,78,54,.14);stroke:${A};stroke-width:2"/>`);
+        o.push(`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" style="fill:${A}"/>`);
+        if (sn && (sn.kind === 'point' || sn.kind === 'wall')) {
+          const label = sn.kind === 'point' ? 'Sur un point' : 'Contre le mur';
+          o.push(`<rect x="${cx - 56}" y="${cy - 56}" width="112" height="28" rx="8" style="fill:${INK}"/>`);
+          text(cx, cy - 42, label, 'font-size:13px;font-weight:800;fill:#fff');
+        }
+      }
+    }
     // Tracé en cours
     if (this.drawing) {
       const dr = s.draft, cur = s.cursor;

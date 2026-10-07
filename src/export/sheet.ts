@@ -1,5 +1,6 @@
 import type { Project, Vec2 } from '../model/types';
 import { add, bounds, dot, edges, mul, offsetPolygon, sub } from '../model/geometry';
+import { wallSegs } from '../model/project';
 
 /* Mise en page de la feuille A3 paysage (420 × 297 mm), en millimètres, origine en haut à gauche.
    La même liste de tracés sert à l'aperçu (SVG) et au PDF (jsPDF) : ce qu'on voit est ce qu'on imprime.
@@ -56,7 +57,8 @@ export const ZONE_SIZE = { w: ZONE.x1 - ZONE.x0, h: ZONE.y1 - ZONE.y0 };
 function oriented(p: Project): { p: Project; rotated: boolean } {
   const b = bounds(p.floor!.points);
   if (b.h <= b.w + 1e-9) return { p, rotated: false };
-  return { p: { ...p, floor: { ...p.floor!, points: p.floor!.points.map(q => ({ x: -q.y, y: q.x })) } }, rotated: true };
+  const r = (q: Vec2) => ({ x: -q.y, y: q.x });
+  return { p: { ...p, floor: { ...p.floor!, points: p.floor!.points.map(r) }, partitions: p.partitions.map(c => ({ ...c, a: r(c.a), b: r(c.b) })) }, rotated: true };
 }
 
 /** Taille du plan (murs compris) pour une échelle donnée, et si elle tient dans la zone. */
@@ -136,6 +138,30 @@ export function layoutSheet(p0: Project, o: SheetOptions): Layout {
       T(M.x, M.y, 3.2, fmtLen(e.length), { align: 'center', rot, plan: true, bold: true });
     }
   });
+
+  // ---- Cloisons : deux faces et deux chants, coupés aux ouvertures comme les murs
+  for (const e of wallSegs(p).filter(w => w.part >= 0)) {
+    const ops = p.openings.filter(q => q.wall === e.i).sort((a, c) => a.t - c.t);
+    const at = (u: number, s: number) => add(add(e.a, mul(e.u, u)), mul(e.n, s));
+    for (const s of [0, Tk]) {
+      let cur = 0;
+      for (const op of ops) {
+        const lo = op.t - op.width / 2, hi = op.t + op.width / 2;
+        if (lo > cur) seg(at(cur, s), at(lo, s));
+        seg(at(lo, s), at(hi, s), WALL_W, op.type === 'porte' ? DASH.porte : DASH.fenetre);
+        cur = hi;
+      }
+      if (e.length > cur) seg(at(cur, s), at(e.length, s));
+    }
+    for (const u of [0, e.length]) seg(at(u, 0), at(u, Tk));
+    for (const op of ops) for (const u of [op.t - op.width / 2, op.t + op.width / 2]) seg(at(u, 0), at(u, Tk), THIN_W);
+    if (o.cotes && e.length * k > 12) { // longueur de la cloison, écrite le long de son côté 1
+      let rot = (Math.atan2(e.u.y, e.u.x) * 180) / Math.PI;
+      if (rot > 90) rot -= 180; if (rot <= -90) rot += 180;
+      const M = P(at(e.length / 2, -4 / k));
+      T(M.x, M.y, 2.8, fmtLen(e.length), { align: 'center', rot, plan: true });
+    }
+  }
 
   // ---- Cadre et séparations
   prims.push({ t: 'rect', x: 10, y: 10, w: 400, h: 277, lw: 0.35, stroke: true });

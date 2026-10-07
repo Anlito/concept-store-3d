@@ -1,5 +1,5 @@
-import type { Floor, Opening, OpeningType, Project, Vec2, WallStyle } from './types';
-import { bounds, dist, edges, normalizeWinding, projectOnSegment, round3, uid } from './geometry';
+import type { Floor, Opening, OpeningType, Partition, Project, Vec2, WallStyle } from './types';
+import { add, bounds, dist, edges, mul, norm, normalizeWinding, pointInPolygon, projectOnSegment, round3, sub, uid, v, type Edge } from './geometry';
 
 export const DEFAULT_WALL: WallStyle = { material: 'peinture', color: '#FCFBF9' };
 /** Façade par défaut : enduit clair. */
@@ -20,6 +20,7 @@ export function newProject(name = 'Ma boutique'): Project {
     team: { name: '', members: '', klass: '' },
     floor: null,
     walls: { height: 3, thickness: 0.1, styles: [] }, // 10 cm = carton de 3 mm à l'échelle 1 m = 3 cm
+    partitions: [],
     openings: [],
     objects: [],
     creations: [],
@@ -43,10 +44,60 @@ export function sampleProject(): Project {
   return p;
 }
 
-export const wallLength = (p: Project, i: number) => {
-  const pts = p.floor!.points;
-  return dist(pts[i], pts[(i + 1) % pts.length]);
-};
+/* ---------- Murs et cloisons ----------
+   Les murs du contour (n° 0 à n − 1, un par côté du sol) et les cloisons (n° n et suivants) se manipulent
+   de la même façon : un segment avec une face de départ (a → b, direction u), et l'épaisseur T vers n.
+   Pour un mur du contour, la face de départ est la face intérieure et n pointe vers la rue ; pour une cloison,
+   c'est le côté 1, décalé d'une demi-épaisseur depuis son axe. */
+export interface WallSeg extends Edge {
+  T: number;
+  H: number;
+  /** Rang de la cloison, ou −1 pour un mur du contour. */
+  part: number;
+}
+export const contourCount = (p: Project) => p.floor?.points.length ?? 0;
+export function wallSegs(p: Project): WallSeg[] {
+  if (!p.floor) return [];
+  const T = p.walls.thickness, H = p.walls.height, n = p.floor.points.length;
+  const segs: WallSeg[] = edges(p.floor.points).map(e => ({ ...e, T, H, part: -1 }));
+  p.partitions.forEach((c, j) => {
+    const u = norm(sub(c.b, c.a)), nn = v(u.y, -u.x), off = mul(nn, -T / 2);
+    segs.push({ i: n + j, a: add(c.a, off), b: add(c.b, off), u, n: nn, length: dist(c.a, c.b), T, H: c.height ?? H, part: j });
+  });
+  return segs;
+}
+export const wallSeg = (p: Project, i: number): WallSeg | undefined => wallSegs(p)[i];
+export const wallLength = (p: Project, i: number) => wallSeg(p, i)?.length ?? 0;
+export const wallHeight = (p: Project, i: number) => wallSeg(p, i)?.H ?? p.walls.height;
+export const isPartition = (p: Project, i: number) => i >= contourCount(p);
+/** Revêtement d'un mur ou d'une cloison (objet du document, modifiable). */
+export const wallStyleOf = (p: Project, i: number): WallStyle | undefined => (i < contourCount(p) ? p.walls.styles[i] : p.partitions[i - contourCount(p)]?.style);
+/** « mur n° 3 » ou « cloison n° 1 ». */
+export const wallName = (p: Project, i: number) => (isPartition(p, i) ? `cloison n° ${i - contourCount(p) + 1}` : `mur n° ${i + 1}`);
+
+/** Longueur minimale d'une cloison (m). */
+export const MIN_PARTITION = 0.3;
+/** Point dans le sol (ou sur son bord, contre la face intérieure d'un mur). */
+export function insideFloor(p: Project, q: Vec2) {
+  if (!p.floor) return false;
+  return pointInPolygon(q, p.floor.points) || edges(p.floor.points).some(e => projectOnSegment(q, e.a, e.b).d < 0.02);
+}
+export function addPartition(p: Project, a: Vec2, b: Vec2): Partition | null {
+  if (dist(a, b) < MIN_PARTITION || !insideFloor(p, a) || !insideFloor(p, b)) return null;
+  const c: Partition = { id: uid(), a: { x: round3(a.x), y: round3(a.y) }, b: { x: round3(b.x), y: round3(b.y) }, style: { ...DEFAULT_WALL } };
+  p.partitions.push(c);
+  return c;
+}
+/** Retire la cloison j, avec ses ouvertures et ses images ; renumérote les suivantes. */
+export function deletePartition(p: Project, j: number) {
+  const w = contourCount(p) + j;
+  p.partitions.splice(j, 1);
+  p.openings = p.openings.filter(o => o.wall !== w);
+  p.images = p.images.filter(im => im.target === 'tapis' || im.wall !== w);
+  for (const o of p.openings) if (o.wall > w) o.wall--;
+  for (const im of p.images) if (im.target !== 'tapis' && im.wall > w) im.wall--;
+  p.assets = p.assets.filter(a => p.images.some(im => im.asset === a.id));
+}
 
 /** Pose un nouveau sol (remplace l'ancien) et crée un mur par côté. */
 export function setFloorPoints(p: Project, pts: Vec2[]) {
@@ -55,6 +106,7 @@ export function setFloorPoints(p: Project, pts: Vec2[]) {
   p.floor = { points, material: old?.material ?? 'parquet', color: old?.color ?? '#EFE9DF' } as Floor;
   p.walls.styles = points.map((_, i) => ({ ...(p.walls.styles[i] ?? DEFAULT_WALL) }));
   p.openings = [];
+  p.partitions = [];
   p.images = p.images.filter(im => im.target === 'tapis'); // les murs changent : on retire les images murales
 }
 
@@ -104,14 +156,15 @@ export function deleteVertex(p: Project, i: number) {
 /** Garde chaque ouverture dans son mur ; supprime celles qui ne tiennent plus. */
 export function clampAllOpenings(p: Project) {
   if (!p.floor) { p.openings = []; return; }
-  const n = p.floor.points.length;
+  const segs = wallSegs(p);
   p.openings = p.openings.filter(o => {
-    if (o.wall < 0 || o.wall >= n) return false;
-    const L = wallLength(p, o.wall);
+    const s = segs[o.wall];
+    if (!s) return false;
+    const L = s.length;
     o.width = Math.min(o.width, L - 2 * OPENING_MARGIN);
     if (o.width < 0.3) return false;
-    o.height = Math.min(o.height, p.walls.height - o.sill - 0.05);
-    if (o.height < 0.3) { o.sill = Math.max(0, p.walls.height - 0.35 - 0.05); o.height = 0.3; }
+    o.height = Math.min(o.height, s.H - o.sill - 0.05);
+    if (o.height < 0.3) { o.sill = Math.max(0, s.H - 0.35 - 0.05); o.height = 0.3; }
     o.t = clampT(L, o.width, o.t);
     return true;
   });
@@ -147,6 +200,10 @@ export function sanitizeProject(raw: unknown): Project {
     p.floor.points = p.floor.points.map(q => ({ x: +q.x || 0, y: +q.y || 0 }));
     p.walls.styles = p.floor.points.map((_, i) => ({ ...DEFAULT_WALL, ...(p.walls.styles[i] || {}) }));
   }
+  p.partitions = (Array.isArray(r.partitions) ? r.partitions : [])
+    .filter(c => c && c.a && c.b && Number.isFinite(+c.a.x) && Number.isFinite(+c.a.y) && Number.isFinite(+c.b.x) && Number.isFinite(+c.b.y))
+    .map(c => ({ id: c.id || uid(), a: { x: +c.a.x, y: +c.a.y }, b: { x: +c.b.x, y: +c.b.y }, ...(c.height ? { height: +c.height } : {}), style: { ...DEFAULT_WALL, ...(c.style || {}) } }));
+  if (!p.floor) p.partitions = [];
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));
   p.creations = (p.creations || []).filter(c => c && Array.isArray(c.volumes)).map(c => ({ ...c, volumes: c.volumes.map(v => ({ ...v })) }));
@@ -173,6 +230,7 @@ export const OPENING_STYLES: Record<OpeningType, { value: string; label: string;
     { value: 'double', label: 'Double vitrée', color: '#2E2D2B' },
     { value: 'coulissante', label: 'Coulissante', color: '#B8B4AD' },
     { value: 'atelier', label: 'Atelier', color: '#2E2D2B' },
+    { value: 'passage', label: 'Passage (sans porte)', color: '#D8D2C8' },
   ],
   fenetre: [
     { value: 'classique', label: 'Classique', color: '#ECE9E3' },

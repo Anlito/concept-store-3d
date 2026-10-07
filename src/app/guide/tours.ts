@@ -46,6 +46,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.vp', title: 'Choisir un mur', text: 'Clique sur un mur (plan ou 3D) pour le régler **seul**. Sans mur choisi, les réglages vont à **tous** les murs.' },
       { at: '.pn', title: 'Intérieur ou façade', text: 'Choisis la face à décorer : **Façade** pour le côté rue, celui qui attire les clients. Puis matière et couleur.' },
       { at: '.pn', title: 'Couleur exacte', text: 'Le **+** au bout des pastilles ouvre une palette pour choisir une couleur précise (code ou pipette).' },
+      { at: '.pn', title: 'Des cloisons pour les espaces', text: 'En bas du panneau, **Tracer une cloison** : réserve, cabines d’essayage, caisse… Un clic au départ, un clic à l’arrivée sur le plan 2D.' },
       { at: '[data-tour=view]', title: 'Vérifie en 3D', text: 'En **Vue 3D**, le bouton **Façade** montre la boutique depuis la rue.' },
     ];
     case 'ouvertures': return [

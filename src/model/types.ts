@@ -10,7 +10,7 @@ export type OpeningType = 'porte' | 'fenetre' | 'vitrine';
 /** Revêtement d'un mur : face intérieure (material, color) et face extérieure, la façade (outMaterial, outColor). */
 export interface WallStyle { material: WallMaterial; color: string; outMaterial?: WallMaterial; outColor?: string }
 
-/** Ouverture posée sur le mur n° `wall` (le mur i va du sommet i au sommet i+1 du sol). */
+/** Ouverture posée sur le mur n° `wall` (le mur i va du sommet i au sommet i+1 du sol ; au-delà, les cloisons). */
 export interface Opening {
   id: string;
   wall: number;
@@ -41,6 +41,18 @@ export interface Walls {
   styles: WallStyle[];
 }
 
+/** Cloison intérieure (séparer des espaces : réserve, cabines, caisse…). Axe de a à b, épaisseur des murs.
+    Côté 1 : material et color ; côté 2 : outMaterial et outColor (le côté 1 par défaut).
+    Pour les ouvertures et les images, la cloison j est le mur n° (nombre de côtés du sol + j). */
+export interface Partition {
+  id: string;
+  a: Vec2;
+  b: Vec2;
+  /** Hauteur propre (cloison basse) ; absente = hauteur des murs. */
+  height?: number;
+  style: WallStyle;
+}
+
 export interface Team { name: string; members: string; klass: string }
 
 export interface Project {
@@ -51,6 +63,8 @@ export interface Project {
   team: Team;
   floor: Floor | null;
   walls: Walls;
+  /** Cloisons intérieures. */
+  partitions: Partition[];
   openings: Opening[];
   objects: PlacedObject[];
   /** Meubles créés par l'équipe (atelier), enregistrés avec le projet. */
@@ -152,7 +166,7 @@ export interface PlacedImage {
   id: string;
   asset: string;
   target: ImageTarget;
-  /** Mur porteur (cadre, tapisserie, vitrine). */
+  /** Mur porteur (cadre, tapisserie, vitrine), ou cloison (voir Partition). */
   wall: number;
   /** Position du centre : 0 à 1 le long du mur (ou du sol en largeur), 0 à 1 en hauteur (ou en profondeur). */
   x: number;
@@ -163,6 +177,7 @@ export interface PlacedImage {
   rot: number;
   /** Répéter le motif sur tout le mur ou tout le sol. */
   repeat: boolean;
-  /** Face du mur : intérieur (par défaut) ou façade, côté rue (enseigne, vitrophanie vue de dehors…). */
+  /** Face du mur : intérieur (par défaut) ou façade, côté rue (enseigne, vitrophanie vue de dehors…).
+      Sur une cloison : côté 1 (int) ou côté 2 (ext). */
   side?: 'int' | 'ext';
 }

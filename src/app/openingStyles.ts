@@ -12,6 +12,7 @@ export function styleThumb(type: OpeningType, style: string, color: string): str
   r(0, 0, 60, 48, '#F4F2EE');
   if (type === 'porte') {
     const x = 18, y = 6, w = 24, h = 42;
+    if (style === 'passage') { r(x, y, w, h, '#E3DCD0'); r(x, y + h - 3, w, 3, '#CFC6B8'); return wrapSvg(parts); } // ouverture nue
     r(x - 2, y - 2, w + 4, h + 2, style === 'pleine' ? '#2E2D2B' : color);
     if (style === 'pleine') { r(x, y, w, h, color); parts.push(`<circle cx="${x + w - 5}" cy="30" r="1.6" fill="#2E2D2B"/>`); }
     else if (style === 'double') { r(x + 2, y + 2, w / 2 - 3, h - 4, GLASS); r(x + w / 2 + 1, y + 2, w / 2 - 3, h - 4, GLASS); }
@@ -31,7 +32,7 @@ export function styleThumb(type: OpeningType, style: string, color: string): str
       else if (style === 'bois') { l(x + w / 3, y, x + w / 3, y + h, 3); l(x + (2 * w) / 3, y, x + (2 * w) / 3, y + h, 3); l(x, y + h * 0.25, x + w, y + h * 0.25, 3); r(x - 3, y - 4, w + 6, 3, color); }
     }
   }
-  return `<svg viewBox="0 0 60 48" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${parts.join('')}</svg>`;
+  return wrapSvg(parts);
 }
 
 /** Couleurs proposées pour les menuiseries. */
@@ -40,3 +41,5 @@ export const FRAME_COLORS = [
   { name: 'Chêne', hex: '#C9A97E' }, { name: 'Noyer', hex: '#8A5A3B' }, { name: 'Terracotta', hex: '#BF4E36' }, { name: 'Sauge', hex: '#6E8B6B' },
   { name: 'Vert sapin', hex: '#3F5E4A' }, { name: 'Jaune ocre', hex: '#D9A54A' },
 ];
+
+const wrapSvg = (parts: string[]) => `<svg viewBox="0 0 60 48" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${parts.join('')}</svg>`;

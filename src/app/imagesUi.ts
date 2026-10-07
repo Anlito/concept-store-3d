@@ -2,7 +2,8 @@ import type { Ctx } from './state';
 import type { ImageAsset, ImageTarget, PlacedImage, Project } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, section, segmented, tiles, toast, toggle } from '../ui/components';
-import { bounds, edges, uid } from '../model/geometry';
+import { bounds, uid } from '../model/geometry';
+import { isPartition, wallName, wallSegs } from '../model/project';
 import { fmtBytes, readImageFile, MAX_IMAGE_MB } from '../library/images';
 import { type Panel, makePanel } from './panels';
 import { deleteImage } from './actions';
@@ -46,14 +47,16 @@ function settings(a: Access, binds: Bound[]): HTMLElement {
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
   const im = a.get(), d = a.doc();
   const wallSel = h('select', { class: 'at-select', 'aria-label': 'Mur', onchange: (e: Event) => { a.set({ wall: +(e.target as HTMLSelectElement).value }); a.end(); } },
-    ...(d.floor ? edges(d.floor.points).map(e => h('option', { value: String(e.i) }, `Mur n° ${e.i + 1} · ${e.length.toFixed(2).replace('.', ',')} m`)) : []));
+    ...wallSegs(d).map(e => h('option', { value: String(e.i) }, `${cap(wallName(d, e.i))} · ${e.length.toFixed(2).replace('.', ',')} m`)));
   binds.push({ el: wallSel, refresh: () => { wallSel.value = String(a.get().wall); } });
   const isWall = im.target !== 'tapis';
   const maxSize = im.target === 'tapis' ? 400 : im.target === 'tapisserie' ? 200 : 250;
   const rep = toggle('Répéter l’image', 'apps', () => a.get().repeat, v => { a.set({ repeat: v }); a.end(); });
   if (im.target === 'cadre') { rep.el.setAttribute('disabled', ''); rep.el.title = 'Un cadre n’est pas répété'; }
   const tiled = im.repeat;
-  const side = segmented<'int' | 'ext'>([{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade (rue)', icon: 'storefront' }],
+  // Sur une cloison, les deux faces sont à l'intérieur : côté 1 et côté 2.
+  const side = segmented<'int' | 'ext'>(isPartition(d, im.wall) ? [{ value: 'int', label: 'Côté 1' }, { value: 'ext', label: 'Côté 2' }]
+    : [{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade (rue)', icon: 'storefront' }],
     () => a.get().side ?? 'int', v => { a.set({ side: v }); a.end(); });
   return h('div', { class: 'p-sec', style: { gap: '14px' } },
     isWall ? h('label', { class: 'tf' }, 'Sur le mur', wallSel) : null,
@@ -77,8 +80,8 @@ function preview(d: Project, im: PlacedImage, asset: ImageAsset | null): HTMLEle
     box.append(h('div', { class: 'pv-persp' }, floor));
     return box;
   }
-  const e = d.floor ? edges(d.floor.points)[im.wall] : null;
-  const L = e?.length ?? 5, H = d.walls.height;
+  const e = wallSegs(d)[im.wall];
+  const L = e?.length ?? 5, H = e?.H ?? d.walls.height;
   const wall = h('div', { class: 'pv-wall' + (im.target === 'vitrine' ? ' glassy' : ''), style: { aspectRatio: `${L} / ${H}` } });
   // Ouvertures du mur
   for (const o of d.openings.filter(o => o.wall === im.wall)) wall.append(h('div', { class: 'pv-op ' + o.type, style: {
@@ -170,13 +173,15 @@ export function openImageDialog(ctx: Ctx) {
 }
 
 /* ---------- Panneaux de l'outil « Images » ---------- */
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export function imagesPanel(ctx: Ctx): Panel {
   const d = ctx.store.doc;
   const list = d.images.map(im => {
     const a = d.assets.find(x => x.id === im.asset);
     return h('button', { class: 'im-row', type: 'button', onclick: () => ctx.ui.set({ sel: { kind: 'image', id: im.id }, view: '3d' }) },
       h('span', { class: 'im-th', style: { backgroundImage: a ? `url(${a.data})` : '' } }),
-      h('span', { class: 'im-t' }, h('b', null, a?.name ?? 'Image'), h('span', null, targetLabel(im.target) + (im.target !== 'tapis' ? ` · mur n° ${im.wall + 1}` : ''))),
+      h('span', { class: 'im-t' }, h('b', null, a?.name ?? 'Image'), h('span', null, targetLabel(im.target) + (im.target !== 'tapis' ? ` · ${wallName(d, im.wall)}` : ''))),
       icon('chevron_right'));
   });
   return makePanel('image', 'Images', () => `${ctx.store.doc.images.length} image${ctx.store.doc.images.length > 1 ? 's' : ''} dans la boutique`, [
