@@ -162,7 +162,7 @@ test('pièces : chaque pièce a son sol et ses murs, un mur coupé par une clois
   await page.locator('[data-tool=murs]').click();
   const mats = () => page.evaluate(() => { const g = (window as any).cs3d.editor.view3d.scene.getObjectByName('mur-1'); const m = new Set<string>(); g.traverse((o: any) => { if (o.isMesh) m.add(o.material.uuid); }); return m.size; });
   const before = await mats();
-  await clickPlan(page, { x: 8.5, y: 0.03 });
+  await clickPlan(page, { x: 8.5, y: 1.5 }); // dans la réserve : tous ses murs
   await expect(page.getByTestId('panel')).toContainText('Murs de la pièce n° 1');
   await page.getByRole('button', { name: 'Brique' }).click();
   let d = await doc(page);
@@ -192,4 +192,36 @@ test('pièce au milieu d’une autre (cabine) : un trou dans le sol de la grande
   await page.keyboard.press('Escape');
   const rs = await page.evaluate(() => (window as any).cs3d.rooms());
   expect(rs.sort((a: any, b: any) => a.area - b.area)).toEqual([{ area: 4, holes: 0 }, { area: 66, holes: 1 }]);
+});
+
+test('pan de mur : un clic sur le mur ne décore que ce pan ; angle de cloisons fermé', async ({ page }) => {
+  await drawStore(page);
+  await page.locator('[data-tool=murs]').click();
+  await page.getByRole('button', { name: 'Brique' }).click(); // tous les murs
+  await clickPlan(page, { x: 6.96, y: 1.5 }); // côté boutique de la cloison n° 1
+  const panel = page.getByTestId('panel');
+  await expect(panel).toContainText('Pan de mur');
+  await expect(panel).toContainText('Cloison n° 1 · côté 1');
+  await page.getByRole('button', { name: 'Béton' }).click();
+  let d = await doc(page);
+  expect(d.pans).toHaveLength(1);
+  expect(d.pans[0]).toMatchObject({ material: 'beton' });
+  expect(d.rooms ?? []).toEqual([]); // la pièce n'a pas changé
+  // « Tous les murs de la pièce » passe à la pièce ; « Comme les autres murs » retire le pan
+  await clickPlan(page, { x: 6.96, y: 1.5 });
+  await panel.getByRole('button', { name: 'Comme les autres murs de la pièce' }).click();
+  expect((await doc(page)).pans).toEqual([]);
+  // Angle en L : les deux cloisons sont prolongées d'une demi-épaisseur, sans chant visible dans l'angle
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  const ext = await page.evaluate(() => {
+    const out: Record<string, number[]> = {};
+    for (const n of ['cloison-1', 'cloison-2']) {
+      const g = (window as any).cs3d.editor.view3d.scene.getObjectByName(n); const xs: number[] = [];
+      g.traverse((o: any) => { if (o.isMesh) { const a = o.geometry.getAttribute('position'); for (let i = 0; i < a.count; i++) xs.push(a.getX(i)); } });
+      out[n] = [Math.min(...xs), Math.max(...xs)].map(v => Math.round(v * 1000) / 1000 + 0);
+    }
+    return out;
+  });
+  expect(ext['cloison-1']).toEqual([0, 3.05]); // de la face du mur (0) à l'angle, prolongée de 5 cm
+  expect(ext['cloison-2']).toEqual([-0.05, 3]); // prolongée de 5 cm à l'angle, jusqu'au mur
 });

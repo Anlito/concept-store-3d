@@ -30,6 +30,11 @@ export function selectRoomAt(ctx: Ctx, q: Vec2) {
   return true;
 }
 
+/** Choisit un pan de mur (outil Murs, intérieur) : face d'un mur, ou côté d'une cloison. */
+export function selectPan(ctx: Ctx, wall: number, u: number, side: 'int' | 'ext') {
+  ctx.ui.set({ sel: { kind: 'pan', wall, side, u } });
+}
+
 /** Pose une ouverture du type choisi sur le mur, au plus près de la position t. Elle n'est pas sélectionnée :
     on reste en mode « pose » (changer de type ne transforme pas l'ouverture qu'on vient de poser). */
 export function placeOpening(ctx: Ctx, wall: number, t: number) {

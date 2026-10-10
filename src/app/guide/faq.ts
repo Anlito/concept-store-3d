@@ -40,6 +40,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
   murs: [
     { q: 'Pourquoi les murs font-ils 10 cm ?', a: 'À l’échelle de la maquette (1 m = 3 cm), 10 cm donnent **3 mm** : l’épaisseur du carton.' },
     { q: 'Comment décorer les murs d’une seule pièce ?', a: 'Outil **Murs**, face **Intérieur** : clique dans la pièce (plan ou 3D). Ses murs, et les côtés des cloisons qui la bordent, prennent le revêtement choisi.' },
+    { q: 'Comment décorer un seul pan de mur ?', a: 'Outil **Murs**, face **Intérieur** : **clique sur le mur** (plan ou 3D). Seul ce pan, entre deux cloisons ou deux angles, prend le revêtement choisi.' },
     { q: 'Mon mur a la même couleur des deux côtés de la cloison.', a: 'Chaque pièce a ses murs : clique dans l’une, choisis son revêtement, puis clique dans l’autre.' },
     { q: 'Comment décorer l’extérieur de la boutique ?', a: 'Dans **Face à décorer**, choisis **Façade** : matière (bardage, pierre…) et couleur du côté rue.' },
     { q: 'Comment donner le même aspect à tous les murs ?', a: 'Sans pièce choisie, le revêtement va à **tous les murs**. Depuis une pièce : **Appliquer à toutes les pièces**.' },

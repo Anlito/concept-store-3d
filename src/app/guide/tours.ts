@@ -49,7 +49,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
     ];
     case 'murs': return [
       { at: '[data-tool=murs]', title: 'L’outil Murs', text: 'Les murs se tracent avec l’outil **Surface**. Ici, tu choisis leur **revêtement** : matière et couleur.' },
-      { at: '.vp', title: 'Les murs d’une pièce', text: '**Intérieur** : clique dans une pièce (plan ou 3D) pour décorer **ses** murs. Un mur coupé par une cloison peut avoir un revêtement différent de chaque côté.' },
+      { at: '.vp', title: 'Les murs d’une pièce', text: '**Intérieur** : clique dans une pièce pour décorer **tous ses murs**, ou **sur un mur** pour ce pan seulement. Un mur coupé par une cloison peut avoir un revêtement différent de chaque côté.' },
       { at: '.pn', title: 'Intérieur ou façade', text: '**Façade** : le côté rue, celui qui attire les clients. Clique sur un mur pour décorer seulement sa façade.' },
       { at: '.pn', title: 'Couleur exacte', text: 'Le **+** au bout des pastilles ouvre une palette pour choisir une couleur précise (code ou pipette).' },
       { at: '[data-tour=view]', title: 'Vérifie en 3D', text: 'En **Vue 3D**, le bouton **Façade** montre la boutique depuis la rue.' },

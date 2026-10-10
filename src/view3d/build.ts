@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Opening, Project } from '../model/types';
 import { offsetPolygon, dot, sub } from '../model/geometry';
 import { floorMaterial, wallMaterial } from './materials';
-import { DEFAULT_OUT, openingColor, openingStyle, wallSegs, type WallSeg } from '../model/project';
+import { DEFAULT_OUT, openingColor, openingStyle, partitionEnds, wallSegs, type WallSeg } from '../model/project';
 import { facePieces, floorOfRoom, rooms, wallLookOf } from '../model/rooms';
 
 /* Construction de la boutique en 3D à partir du modèle : sol, dalle, murs avec ouvertures, menuiseries.
@@ -100,7 +100,9 @@ export function buildShop(p: Project): BuiltShop {
     const i = e.i, L = e.length, part = e.part >= 0, Hw = e.H;
     const style = part ? p.partitions[e.part].style : p.walls.styles[i];
     // Face extérieure d'un mur du contour : débord aux angles (raccord en onglet) ; cloison : même longueur.
-    const uA = part ? 0 : dot(sub(outer[i], e.a), e.u), uB = part ? L : dot(sub(outer[(i + 1) % n], e.a), e.u);
+    // Cloison : prolongée aux angles qu'elle forme avec une autre cloison.
+    const ends = part ? partitionEnds(p, e.part) : null, x0 = ends ? -ends.ext0 : 0, x1 = ends ? L + ends.ext1 : L;
+    const uA = part ? x0 : dot(sub(outer[i], e.a), e.u), uB = part ? x1 : dot(sub(outer[(i + 1) % n], e.a), e.u);
     const ops = p.openings.filter(o => o.wall === i).sort((a, b) => a.t - b.t);
     const out = new Quads(), cap = new Quads(), jamb = new Quads();
     /** Face (ouvertures découpées) entre start et end, dans le plan z. */
@@ -118,19 +120,19 @@ export function buildShop(p: Project): BuiltShop {
     };
     // Pans de la face intérieure (et des deux côtés d'une cloison) : chacun prend le revêtement de sa pièce.
     const pieceMeshes: THREE.Mesh[] = [];
-    const pieces = (side: 'int' | 'ext', z: number, nrm: THREE.Vector3) => facePieces(p, e, side).forEach(pc => {
-      const q = new Quads(); faces(q, z, nrm, pc.u0, pc.u1);
-      const look = wallLookOf(p, e, side, pc.room);
+    const pieces = (side: 'int' | 'ext', z: number, nrm: THREE.Vector3) => facePieces(p, e, side).forEach((pc, k, all) => {
+      const q = new Quads(); faces(q, z, nrm, k === 0 ? Math.min(pc.u0, x0) : pc.u0, k === all.length - 1 ? Math.max(pc.u1, x1) : pc.u1);
+      const look = wallLookOf(p, e, side, pc);
       pieceMeshes.push(q.mesh(wallMaterial(look.material, look.color)));
     });
     pieces('int', 0, IN);
     if (part) pieces('ext', -T, OUT); else faces(out, -T, OUT, uA, uB);
     // Dessus du mur (visible quand le mur est abaissé)
-    cap.add([new THREE.Vector3(0, Hw, 0), new THREE.Vector3(L, Hw, 0), new THREE.Vector3(uB, Hw, -T), new THREE.Vector3(uA, Hw, -T)], UP,
-      [[0, 0], [L, 0], [uB, T], [uA, T]]);
-    if (part) { // chants de la cloison
-      cap.add([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -T), new THREE.Vector3(0, Hw, -T), new THREE.Vector3(0, Hw, 0)], NX, [[0, 0], [T, 0], [T, Hw], [0, Hw]]);
-      cap.add([new THREE.Vector3(L, 0, 0), new THREE.Vector3(L, 0, -T), new THREE.Vector3(L, Hw, -T), new THREE.Vector3(L, Hw, 0)], PX, [[0, 0], [T, 0], [T, Hw], [0, Hw]]);
+    cap.add([new THREE.Vector3(x0, Hw, 0), new THREE.Vector3(x1, Hw, 0), new THREE.Vector3(uB, Hw, -T), new THREE.Vector3(uA, Hw, -T)], UP,
+      [[x0, 0], [x1, 0], [uB, T], [uA, T]]);
+    if (ends) { // chants de la cloison, seulement aux bouts libres (ailleurs ils seraient cachés ou collés à un mur)
+      if (ends.free0) cap.add([new THREE.Vector3(x0, 0, 0), new THREE.Vector3(x0, 0, -T), new THREE.Vector3(x0, Hw, -T), new THREE.Vector3(x0, Hw, 0)], NX, [[0, 0], [T, 0], [T, Hw], [0, Hw]]);
+      if (ends.free1) cap.add([new THREE.Vector3(x1, 0, 0), new THREE.Vector3(x1, 0, -T), new THREE.Vector3(x1, Hw, -T), new THREE.Vector3(x1, Hw, 0)], PX, [[0, 0], [T, 0], [T, Hw], [0, Hw]]);
     }
     // Tableaux des ouvertures (épaisseur du mur)
     ops.forEach(o => {

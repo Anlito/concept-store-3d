@@ -65,6 +65,9 @@ export interface RoomStyle {
   wall?: { material: WallMaterial; color: string };
 }
 
+/** Revêtement d'un seul pan de mur, accroché à un point juste devant lui (quelques cm dans la pièce). */
+export interface PanStyle { at: Vec2; material: WallMaterial; color: string }
+
 export interface Team { name: string; members: string; klass: string }
 
 export interface Project {
@@ -79,6 +82,8 @@ export interface Project {
   partitions: Partition[];
   /** Revêtements par pièce (sinon : celui du sol et celui de chaque mur). */
   rooms?: RoomStyle[];
+  /** Pans de mur décorés à part (priorité sur les murs de la pièce). */
+  pans?: PanStyle[];
   openings: Opening[];
   objects: PlacedObject[];
   /** Meubles créés par l'équipe (atelier), enregistrés avec le projet. */

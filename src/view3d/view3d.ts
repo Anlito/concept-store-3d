@@ -4,8 +4,9 @@ import type { Ctx, ShadowQuality } from '../app/state';
 import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
 import { OPENING_DEFAULTS, findFreeT, imageExtent, insideFloor, rugCorners, wallHeight, wallLength, wallSegs } from '../model/project';
+import { pieceAt } from '../model/rooms';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
-import { placeOpening, selectPick, selectRoomAt } from "../app/actions";
+import { placeOpening, selectPan, selectPick, selectRoomAt } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
 import { toast } from '../ui/components';
 import { buildImages, type BuiltImages } from './images3d';
@@ -264,7 +265,7 @@ export class View3D {
   /** Reconstruit la boutique si le sol, les murs ou les ouvertures ont changé. */
   private sync() {
     const d = this.ctx.store.doc;
-    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.rooms, d.openings]);
+    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.rooms, d.pans, d.openings]);
     if (key !== this.shopKey) {
       this.shopKey = key;
       if (this.shop) { this.scene.remove(this.shop.root); disposeTree(this.shop.root); }
@@ -346,6 +347,10 @@ export class View3D {
       const o = d.openings.find(q => q.id === sel.id);
       if (o) addRect(o.wall, o.t - o.width / 2, o.t + o.width / 2, o.sill, o.sill + o.height);
     }
+    if (sel.kind === 'pan' && E[sel.wall]) { // pan de mur choisi : sa face seulement
+      const pc = pieceAt(d, E[sel.wall], sel.side, sel.u);
+      if (pc) addRect(sel.wall, pc.u0, pc.u1, 0, E[sel.wall].H, [sel.side === 'ext' ? -T - 0.004 : 0.004]);
+    }
     if (sel.kind === 'image') {
       // Image choisie : cadre orange visible à travers tout, sur la bonne face (ou au sol pour un tapis).
       const im = d.images.find(q => q.id === sel.id);
@@ -410,6 +415,12 @@ export class View3D {
       }
       if (hit.pick.kind === 'image') { selectPick(this.ctx, hit.pick); return; }
       // Outils Sol et Murs (intérieur) : un clic sur le sol ou un mur choisit la pièce (du côté de la caméra).
+      // Murs (intérieur) : un clic sur une face choisit ce pan de mur (la façade d'un mur du contour n'en fait pas partie).
+      if (ui.s.tool === 'murs' && ui.s.wallFace === 'int' && hit.pick.kind === 'wall') {
+        const i = hit.pick.index, e0 = wallSegs(store.doc)[i];
+        const sd = (hit.point.x - e0.a.x) * e0.n.x + (hit.point.z - e0.a.y) * e0.n.y, side = sd >= e0.T / 2 ? 'ext' : 'int';
+        if (e0.part >= 0 || side === 'int') { selectPan(this.ctx, i, Math.max(0, Math.min(e0.length, this.tOnWall(i, hit.point))), side); down.empty = false; return; }
+      }
       if ((ui.s.tool === 'revetement' || (ui.s.tool === 'murs' && ui.s.wallFace === 'int')) && (hit.pick.kind === 'floor' || hit.pick.kind === 'wall')) {
         const back = this.camera.position.clone().sub(hit.point).setY(0).normalize().multiplyScalar(0.08);
         if (selectRoomAt(this.ctx, { x: hit.point.x + back.x, y: hit.point.z + back.z }) || selectRoomAt(this.ctx, { x: hit.point.x - back.x, y: hit.point.z - back.z })) down.empty = false;

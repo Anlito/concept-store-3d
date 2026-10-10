@@ -3,9 +3,9 @@ import type { FloorMaterial, OpeningType, WallMaterial, WallStyle } from '../mod
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, measureRow, numberField, section, segmented, swatches, tiles, toast } from '../ui/components';
 import { add, area, dist, edges, fmtArea, fmtM, isSimplePolygon, mul, norm, perimeter, sub } from '../model/geometry';
-import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName } from '../model/project';
+import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName, wallSegs } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
-import { type FloorLook, type WallLook, clearRoomStyles, floorOfRoom, rooms, roomStyles, setRoomStyle } from '../model/rooms';
+import { type FloorLook, type WallLook, clearRoomStyles, floorOfRoom, panStyleOf, pieceAt, rooms, roomStyles, setPanStyle, setRoomStyle, wallLookOf } from '../model/rooms';
 import { clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByLength, startPartitions, stopPartitions } from './actions';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
@@ -152,6 +152,26 @@ export function wallsPanel(ctx: Ctx): Panel {
     return finish(p, binds);
   }
 
+  // Intérieur, un pan de mur : la face d'un mur entre deux cloisons, ou un côté de cloison.
+  if (ui.s.sel?.kind === 'pan') {
+    const sp = ui.s.sel, seg = () => wallSegs(store.doc)[sp.wall], pc = () => pieceAt(store.doc, seg(), sp.side, sp.u);
+    const look = () => wallLookOf(store.doc, seg(), sp.side, pc());
+    const own = () => !!panStyleOf(store.doc, seg(), sp.side, pc().u0, pc().u1);
+    const set = (patch: Partial<WallLook>) => store.update(d => { const e2 = wallSegs(d)[sp.wall]; setPanStyle(d, e2, sp.side, pieceAt(d, e2, sp.side, sp.u), { ...look(), ...patch }); });
+    const r = pc()?.room ?? -1, isPart = seg().part >= 0;
+    const where = isPart ? `Cloison n° ${seg().part + 1} · côté ${sp.side === 'ext' ? 2 : 1}` : `Mur n° ${sp.wall + 1}`;
+    const p = shell('border_outer', 'Pan de mur', () => `${where} · ${fmtM((pc()?.u1 ?? 0) - (pc()?.u0 ?? 0))}${r >= 0 ? ` · pièce ${r + 1}` : ''}`, [
+      section('Face à décorer', b(face)),
+      h('p', { class: 'p-help' }, 'Ce revêtement va seulement sur ', h('b', null, 'ce pan de mur'), ' (en orange sur le plan et en 3D).'),
+      r >= 0 ? button('Tous les murs de la pièce', 'select_all', 'btn-ghost', () => ui.set({ sel: { kind: 'room', index: r } })) : null,
+      section('Matière de ce pan', matTiles(() => look().material, m => set({ material: m }))),
+      wallTints(look().material) ? section('Couleur', b(swatches(WALL_COLORS, () => look().color, c => set({ color: c })))) : null,
+    ], own() ? h('div', { class: 'pn-f' }, button('Comme les autres murs de la pièce', 'restart_alt', 'btn-secondary', () => {
+      store.update(d => { const e2 = wallSegs(d)[sp.wall]; setPanStyle(d, e2, sp.side, pieceAt(d, e2, sp.side, sp.u), null); });
+    })) : undefined);
+    return finish(p, binds);
+  }
+
   // Intérieur : les murs d'une pièce (faces du contour et côtés des cloisons qui la bordent), ou tous.
   const look = (): WallLook => {
     if (room >= 0) return roomStyles(store.doc)[room]?.wall ?? { material: store.doc.walls.styles[0].material, color: store.doc.walls.styles[0].color };
@@ -162,15 +182,15 @@ export function wallsPanel(ctx: Ctx): Panel {
     // Tous les murs : murs du contour, deux côtés des cloisons, et plus de revêtement propre aux pièces.
     for (const st of d.walls.styles) Object.assign(st, patch);
     for (const c of d.partitions) { Object.assign(c.style, patch); if (patch.material) c.style.outMaterial = patch.material; if (patch.color) c.style.outColor = patch.color; }
-    clearRoomStyles(d, 'wall');
+    clearRoomStyles(d, 'wall'); d.pans = [];
   });
-  const mixed = room < 0 && (store.doc.rooms ?? []).some(st => st.wall);
+  const mixed = room < 0 && ((store.doc.rooms ?? []).some(st => st.wall) || !!store.doc.pans?.length);
   const p = shell('border_outer', room >= 0 ? `Murs de la pièce n° ${room + 1}` : 'Murs', () => (room >= 0 ? `Pièce de ${fmtArea(rs[room].area)}` : `${rs.length} pièce${rs.length > 1 ? 's' : ''} · sans toit`), [
     section('Face à décorer', b(face)),
     room >= 0 ? button('Tous les murs', 'arrow_back', 'btn-ghost', () => ui.set({ sel: null }))
       : h('p', { class: 'p-help' }, rs.length > 1
-        ? [h('b', null, 'Clique dans une pièce'), ' (sur le plan ou en 3D) pour décorer seulement ses murs. Sinon, le choix s’applique à tous les murs.']
-        : ['Le choix s’applique à tous les murs. Pour décorer chaque pièce à sa façon, trace des ', h('b', null, 'cloisons'), ' avec l’outil ', h('b', null, 'Surface'), '.']),
+        ? [h('b', null, 'Clique dans une pièce'), ' pour décorer tous ses murs, ou ', h('b', null, 'sur un mur'), ' pour ce pan seulement (plan ou 3D). Sinon, le choix s’applique à tous les murs.']
+        : ['Le choix s’applique à tous les murs. ', h('b', null, 'Clique sur un mur'), ' pour décorer ce pan seulement. Pour des pièces, trace des ', h('b', null, 'cloisons'), ' avec l’outil ', h('b', null, 'Surface'), '.']),
     mixed ? alert('info', 'Les pièces sont différentes', 'Choisir une matière ou une couleur ici l’applique aux murs de toutes les pièces.') : null,
     section(room >= 0 ? 'Matière des murs de la pièce' : 'Matière de tous les murs', matTiles(() => look().material, m => set({ material: m }))),
     wallTints(look().material) ? section('Couleur', b(swatches(WALL_COLORS, () => look().color, c => set({ color: c })))) : null,
@@ -178,7 +198,7 @@ export function wallsPanel(ctx: Ctx): Panel {
     const l = look(); store.update(d => {
       for (const st of d.walls.styles) Object.assign(st, l);
       for (const c of d.partitions) Object.assign(c.style, l, { outMaterial: l.material, outColor: l.color });
-      clearRoomStyles(d, 'wall');
+      clearRoomStyles(d, 'wall'); d.pans = [];
     }); ui.set({ sel: null }); toast('Murs appliqués à toutes les pièces.');
   })) : undefined);
   return finish(p, binds);

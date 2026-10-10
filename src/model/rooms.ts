@@ -1,4 +1,4 @@
-import type { FloorMaterial, Project, RoomStyle, Vec2, WallMaterial } from './types';
+import type { FloorMaterial, PanStyle, Project, RoomStyle, Vec2, WallMaterial } from './types';
 import { add, area, centroidOf, cross, dist, edges, mul, norm, pointInPolygon, projectOnSegment, signedArea, sub, v } from './geometry';
 import type { WallSeg } from './project';
 
@@ -173,8 +173,39 @@ export function facePieces(p: Project, e: WallSeg, side: 'int' | 'ext'): FacePie
   return out;
 }
 
-/** Revêtement d'un pan de mur : celui des murs de sa pièce, sinon celui du mur (ou du côté de la cloison). */
-export function wallLookOf(p: Project, e: WallSeg, side: 'int' | 'ext', room: number): WallLook {
+/* ---------- Pans décorés à part ---------- */
+const PAN_OFF = 0.06; // le point d'accroche est à 6 cm devant le pan, dans la pièce
+/** Repère d'une face : origine (sur la face) et direction vers la pièce qu'elle regarde. */
+function faceFrame(e: WallSeg, side: 'int' | 'ext') {
+  const s = side === 'ext' ? e.T : 0, inward = side === 'ext' ? e.n : v(-e.n.x, -e.n.y);
+  return { o: add(e.a, mul(e.n, s)), inward };
+}
+export const panAnchor = (e: WallSeg, side: 'int' | 'ext', u: number) => { const f = faceFrame(e, side); return add(add(f.o, mul(e.u, u)), mul(f.inward, PAN_OFF)); };
+/** Réglage propre au pan [u0, u1] de cette face, s'il y en a un. */
+export function panStyleOf(p: Project, e: WallSeg, side: 'int' | 'ext', u0: number, u1: number): PanStyle | undefined {
+  const f = faceFrame(e, side);
+  return (p.pans ?? []).find(st => {
+    const r = sub(st.at, f.o), t = r.x * e.u.x + r.y * e.u.y, d = r.x * f.inward.x + r.y * f.inward.y;
+    return t >= u0 - 0.01 && t <= u1 + 0.01 && d > 0 && d < 0.2;
+  });
+}
+/** Pan de la face qui contient la position u. */
+export const pieceAt = (p: Project, e: WallSeg, side: 'int' | 'ext', u: number) => {
+  const all = facePieces(p, e, side);
+  return all.find(pc => u >= pc.u0 - 1e-6 && u <= pc.u1 + 1e-6) ?? all[0];
+};
+/** Donne (ou retire, avec null) un revêtement propre à un pan. */
+export function setPanStyle(p: Project, e: WallSeg, side: 'int' | 'ext', pc: FacePiece, look: WallLook | null) {
+  const old = panStyleOf(p, e, side, pc.u0, pc.u1);
+  p.pans = (p.pans ?? []).filter(st => st !== old);
+  if (look) p.pans.push({ at: old?.at ?? panAnchor(e, side, (pc.u0 + pc.u1) / 2), ...look });
+}
+
+/** Revêtement d'un pan de mur : le sien, sinon celui des murs de sa pièce, sinon celui du mur (ou du côté de la cloison). */
+export function wallLookOf(p: Project, e: WallSeg, side: 'int' | 'ext', pc: FacePiece): WallLook {
+  const pan = panStyleOf(p, e, side, pc.u0, pc.u1);
+  if (pan) return { material: pan.material, color: pan.color };
+  const room = pc.room;
   const own = room >= 0 ? roomStyles(p)[room]?.wall : undefined;
   if (own) return own;
   if (e.part < 0) { const st = p.walls.styles[e.i]; return { material: st.material, color: st.color }; }

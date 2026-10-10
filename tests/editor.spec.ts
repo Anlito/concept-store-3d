@@ -154,8 +154,8 @@ test('régler les murs et basculer en 3D', async ({ page }) => {
   await page.getByRole('button', { name: 'Brique' }).click();
   let d = await doc(page);
   expect(d.walls.styles.every((s: any) => s.material === 'brique')).toBe(true);
-  // Clic sur un mur (intérieur) : c'est la pièce qui est choisie
-  await clickPlan(page, { x: 2.5, y: -0.07 });
+  // Clic dans la pièce : tous ses murs
+  await clickPlan(page, { x: 2.5, y: 2 });
   await expect(page.getByTestId('panel')).toContainText('Murs de la pièce n° 1');
   await page.getByRole('button', { name: 'Béton' }).click();
   d = await doc(page);

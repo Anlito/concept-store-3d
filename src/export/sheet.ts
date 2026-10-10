@@ -1,6 +1,6 @@
 import type { Project, Vec2 } from '../model/types';
 import { add, bounds, dot, edges, mul, offsetPolygon, sub } from '../model/geometry';
-import { wallSegs } from '../model/project';
+import { partitionEnds, wallSegs } from '../model/project';
 
 /* Mise en page de la feuille A3 paysage (420 × 297 mm), en millimètres, origine en haut à gauche.
    La même liste de tracés sert à l'aperçu (SVG) et au PDF (jsPDF) : ce qu'on voit est ce qu'on imprime.
@@ -143,17 +143,19 @@ export function layoutSheet(p0: Project, o: SheetOptions): Layout {
   for (const e of wallSegs(p).filter(w => w.part >= 0)) {
     const ops = p.openings.filter(q => q.wall === e.i).sort((a, c) => a.t - c.t);
     const at = (u: number, s: number) => add(add(e.a, mul(e.u, u)), mul(e.n, s));
+    const en = partitionEnds(p, e.part), x0 = -en.ext0, x1 = e.length + en.ext1; // prolongée aux angles
     for (const s of [0, Tk]) {
-      let cur = 0;
+      let cur = x0;
       for (const op of ops) {
         const lo = op.t - op.width / 2, hi = op.t + op.width / 2;
         if (lo > cur) seg(at(cur, s), at(lo, s));
         seg(at(lo, s), at(hi, s), WALL_W, op.type === 'porte' ? DASH.porte : DASH.fenetre);
         cur = hi;
       }
-      if (e.length > cur) seg(at(cur, s), at(e.length, s));
+      if (x1 > cur) seg(at(cur, s), at(x1, s));
     }
-    for (const u of [0, e.length]) seg(at(u, 0), at(u, Tk));
+    if (en.free0) seg(at(x0, 0), at(x0, Tk));
+    if (en.free1) seg(at(x1, 0), at(x1, Tk));
     for (const op of ops) for (const u of [op.t - op.width / 2, op.t + op.width / 2]) seg(at(u, 0), at(u, Tk), THIN_W);
     if (o.cotes && e.length * k > 12) { // longueur de la cloison, écrite le long de son côté 1
       let rot = (Math.atan2(e.u.y, e.u.x) * 180) / Math.PI;

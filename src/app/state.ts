@@ -13,7 +13,9 @@ export type Selection =
   | { kind: 'objects'; ids: string[] }
   | { kind: 'image'; id: string }
   /** Pièce (zone fermée par le contour et les cloisons), par son rang dans rooms(). */
-  | { kind: 'room'; index: number };
+  | { kind: 'room'; index: number }
+  /** Pan de mur : face d'un mur ou côté d'une cloison ('int' = côté 1), autour de la position u. */
+  | { kind: 'pan'; wall: number; side: 'int' | 'ext'; u: number };
 export type ShadowQuality = 'off' | 'low' | 'high';
 export type SaveStatus = 'new' | 'saved' | 'unsaved' | 'saving';
 

@@ -77,6 +77,20 @@ export const wallShort = (p: Project, i: number) => (isPartition(p, i) ? `C${i -
 /** « mur n° 3 » ou « cloison n° 1 ». */
 export const wallName = (p: Project, i: number) => (isPartition(p, i) ? `cloison n° ${i - contourCount(p) + 1}` : `mur n° ${i + 1}`);
 
+/** Bouts d'une cloison. Quand ils rejoignent le bout d'une autre cloison (angle, cloisons en enfilade), ils sont
+    prolongés d'une demi-épaisseur pour fermer l'angle ; un bout « libre » (qui ne touche rien) montre son chant. */
+export function partitionEnds(p: Project, j: number) {
+  const c = p.partitions[j], T = p.walls.thickness, near = 0.03;
+  const end = (q: Vec2) => {
+    const joins = p.partitions.some((o, k) => k !== j && (dist(o.a, q) < 0.01 || dist(o.b, q) < 0.01));
+    const touches = joins || p.partitions.some((o, k) => k !== j && projectOnSegment(q, o.a, o.b).d < T / 2 + near)
+      || (!!p.floor && edges(p.floor.points).some(e => projectOnSegment(q, e.a, e.b).d < near));
+    return { ext: joins ? T / 2 : 0, free: !touches };
+  };
+  const a = end(c.a), b = end(c.b);
+  return { ext0: a.ext, ext1: b.ext, free0: a.free, free1: b.free };
+}
+
 /** Longueur minimale d'une cloison (m). */
 export const MIN_PARTITION = 0.3;
 /** Point dans le sol (ou sur son bord, contre la face intérieure d'un mur). */
@@ -110,6 +124,7 @@ export function setFloorPoints(p: Project, pts: Vec2[]) {
   p.openings = [];
   p.partitions = [];
   p.rooms = [];
+  p.pans = [];
   p.images = p.images.filter(im => im.target === 'tapis'); // les murs changent : on retire les images murales
 }
 
@@ -209,6 +224,7 @@ export function sanitizeProject(raw: unknown): Project {
   if (!p.floor) p.partitions = [];
   p.rooms = (Array.isArray(r.rooms) ? r.rooms : []).filter(st => st && st.at && Number.isFinite(+st.at.x) && Number.isFinite(+st.at.y))
     .map(st => ({ at: { x: +st.at.x, y: +st.at.y }, ...(st.floor ? { floor: { ...st.floor } } : {}), ...(st.wall ? { wall: { ...st.wall } } : {}) }));
+  p.pans = (Array.isArray(r.pans) ? r.pans : []).filter(st => st && st.at && st.material).map(st => ({ at: { x: +st.at.x, y: +st.at.y }, material: st.material, color: st.color }));
   p.steps = Array.isArray(r.steps) ? r.steps.filter(x => typeof x === 'string') : [];
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));

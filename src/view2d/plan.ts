@@ -1,9 +1,9 @@
 import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
 import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, pointInPolygon, projectOnSegment, snapTo, sub, v, area, cross } from '../model/geometry';
-import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, imageExtent, insertVertex, insideFloor, moveVertex, openingStyle, rugCorners, shopExtent, wallLength, wallSegs, wallShort } from '../model/project';
-import { closeDraft, createPartition, placeOpening, selectPick, selectRoomAt, stopPartitions } from "../app/actions";
-import { floorOfRoom, rooms } from "../model/rooms";
+import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, imageExtent, partitionEnds, insertVertex, insideFloor, moveVertex, openingStyle, rugCorners, shopExtent, wallLength, wallSegs, wallShort } from '../model/project';
+import { closeDraft, createPartition, placeOpening, selectPan, selectPick, selectRoomAt, stopPartitions } from "../app/actions";
+import { floorOfRoom, pieceAt, rooms } from "../model/rooms";
 import { floorTints } from "../view3d/materials";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
@@ -307,7 +307,17 @@ export class Plan2D {
         }
       }
       if (s.tool === 'images') { const im = this.hitImage(p); if (im) { selectPick(this.ctx, { kind: 'image', id: im }); return; } }
-      if (this.roomPicking && !this.objectDown(e, p)) { if (!selectRoomAt(this.ctx, this.roomPoint(p))) pan(true); return; }
+      if (this.roomPicking && !this.objectDown(e, p)) {
+        // Murs : un clic sur un mur choisit ce pan seulement ; un clic dans la pièce, tous ses murs.
+        const w = s.tool === 'murs' ? this.hitWall(p) : null;
+        if (w) {
+          const e0 = wallSegs(store.doc)[w.wall], sd = dot(sub(p, e0.a), e0.n);
+          selectPan(this.ctx, w.wall, Math.max(0, Math.min(e0.length, w.t)), e0.part >= 0 && sd >= e0.T / 2 ? 'ext' : 'int');
+          return;
+        }
+        if (!selectRoomAt(this.ctx, this.roomPoint(p))) pan(true);
+        return;
+      }
       if (s.tool !== "ouvertures" && this.objectDown(e, p)) return;
       const op = this.hitOpening(p);
       if (op) {
@@ -547,7 +557,11 @@ export class Plan2D {
       o.push(`<path d="${path(outer)} ${path(pts)}" style="fill:#3A3936;fill-rule:evenodd" data-testid="walls"/>`);
       // Cloisons (même trait que les murs)
       const S = wallSegs(d), parts = S.filter(w => w.part >= 0);
-      const prect = (w: typeof S[number]) => [w.a, w.b, add(w.b, mul(w.n, w.T)), add(w.a, mul(w.n, w.T))];
+      // Cloison prolongée aux angles qu'elle forme avec une autre (comme en 3D)
+      const prect = (w: typeof S[number]) => {
+        const en = partitionEnds(d, w.part), a = add(w.a, mul(w.u, -en.ext0)), b = add(w.b, mul(w.u, en.ext1));
+        return [a, b, add(b, mul(w.n, w.T)), add(a, mul(w.n, w.T))];
+      };
       for (const w of parts) o.push(`<path d="${path(prect(w))}" style="fill:#3A3936" data-partition="${w.part}"/>`);
       // Ouvertures
       const opening = (op: Opening, ghost = false) => {
@@ -663,6 +677,15 @@ export class Plan2D {
           const lab = wallShort(d, w.i);
           o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="${lab.length > 1 ? 13 : 11}" style="fill:${INK}"/>`);
           text(X(q.x), Y(q.y) + 0.5, lab, 'font-size:12px;font-weight:800;fill:#fff');
+        }
+      }
+      // Pan de mur choisi : trait orange le long de sa face, côté pièce
+      if (s.sel?.kind === 'pan' && S[s.sel.wall]) {
+        const w = S[s.sel.wall], side = s.sel.side, pc = pieceAt(d, w, side, s.sel.u);
+        if (pc) {
+          const off = side === 'ext' ? w.T + 6 / k : -6 / k, at = (u: number) => add(add(w.a, mul(w.u, u)), mul(w.n, off));
+          line(at(pc.u0), at(pc.u1), `stroke:#fff;stroke-width:12;stroke-linecap:round`);
+          line(at(pc.u0), at(pc.u1), `stroke:${A};stroke-width:7;stroke-linecap:round`);
         }
       }
       // Numéros des pièces (outils Sol et Murs)

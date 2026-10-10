@@ -141,6 +141,7 @@ export class Editor {
     if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || (s.kind === 'vertex' && s.index >= n) || (s.kind === 'wall' && s.index >= wallSegs(d).length)) ui.set({ sel: null });
     if (s.kind === 'image' && !d.images.some(i => i.id === s.id)) ui.set({ sel: null });
     if (s.kind === 'room' && s.index >= rooms(d).length) ui.set({ sel: null });
+    if (s.kind === 'pan' && !wallSegs(d)[s.wall]) ui.set({ sel: null });
     if (s.kind === 'objects') {
       const ids = s.ids.filter(id => d.objects.some(o => o.id === id));
       if (ids.length !== s.ids.length) ui.set({ sel: ids.length ? { kind: 'objects', ids } : null });
@@ -156,7 +157,7 @@ export class Editor {
     const faceCol = (w: WallStyle) => ext ? w.outColor ?? '' : w.color;
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
-      s.wallFace, s.partDraw, (s.tool === 'revetement' || s.tool === 'murs') && JSON.stringify([d.rooms, d.partitions.length, d.floor?.material, d.walls.styles[0]?.material]), s.tool === 'murs' || s.tool === 'sol' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, op?.openOut, op?.flipHinge, s.placeType,
+      s.wallFace, s.partDraw, (s.tool === 'revetement' || s.tool === 'murs') && JSON.stringify([d.rooms, d.pans, d.partitions.length, d.floor?.material, d.walls.styles[0]?.material]), s.tool === 'murs' || s.tool === 'sol' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, op?.openOut, op?.flipHinge, s.placeType,
       s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side + i.wall) : null,
       s.tool === 'images' && s.sel?.kind !== 'image' ? d.images.map(i => i.id + i.target + i.wall) : null,
       s.tool === 'murs' && !s.sel && d.walls.styles.some(w => faceMat(w) !== faceMat(d.walls.styles[0]) || faceCol(w) !== faceCol(d.walls.styles[0]))]);
@@ -256,7 +257,8 @@ export class Editor {
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
       else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('ads_click', 'Clic sur une ouverture : la régler'), H('open_with', 'Glisser : déplacer')];
       else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
-      else if (s.tool === 'revetement' || (s.tool === 'murs' && s.wallFace === 'int')) parts = [H('left_click', 'Clic dans une pièce : la décorer'), H('pan_tool_alt', 'Glisser : déplacer la vue')];
+      else if (s.tool === 'murs' && s.wallFace === 'int') parts = [H('left_click', 'Clic sur un mur : ce pan seulement'), H('ads_click', 'Clic dans une pièce : tous ses murs')];
+      else if (s.tool === 'revetement') parts = [H('left_click', 'Clic dans une pièce : son sol'), H('pan_tool_alt', 'Glisser : déplacer la vue')];
       else if (s.tool === 'images') parts = [H('left_click', 'Clic sur un repère : choisir l’image'), H('ads_click', 'Clic sur un mur : y ajouter une image')];
       else parts = [H('left_click', 'Clic sur un mur ou une cloison : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
       hint.replaceChildren(...parts);
