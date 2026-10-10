@@ -3,6 +3,7 @@ import type { Opening, Project } from '../model/types';
 import { offsetPolygon, dot, sub } from '../model/geometry';
 import { floorMaterial, wallMaterial } from './materials';
 import { DEFAULT_OUT, openingColor, openingStyle, wallSegs, type WallSeg } from '../model/project';
+import { facePieces, floorOfRoom, rooms, wallLookOf } from '../model/rooms';
 
 /* Construction de la boutique en 3D à partir du modèle : sol, dalle, murs avec ouvertures, menuiseries.
    Chaque mur est un groupe dans son repère local : x le long du mur (depuis le sommet i), y vers le haut,
@@ -72,15 +73,20 @@ export function buildShop(p: Project): BuiltShop {
   const pts = p.floor.points, T = p.walls.thickness;
   const outer = offsetPolygon(pts, T);
 
-  // Sol
-  const shape = new THREE.Shape(pts.map(q => new THREE.Vector2(q.x, -q.y)));
-  const fg = new THREE.ShapeGeometry(shape); fg.rotateX(-Math.PI / 2);
-  // UV en mètres, dans le repère du plan
-  const uv = fg.getAttribute('uv') as THREE.BufferAttribute, pa = fg.getAttribute('position') as THREE.BufferAttribute;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, pa.getX(i), pa.getZ(i));
-  const floor = new THREE.Mesh(fg, floorMaterial(p.floor.material, p.floor.color));
-  floor.receiveShadow = true; floor.userData.pick = { kind: 'floor' } satisfies Pick;
-  root.add(floor); pickables.push(floor);
+  // Sol : une surface par pièce, chacune avec son revêtement
+  rooms(p).forEach((r, ri) => {
+    const shape = new THREE.Shape(r.poly.map(q => new THREE.Vector2(q.x, -q.y)));
+    for (const hole of r.holes) shape.holes.push(new THREE.Path(hole.map(q => new THREE.Vector2(q.x, -q.y))));
+    const fg = new THREE.ShapeGeometry(shape); fg.rotateX(-Math.PI / 2);
+    // UV en mètres, dans le repère du plan
+    const uv = fg.getAttribute('uv') as THREE.BufferAttribute, pa = fg.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pa.getX(i), pa.getZ(i));
+    const look = floorOfRoom(p, ri);
+    const floor = new THREE.Mesh(fg, floorMaterial(look.material, look.color));
+    floor.name = 'sol-piece-' + (ri + 1);
+    floor.receiveShadow = true; floor.userData.pick = { kind: 'floor' } satisfies Pick;
+    root.add(floor); pickables.push(floor);
+  });
 
   // Dalle sous la boutique
   const sg = new THREE.ExtrudeGeometry(new THREE.Shape(outer.map(q => new THREE.Vector2(q.x, -q.y))), { depth: 0.12, bevelEnabled: false });
@@ -96,11 +102,13 @@ export function buildShop(p: Project): BuiltShop {
     // Face extérieure d'un mur du contour : débord aux angles (raccord en onglet) ; cloison : même longueur.
     const uA = part ? 0 : dot(sub(outer[i], e.a), e.u), uB = part ? L : dot(sub(outer[(i + 1) % n], e.a), e.u);
     const ops = p.openings.filter(o => o.wall === i).sort((a, b) => a.t - b.t);
-    const inner = new Quads(), out = new Quads(), cap = new Quads();
+    const out = new Quads(), cap = new Quads(), jamb = new Quads();
+    /** Face (ouvertures découpées) entre start et end, dans le plan z. */
     const faces = (q: Quads, z: number, nrm: THREE.Vector3, start: number, end: number) => {
       let cur = start;
       ops.forEach(o => {
-        const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height;
+        const lo = Math.max(start, o.t - o.width / 2), hi = Math.min(end, o.t + o.width / 2), top = o.sill + o.height;
+        if (hi <= lo) return;
         q.rect(cur, lo, 0, Hw, z, nrm);
         q.rect(lo, hi, 0, o.sill, z, nrm);
         q.rect(lo, hi, top, Hw, z, nrm);
@@ -108,8 +116,15 @@ export function buildShop(p: Project): BuiltShop {
       });
       q.rect(cur, end, 0, Hw, z, nrm);
     };
-    faces(inner, 0, IN, 0, L);
-    faces(out, -T, OUT, uA, uB);
+    // Pans de la face intérieure (et des deux côtés d'une cloison) : chacun prend le revêtement de sa pièce.
+    const pieceMeshes: THREE.Mesh[] = [];
+    const pieces = (side: 'int' | 'ext', z: number, nrm: THREE.Vector3) => facePieces(p, e, side).forEach(pc => {
+      const q = new Quads(); faces(q, z, nrm, pc.u0, pc.u1);
+      const look = wallLookOf(p, e, side, pc.room);
+      pieceMeshes.push(q.mesh(wallMaterial(look.material, look.color)));
+    });
+    pieces('int', 0, IN);
+    if (part) pieces('ext', -T, OUT); else faces(out, -T, OUT, uA, uB);
     // Dessus du mur (visible quand le mur est abaissé)
     cap.add([new THREE.Vector3(0, Hw, 0), new THREE.Vector3(L, Hw, 0), new THREE.Vector3(uB, Hw, -T), new THREE.Vector3(uA, Hw, -T)], UP,
       [[0, 0], [L, 0], [uB, T], [uA, T]]);
@@ -120,21 +135,20 @@ export function buildShop(p: Project): BuiltShop {
     // Tableaux des ouvertures (épaisseur du mur)
     ops.forEach(o => {
       const lo = o.t - o.width / 2, hi = o.t + o.width / 2, top = o.sill + o.height;
-      const side = (u: number, nrm: THREE.Vector3) => out.add([new THREE.Vector3(u, o.sill, 0), new THREE.Vector3(u, o.sill, -T), new THREE.Vector3(u, top, -T), new THREE.Vector3(u, top, 0)], nrm,
+      const side = (u: number, nrm: THREE.Vector3) => jamb.add([new THREE.Vector3(u, o.sill, 0), new THREE.Vector3(u, o.sill, -T), new THREE.Vector3(u, top, -T), new THREE.Vector3(u, top, 0)], nrm,
         [[0, o.sill], [T, o.sill], [T, top], [0, top]]);
       side(lo, PX); side(hi, NX);
-      if (top < Hw - 1e-4) out.add([new THREE.Vector3(lo, top, 0), new THREE.Vector3(hi, top, 0), new THREE.Vector3(hi, top, -T), new THREE.Vector3(lo, top, -T)], DOWN, [[lo, 0], [hi, 0], [hi, T], [lo, T]]);
-      if (o.sill > 0) out.add([new THREE.Vector3(lo, o.sill, 0), new THREE.Vector3(hi, o.sill, 0), new THREE.Vector3(hi, o.sill, -T), new THREE.Vector3(lo, o.sill, -T)], UP, [[lo, 0], [hi, 0], [hi, T], [lo, T]]);
+      if (top < Hw - 1e-4) jamb.add([new THREE.Vector3(lo, top, 0), new THREE.Vector3(hi, top, 0), new THREE.Vector3(hi, top, -T), new THREE.Vector3(lo, top, -T)], DOWN, [[lo, 0], [hi, 0], [hi, T], [lo, T]]);
+      if (o.sill > 0) jamb.add([new THREE.Vector3(lo, o.sill, 0), new THREE.Vector3(hi, o.sill, 0), new THREE.Vector3(hi, o.sill, -T), new THREE.Vector3(lo, o.sill, -T)], UP, [[lo, 0], [hi, 0], [hi, T], [lo, T]]);
     });
 
     const g = new THREE.Group(); g.name = part ? 'cloison-' + (e.part + 1) : 'mur-' + (i + 1);
     g.matrixAutoUpdate = false;
     g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
     const pick: Pick = { kind: 'wall', index: i };
-    const mi = inner.mesh(wallMaterial(style.material, style.color)), mc = cap.mesh(M.cap);
-    const mo = part ? out.mesh(wallMaterial(style.outMaterial ?? style.material, style.outColor ?? style.color)) // côté 2 de la cloison
-      : out.mesh(wallMaterial(style.outMaterial ?? DEFAULT_OUT.material, style.outColor ?? DEFAULT_OUT.color)); // façade
-    for (const m of [mi, mo, mc]) { m.userData.pick = pick; pickables.push(m); g.add(m); }
+    const mc = cap.mesh(M.cap), mj = jamb.mesh(wallMaterial(style.material, style.color)); // tableaux des ouvertures
+    const facade = part ? [] : [out.mesh(wallMaterial(style.outMaterial ?? DEFAULT_OUT.material, style.outColor ?? DEFAULT_OUT.color))];
+    for (const m of [...pieceMeshes, ...facade, mc, mj]) { m.userData.pick = pick; pickables.push(m); g.add(m); }
     ops.forEach(o => { const f = fixture(o, T); f.userData.pick = { kind: 'opening', id: o.id } satisfies Pick; f.traverse(c => { c.userData.pick = f.userData.pick; }); pickables.push(f); g.add(f); });
 
     // Le groupe « scale » sert à abaisser le mur (vue en coupe) sans reconstruire la géométrie.

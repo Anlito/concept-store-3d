@@ -57,6 +57,14 @@ export interface Partition {
   style: WallStyle;
 }
 
+/** Revêtements propres à une pièce (zone fermée par le contour et les cloisons), accrochés à un point intérieur. */
+export interface RoomStyle {
+  at: Vec2;
+  floor?: { material: FloorMaterial; color: string };
+  /** Murs de la pièce (faces intérieures et côtés des cloisons qui la bordent). */
+  wall?: { material: WallMaterial; color: string };
+}
+
 export interface Team { name: string; members: string; klass: string }
 
 export interface Project {
@@ -69,6 +77,8 @@ export interface Project {
   walls: Walls;
   /** Cloisons intérieures. */
   partitions: Partition[];
+  /** Revêtements par pièce (sinon : celui du sol et celui de chaque mur). */
+  rooms?: RoomStyle[];
   openings: Opening[];
   objects: PlacedObject[];
   /** Meubles créés par l'équipe (atelier), enregistrés avec le projet. */

@@ -109,6 +109,7 @@ export function setFloorPoints(p: Project, pts: Vec2[]) {
   p.walls.styles = points.map((_, i) => ({ ...(p.walls.styles[i] ?? DEFAULT_WALL) }));
   p.openings = [];
   p.partitions = [];
+  p.rooms = [];
   p.images = p.images.filter(im => im.target === 'tapis'); // les murs changent : on retire les images murales
 }
 
@@ -206,6 +207,8 @@ export function sanitizeProject(raw: unknown): Project {
     .filter(c => c && c.a && c.b && Number.isFinite(+c.a.x) && Number.isFinite(+c.a.y) && Number.isFinite(+c.b.x) && Number.isFinite(+c.b.y))
     .map(c => ({ id: c.id || uid(), a: { x: +c.a.x, y: +c.a.y }, b: { x: +c.b.x, y: +c.b.y }, ...(c.height ? { height: +c.height } : {}), style: { ...DEFAULT_WALL, ...(c.style || {}) } }));
   if (!p.floor) p.partitions = [];
+  p.rooms = (Array.isArray(r.rooms) ? r.rooms : []).filter(st => st && st.at && Number.isFinite(+st.at.x) && Number.isFinite(+st.at.y))
+    .map(st => ({ at: { x: +st.at.x, y: +st.at.y }, ...(st.floor ? { floor: { ...st.floor } } : {}), ...(st.wall ? { wall: { ...st.wall } } : {}) }));
   p.steps = Array.isArray(r.steps) ? r.steps.filter(x => typeof x === 'string') : [];
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));

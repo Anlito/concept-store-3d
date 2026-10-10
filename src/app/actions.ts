@@ -5,6 +5,7 @@ import { MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, addPartition, contourCou
 import { deleteObjects } from './objectActions';
 import { dist, isSimplePolygon, norm, sub, uid, v } from '../model/geometry';
 import { toast } from '../ui/components';
+import { roomAt } from '../model/rooms';
 
 /* Actions de l'éditeur partagées par la vue 3D, le plan 2D, les panneaux et les raccourcis clavier. */
 
@@ -19,6 +20,14 @@ export function selectPick(ctx: Ctx, p: Pick | null) {
     ctx.ui.set({ sel: { kind: 'wall', index: p.index }, tool: keep ? t : 'murs' });
   }
   else ctx.ui.set({ sel: { kind: 'opening', id: p.id }, tool: 'ouvertures' });
+}
+
+/** Choisit la pièce qui contient le point (outils Sol et Murs). Faux s'il n'y a pas de pièce à cet endroit. */
+export function selectRoomAt(ctx: Ctx, q: Vec2) {
+  const i = roomAt(ctx.store.doc, q);
+  if (i < 0) return false;
+  ctx.ui.set({ sel: { kind: 'room', index: i } });
+  return true;
 }
 
 /** Pose une ouverture du type choisi sur le mur, au plus près de la position t. Elle n'est pas sélectionnée :

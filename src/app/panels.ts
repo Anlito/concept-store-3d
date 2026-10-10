@@ -5,6 +5,7 @@ import { type Bound, alert, button, measureRow, numberField, section, segmented,
 import { add, area, dist, edges, fmtArea, fmtM, isSimplePolygon, mul, norm, perimeter, sub } from '../model/geometry';
 import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
+import { type FloorLook, type WallLook, clearRoomStyles, floorOfRoom, rooms, roomStyles, setRoomStyle } from '../model/rooms';
 import { clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByLength, startPartitions, stopPartitions } from './actions';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
@@ -44,10 +45,6 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
   const { store, ui } = ctx;
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
-  const floorTiles = (): Bound => tiles(
-    (Object.keys(FLOOR_LABELS) as FloorMaterial[]).map(m => ({ value: m, label: FLOOR_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('f', m, '#D6D3CD'), backgroundBlendMode: 'multiply' } }) })),
-    () => store.doc.floor?.material ?? 'parquet',
-    m => store.update(d => { if (d.floor) d.floor.material = m; }));
 
   if (!store.doc.floor) {
     // Tracé
@@ -76,7 +73,6 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
             numberField({ label: 'Profondeur', unit: 'm', decimals: 2, min: 1, max: 10, get: () => rect.d, set: v => { rect.d = v; } }).el),
           button('Créer ce rectangle', 'rectangle', 'btn-secondary', () => closeDraft(ctx, [{ x: 0, y: 0 }, { x: rect.w, y: 0 }, { x: rect.w, y: rect.d }, { x: 0, y: rect.d }])),
           h('p', { class: 'p-help' }, 'Ou dessine-le sur le plan : un clic pour un coin, un clic pour le coin opposé.')),
-      section('Revêtement', b(floorTiles())),
     ], foot);
     const fin = finish(p, binds);
     const base = fin.refresh;
@@ -109,8 +105,12 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
       b(extentRow(() => f().points))),
     vertexBlock ?? h('p', { class: 'p-help' }, h('b', null, 'Glisse un point'), ' pour le déplacer, clique sur un ', h('b', null, '+'), ' pour ajouter un point, puis ', h('b', null, 'Suppr'), ' pour retirer le point choisi.'),
     partitionsCard(ctx),
-    section('Revêtement', b(floorTiles())),
-    floorTints(f().material) ? section('Couleur', b(swatches(FLOOR_COLORS, () => f().color, c => store.update(d => { d.floor!.color = c; })))) : null,
+    section('Murs', h('div', { class: 'g2' },
+      b(numberField({ label: 'Hauteur', unit: 'cm', min: WALL_LIMITS.height[0] * 100, max: WALL_LIMITS.height[1] * 100, get: () => store.doc.walls.height * 100,
+        set: v => store.update(d => { d.walls.height = v / 100; clampAllOpenings(d); }) })),
+      b(numberField({ label: 'Épaisseur', unit: 'cm', min: WALL_LIMITS.thickness[0] * 100, max: WALL_LIMITS.thickness[1] * 100, get: () => store.doc.walls.thickness * 100,
+        set: v => store.update(d => { d.walls.thickness = v / 100; }) }))),
+      h('p', { class: 'p-help' }, 'Les revêtements se choisissent ensuite avec les outils ', h('b', null, 'Sol'), ' et ', h('b', null, 'Murs'), ', pièce par pièce.')),
   ], h('div', { class: 'pn-f' }, button('Effacer la surface et recommencer', 'ink_eraser', 'btn-danger', () => clearFloor(ctx))));
   return finish(p, binds);
 }
@@ -121,49 +121,103 @@ export function wallsPanel(ctx: Ctx): Panel {
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
   if (!store.doc.floor) return emptyPanel('border_outer', 'Murs', 'Les murs se créent tout seuls autour de la surface. Commence par tracer la surface.', ctx);
-  if (ui.s.partDraw) return partitionDrawPanel(ctx);
-  const sel = ui.s.sel?.kind === 'wall' ? ui.s.sel.index : -1;
-  if (sel >= contourCount(store.doc)) return partitionPanel(ctx, sel);
-  const styleOf = (i: number) => store.doc.walls.styles[i];
-  const target = () => sel >= 0 ? [sel] : store.doc.walls.styles.map((_, i) => i);
-  // Face travaillée : intérieur de la boutique, ou extérieur (façade, pour attirer le client).
+  // Face travaillée : intérieur (les murs de chaque pièce), ou extérieur (façade, pour attirer le client).
   const ext = ui.s.wallFace === 'ext';
-  const matOf = (s: WallStyle) => ext ? s.outMaterial ?? DEFAULT_OUT.material : s.material;
-  const colOf = (s: WallStyle) => ext ? s.outColor ?? DEFAULT_OUT.color : s.color;
-  const setStyle = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => {
-    for (const i of target()) {
-      const st = d.walls.styles[i];
-      if (!ext) Object.assign(st, patch);
-      else { if (patch.material) st.outMaterial = patch.material; if (patch.color) st.outColor = patch.color; }
-    }
-  });
-  const ref = () => styleOf(sel >= 0 ? sel : 0);
-  const matTiles = tiles((Object.keys(WALL_LABELS) as WallMaterial[]).map(m => ({ value: m, label: WALL_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('w', m, '#E9E3D8'), backgroundBlendMode: 'multiply' } }) })),
-    () => matOf(ref()), m => setStyle({ material: m }));
-  const all = store.doc.walls.styles;
-  const mixed = sel < 0 && all.some(s => matOf(s) !== matOf(all[0]) || colOf(s) !== colOf(all[0]));
+  const n = contourCount(store.doc), rs = rooms(store.doc);
+  const room = !ext && ui.s.sel?.kind === 'room' && ui.s.sel.index < rs.length ? ui.s.sel.index : -1;
+  const wall = ext && ui.s.sel?.kind === 'wall' && ui.s.sel.index < n ? ui.s.sel.index : -1;
   const face = segmented<'int' | 'ext'>([{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade', icon: 'storefront' }],
-    () => ui.s.wallFace, v => ui.set({ wallFace: v, ...(v === 'ext' ? { cutaway: false } : {}) }));
-  const p = shell('border_outer', sel >= 0 ? `Mur n° ${sel + 1}` : 'Murs',
-    () => sel >= 0 ? `Longueur ${fmtM(wallLength(store.doc, sel))}` : `${store.doc.walls.styles.length} murs · sans toit`, [
-      sel < 0 ? partitionsCard(ctx) : null,
-      section('Tous les murs', h('div', { class: 'g2' },
-        b(numberField({ label: 'Hauteur', unit: 'cm', min: WALL_LIMITS.height[0] * 100, max: WALL_LIMITS.height[1] * 100, get: () => store.doc.walls.height * 100,
-          set: v => store.update(d => { d.walls.height = v / 100; clampAllOpenings(d); }) })),
-        b(numberField({ label: 'Épaisseur', unit: 'cm', min: WALL_LIMITS.thickness[0] * 100, max: WALL_LIMITS.thickness[1] * 100, get: () => store.doc.walls.thickness * 100,
-          set: v => store.update(d => { d.walls.thickness = v / 100; }) })))),
-      sel < 0 ? h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour changer seulement sa matière ou sa couleur. Sinon, les réglages ci-dessous s’appliquent à tous les murs.') : null,
-      mixed ? alert('info', 'Les murs sont différents', 'Choisir une matière ou une couleur ici l’applique à tous les murs.') : null,
+    () => ui.s.wallFace, v => ui.set({ wallFace: v, sel: null, ...(v === 'ext' ? { cutaway: false } : {}) }));
+  const matTiles = (get: () => WallMaterial, set: (m: WallMaterial) => void) => b(tiles((Object.keys(WALL_LABELS) as WallMaterial[]).map(m => ({ value: m, label: WALL_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('w', m, '#E9E3D8'), backgroundBlendMode: 'multiply' } }) })), get, set));
+
+  if (ext) {
+    // Façade : un mur du contour à la fois, ou tous.
+    const target = () => (wall >= 0 ? [wall] : store.doc.walls.styles.map((_, i) => i));
+    const ref = () => store.doc.walls.styles[wall >= 0 ? wall : 0];
+    const mat = () => ref().outMaterial ?? DEFAULT_OUT.material, col = () => ref().outColor ?? DEFAULT_OUT.color;
+    const set = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => {
+      for (const i of target()) { const st = d.walls.styles[i]; if (patch.material) st.outMaterial = patch.material; if (patch.color) st.outColor = patch.color; }
+    });
+    const all = store.doc.walls.styles, key = (s: WallStyle) => (s.outMaterial ?? DEFAULT_OUT.material) + (s.outColor ?? DEFAULT_OUT.color);
+    const p = shell('storefront', wall >= 0 ? `Façade · mur n° ${wall + 1}` : 'Façade', () => (wall >= 0 ? `Longueur ${fmtM(wallLength(store.doc, wall))}` : `${n} murs côté rue`), [
       section('Face à décorer', b(face)),
-      ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Façade'), ' de la vue 3D place la caméra devant.') : null,
-      section((ext ? 'Façade' : 'Intérieur') + (sel >= 0 ? ' · matière' : ' · matière de tous les murs'), b(matTiles)),
-      wallTints(matOf(ref())) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(ref()), c => setStyle({ color: c })))) : null,
-    ], sel >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à tous les murs', 'format_paint', 'btn-secondary', () => {
-      const s = { ...styleOf(sel) }; store.update(d => { d.walls.styles = d.walls.styles.map(() => ({ ...s })); }); toast('Style appliqué à tous les murs.');
+      h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. ', h('b', null, 'Clique sur un mur'), ' pour décorer seulement sa façade ; le bouton ', h('b', null, 'Façade'), ' de la vue 3D place la caméra devant.'),
+      wall < 0 && all.some(s => key(s) !== key(all[0])) ? alert('info', 'Les façades sont différentes', 'Choisir une matière ou une couleur ici l’applique à toute la façade.') : null,
+      section(wall >= 0 ? 'Matière de ce mur' : 'Matière de toute la façade', matTiles(mat, m => set({ material: m }))),
+      wallTints(mat()) ? section('Couleur', b(swatches(WALL_COLORS, col, c => set({ color: c })))) : null,
+    ], wall >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à toute la façade', 'format_paint', 'btn-secondary', () => {
+      const s = store.doc.walls.styles[wall];
+      store.update(d => { for (const st of d.walls.styles) { st.outMaterial = s.outMaterial; st.outColor = s.outColor; } }); toast('Façade appliquée à tous les murs.');
     })) : undefined);
-  const fin = finish(p, binds);
-  // La couleur n'existe que pour les matières teintables : on reconstruit si besoin.
-  return fin;
+    return finish(p, binds);
+  }
+
+  // Intérieur : les murs d'une pièce (faces du contour et côtés des cloisons qui la bordent), ou tous.
+  const look = (): WallLook => {
+    if (room >= 0) return roomStyles(store.doc)[room]?.wall ?? { material: store.doc.walls.styles[0].material, color: store.doc.walls.styles[0].color };
+    const st = store.doc.walls.styles[0]; return { material: st.material, color: st.color };
+  };
+  const set = (patch: Partial<WallLook>) => store.update(d => {
+    if (room >= 0) { setRoomStyle(d, room, { wall: { ...look(), ...patch } }); return; }
+    // Tous les murs : murs du contour, deux côtés des cloisons, et plus de revêtement propre aux pièces.
+    for (const st of d.walls.styles) Object.assign(st, patch);
+    for (const c of d.partitions) { Object.assign(c.style, patch); if (patch.material) c.style.outMaterial = patch.material; if (patch.color) c.style.outColor = patch.color; }
+    clearRoomStyles(d, 'wall');
+  });
+  const mixed = room < 0 && (store.doc.rooms ?? []).some(st => st.wall);
+  const p = shell('border_outer', room >= 0 ? `Murs de la pièce n° ${room + 1}` : 'Murs', () => (room >= 0 ? `Pièce de ${fmtArea(rs[room].area)}` : `${rs.length} pièce${rs.length > 1 ? 's' : ''} · sans toit`), [
+    section('Face à décorer', b(face)),
+    room >= 0 ? button('Tous les murs', 'arrow_back', 'btn-ghost', () => ui.set({ sel: null }))
+      : h('p', { class: 'p-help' }, rs.length > 1
+        ? [h('b', null, 'Clique dans une pièce'), ' (sur le plan ou en 3D) pour décorer seulement ses murs. Sinon, le choix s’applique à tous les murs.']
+        : ['Le choix s’applique à tous les murs. Pour décorer chaque pièce à sa façon, trace des ', h('b', null, 'cloisons'), ' avec l’outil ', h('b', null, 'Surface'), '.']),
+    mixed ? alert('info', 'Les pièces sont différentes', 'Choisir une matière ou une couleur ici l’applique aux murs de toutes les pièces.') : null,
+    section(room >= 0 ? 'Matière des murs de la pièce' : 'Matière de tous les murs', matTiles(() => look().material, m => set({ material: m }))),
+    wallTints(look().material) ? section('Couleur', b(swatches(WALL_COLORS, () => look().color, c => set({ color: c })))) : null,
+  ], room >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à toutes les pièces', 'format_paint', 'btn-secondary', () => {
+    const l = look(); store.update(d => {
+      for (const st of d.walls.styles) Object.assign(st, l);
+      for (const c of d.partitions) Object.assign(c.style, l, { outMaterial: l.material, outColor: l.color });
+      clearRoomStyles(d, 'wall');
+    }); ui.set({ sel: null }); toast('Murs appliqués à toutes les pièces.');
+  })) : undefined);
+  return finish(p, binds);
+}
+
+/* ---------- Sol (revêtement, pièce par pièce) ---------- */
+export function coveringPanel(ctx: Ctx): Panel {
+  const { store, ui } = ctx;
+  const binds: Bound[] = [];
+  const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
+  if (!store.doc.floor) return emptyPanel('grid_view', 'Sol', 'Le revêtement se pose sur la surface de la boutique. Commence par tracer la surface.', ctx);
+  const rs = rooms(store.doc);
+  const room = ui.s.sel?.kind === 'room' && ui.s.sel.index < rs.length ? ui.s.sel.index : -1;
+  const look = (): FloorLook => (room >= 0 ? floorOfRoom(store.doc, room) : { material: store.doc.floor!.material, color: store.doc.floor!.color });
+  const set = (patch: Partial<FloorLook>) => store.update(d => {
+    if (room >= 0) setRoomStyle(d, room, { floor: { ...look(), ...patch } });
+    else { Object.assign(d.floor!, patch); clearRoomStyles(d, 'floor'); }
+  });
+  const list = room < 0 && rs.length > 1 ? section('Les pièces', h('div', { class: 'room-list' }, ...rs.map((r, i) => {
+    const l = floorOfRoom(store.doc, i);
+    return h('button', { class: 'room-row', type: 'button', onclick: () => ui.set({ sel: { kind: 'room', index: i } }) },
+      h('span', { class: 'room-n' }, String(i + 1)), h('span', { class: 'room-t' }, h('b', null, `Pièce n° ${i + 1}`), h('span', null, `${fmtArea(r.area)} · ${FLOOR_LABELS[l.material]}`)), icon('chevron_right'));
+  }))) : null;
+  const mixed = room < 0 && (store.doc.rooms ?? []).some(st => st.floor);
+  const p = shell('grid_view', room >= 0 ? `Sol de la pièce n° ${room + 1}` : 'Sol', () => (room >= 0 ? `Pièce de ${fmtArea(rs[room].area)}` : `${rs.length} pièce${rs.length > 1 ? 's' : ''} · ${fmtArea(area(store.doc.floor!.points))}`), [
+    room >= 0 ? button('Toutes les pièces', 'arrow_back', 'btn-ghost', () => ui.set({ sel: null }))
+      : h('p', { class: 'p-help' }, rs.length > 1
+        ? [h('b', null, 'Clique dans une pièce'), ' (sur le plan ou en 3D) pour lui donner son propre sol. Sinon, le choix s’applique à toute la boutique.']
+        : ['Le choix s’applique à toute la boutique. Pour un sol différent dans chaque pièce, trace des ', h('b', null, 'cloisons'), ' avec l’outil ', h('b', null, 'Surface'), '.']),
+    mixed ? alert('info', 'Les pièces sont différentes', 'Choisir un revêtement ici l’applique à toutes les pièces.') : null,
+    section(room >= 0 ? 'Revêtement de la pièce' : 'Revêtement de toute la boutique', b(tiles(
+      (Object.keys(FLOOR_LABELS) as FloorMaterial[]).map(m => ({ value: m, label: FLOOR_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('f', m, '#D6D3CD'), backgroundBlendMode: 'multiply' } }) })),
+      () => look().material, m => set({ material: m })))),
+    floorTints(look().material) ? section('Couleur', b(swatches(FLOOR_COLORS, () => look().color, c => set({ color: c })))) : null,
+    list,
+  ], room >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à toutes les pièces', 'format_paint', 'btn-secondary', () => {
+    const l = look(); store.update(d => { Object.assign(d.floor!, l); clearRoomStyles(d, 'floor'); }); ui.set({ sel: null }); toast('Sol appliqué à toutes les pièces.');
+  })) : undefined);
+  return finish(p, binds);
 }
 
 /* ---------- Cloisons ---------- */
@@ -195,19 +249,11 @@ function partitionDrawPanel(ctx: Ctx): Panel {
 
 /** Cloison choisie : longueur, hauteur, revêtement de chaque côté, suppression. */
 function partitionPanel(ctx: Ctx, wall: number): Panel {
-  const { store, ui } = ctx;
+  const { store } = ctx;
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
   const j = wall - contourCount(store.doc);
   const c = () => store.doc.partitions[j];
-  const side2 = ui.s.wallFace === 'ext';
-  const matOf = (st: WallStyle) => side2 ? st.outMaterial ?? st.material : st.material;
-  const colOf = (st: WallStyle) => side2 ? st.outColor ?? st.color : st.color;
-  const setStyle = (patch: Partial<{ material: WallMaterial; color: string }>) => store.update(d => {
-    const st = d.partitions[j].style;
-    if (!side2) Object.assign(st, patch);
-    else { if (patch.material) st.outMaterial = patch.material; if (patch.color) st.outColor = patch.color; }
-  });
   const setLength = (l: number) => {
     let ok = true;
     store.update(d => {
@@ -218,9 +264,6 @@ function partitionPanel(ctx: Ctx, wall: number): Panel {
     });
     if (!ok) toast('La cloison sortirait de la boutique.', undefined, 'warning');
   };
-  const face = segmented<'int' | 'ext'>([{ value: 'int', label: 'Côté 1' }, { value: 'ext', label: 'Côté 2' }], () => ui.s.wallFace, v => ui.set({ wallFace: v }));
-  const matTiles = tiles((Object.keys(WALL_LABELS) as WallMaterial[]).map(m => ({ value: m, label: WALL_LABELS[m], thumb: h('div', { class: 'thumb', style: { background: thumbCss('w', m, '#E9E3D8'), backgroundBlendMode: 'multiply' } }) })),
-    () => matOf(c().style), m => setStyle({ material: m }));
   const p = shell('border_outer', `Cloison n° ${j + 1}`, () => (c() ? `Longueur ${fmtM(dist(c().a, c().b))}` : ''), [
     section('Dimensions', h('div', { class: 'g2' },
       b(numberField({ label: 'Longueur', unit: 'cm', min: MIN_PARTITION * 100, max: 1300, get: () => dist(c().a, c().b) * 100, set: v => setLength(v / 100),
@@ -229,9 +272,7 @@ function partitionPanel(ctx: Ctx, wall: number): Panel {
         set: v => store.update(d => { const x = d.partitions[j]; x.height = Math.abs(v / 100 - d.walls.height) < 1e-6 ? undefined : v / 100; clampAllOpenings(d); }),
         title: 'Une cloison basse (comptoir, muret) peut être moins haute que les murs' })))),
     h('p', { class: 'p-help' }, 'Sur le plan 2D, ', h('b', null, 'glisse'), ' la cloison ou ses extrémités pour la déplacer. Pour une porte ou un passage : outil ', h('b', null, 'Portes / fenêtres'), ', puis clic sur la cloison.'),
-    section('Côté à décorer', b(face), h('p', { class: 'p-help' }, 'Les côtés 1 et 2 sont repérés sur le plan 2D.')),
-    section((side2 ? 'Côté 2' : 'Côté 1') + ' · matière', b(matTiles)),
-    wallTints(matOf(c().style)) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(c().style), col => setStyle({ color: col })))) : null,
+    alert('info', 'Revêtement', 'Chaque côté de la cloison prend le revêtement des murs de sa pièce : outil Murs, puis clic dans la pièce.'),
   ], h('div', { class: 'pn-f two' },
     button('Nouvelle cloison', 'add', 'btn-secondary', () => startPartitions(ctx)),
     button('Supprimer', 'delete', 'btn-danger', () => deleteSelection(ctx))));

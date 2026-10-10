@@ -2,7 +2,9 @@ import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
 import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, pointInPolygon, projectOnSegment, snapTo, sub, v, area, cross } from '../model/geometry';
 import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, imageExtent, insertVertex, insideFloor, moveVertex, openingStyle, rugCorners, shopExtent, wallLength, wallSegs, wallShort } from '../model/project';
-import { closeDraft, createPartition, placeOpening, selectPick, stopPartitions } from "../app/actions";
+import { closeDraft, createPartition, placeOpening, selectPick, selectRoomAt, stopPartitions } from "../app/actions";
+import { floorOfRoom, rooms } from "../model/rooms";
+import { floorTints } from "../view3d/materials";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
 import { getItem } from "../library/library";
@@ -93,6 +95,14 @@ export class Plan2D {
   private get drawing() { const s = this.ctx.ui.s; return s.tool === 'sol' && !this.ctx.store.doc.floor; }
   /** Tracé de cloisons en cours (outil Murs). */
   private get partDrawing() { const s = this.ctx.ui.s; return s.partDraw && (s.tool === 'murs' || s.tool === 'sol') && !!this.ctx.store.doc.floor; }
+  /** Outils Sol et Murs (intérieur) : un clic choisit une pièce. */
+  private get roomPicking() { const s = this.ctx.ui.s; return !!this.ctx.store.doc.floor && (s.tool === 'revetement' || (s.tool === 'murs' && s.wallFace === 'int')); }
+  /** Clic sur un mur ou une cloison : la pièce est celle du côté où l'on a cliqué. */
+  private roomPoint(p: Vec2): Vec2 {
+    const w = this.hitWall(p); if (!w) return p;
+    const e = wallSegs(this.ctx.store.doc)[w.wall], sd = dot(sub(p, e.a), e.n);
+    return add(add(e.a, mul(e.u, w.t)), mul(e.n, e.part < 0 || sd < e.T / 2 ? -0.08 : e.T + 0.08)); // mur du contour : la pièce est à l'intérieur
+  }
   /** Rang de la cloison choisie avec l'outil Murs, ou −1. */
   private get selPartition() {
     const s = this.ctx.ui.s, d = this.ctx.store.doc;
@@ -297,6 +307,7 @@ export class Plan2D {
         }
       }
       if (s.tool === 'images') { const im = this.hitImage(p); if (im) { selectPick(this.ctx, { kind: 'image', id: im }); return; } }
+      if (this.roomPicking && !this.objectDown(e, p)) { if (!selectRoomAt(this.ctx, this.roomPoint(p))) pan(true); return; }
       if (s.tool !== "ouvertures" && this.objectDown(e, p)) return;
       const op = this.hitOpening(p);
       if (op) {
@@ -524,6 +535,15 @@ export class Plan2D {
     if (d.floor) {
       const pts = d.floor.points, T = d.walls.thickness, outer = offsetPolygon(pts, T), E = edges(pts);
       o.push(`<path d="${path(pts)}" style="fill:#F3EEE6"/>`);
+      const RS = this.roomPicking ? rooms(d) : [];
+      if (RS.length) {
+        const sr = s.sel?.kind === 'room' ? s.sel.index : -1;
+        RS.forEach((r, i) => {
+          const look = floorOfRoom(d, i), tint = s.tool === 'revetement' && floorTints(look.material) ? look.color : '#F3EEE6';
+          const holes = r.holes.map(hh => ' ' + path(hh)).join('');
+          o.push(`<path d="${path(r.poly)}${holes}" data-room="${i}" style="fill:${tint};fill-rule:evenodd;${i === sr ? `fill-opacity:1;stroke:${A};stroke-width:4;stroke-dasharray:10 6` : 'stroke:none'}"/>`);
+        });
+      }
       o.push(`<path d="${path(outer)} ${path(pts)}" style="fill:#3A3936;fill-rule:evenodd" data-testid="walls"/>`);
       // Cloisons (même trait que les murs)
       const S = wallSegs(d), parts = S.filter(w => w.part >= 0);
@@ -645,6 +665,11 @@ export class Plan2D {
           text(X(q.x), Y(q.y) + 0.5, lab, 'font-size:12px;font-weight:800;fill:#fff');
         }
       }
+      // Numéros des pièces (outils Sol et Murs)
+      if (RS.length > 1) RS.forEach((r, i) => {
+        const on = s.sel?.kind === 'room' && s.sel.index === i;
+        pill(X(r.inner.x), Y(r.inner.y), `Pièce ${i + 1}`, on ? A : '#fff', on ? '#fff' : INK, 13);
+      });
       // Longueur des cloisons, écrite sur la cloison
       if (s.dims) for (const w of parts) {
         if (w.length * k < 50) continue;

@@ -4,7 +4,7 @@ import { h, icon } from '../ui/dom';
 import { toggle } from '../ui/components';
 import { View3D } from '../view3d/view3d';
 import { Plan2D } from '../view2d/plan';
-import { type Panel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
+import { type Panel, coveringPanel, floorPanel, furniturePanel, objectPanel, openingsPanel, wallsPanel } from './panels';
 import { libraryDrawer } from './libraryDrawer';
 import { imagePanel, imagesPanel } from './imagesUi';
 import { saveProject } from './files';
@@ -14,11 +14,13 @@ import { stepsButton } from './guide/steps';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection, stopPartitions } from './actions';
 import { wallSegs, wallStyleOf } from '../model/project';
+import { rooms } from '../model/rooms';
 import { floorTints, wallTints } from '../view3d/materials';
 
 const TOOLS: { id: Tool; icon: string; label: string; soon?: boolean }[] = [
   { id: 'sol', icon: 'grid_on', label: 'Surface' },
   { id: 'murs', icon: 'border_outer', label: 'Murs' },
+  { id: 'revetement', icon: 'grid_view', label: 'Sol' },
   { id: 'ouvertures', icon: 'door_front', label: 'Portes / fenêtres' },
   { id: 'mobilier', icon: 'chair', label: 'Mobilier' },
   { id: 'images', icon: 'image', label: 'Images' },
@@ -138,6 +140,7 @@ export class Editor {
     const n = d.floor?.points.length ?? 0;
     if ((s.kind === 'opening' && !d.openings.some(o => o.id === s.id)) || (s.kind === 'vertex' && s.index >= n) || (s.kind === 'wall' && s.index >= wallSegs(d).length)) ui.set({ sel: null });
     if (s.kind === 'image' && !d.images.some(i => i.id === s.id)) ui.set({ sel: null });
+    if (s.kind === 'room' && s.index >= rooms(d).length) ui.set({ sel: null });
     if (s.kind === 'objects') {
       const ids = s.ids.filter(id => d.objects.some(o => o.id === id));
       if (ids.length !== s.ids.length) ui.set({ sel: ids.length ? { kind: 'objects', ids } : null });
@@ -153,7 +156,7 @@ export class Editor {
     const faceCol = (w: WallStyle) => ext ? w.outColor ?? '' : w.color;
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
-      s.wallFace, s.partDraw, s.tool === 'murs' || s.tool === 'sol' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, op?.openOut, op?.flipHinge, s.placeType,
+      s.wallFace, s.partDraw, (s.tool === 'revetement' || s.tool === 'murs') && JSON.stringify([d.rooms, d.partitions.length, d.floor?.material, d.walls.styles[0]?.material]), s.tool === 'murs' || s.tool === 'sol' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, op?.openOut, op?.flipHinge, s.placeType,
       s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side + i.wall) : null,
       s.tool === 'images' && s.sel?.kind !== 'image' ? d.images.map(i => i.id + i.target + i.wall) : null,
       s.tool === 'murs' && !s.sel && d.walls.styles.some(w => faceMat(w) !== faceMat(d.walls.styles[0]) || faceCol(w) !== faceCol(d.walls.styles[0]))]);
@@ -167,6 +170,7 @@ export class Editor {
     switch (this.ctx.ui.s.tool) {
       case 'sol': return floorPanel(this.ctx, this.plan);
       case 'murs': return wallsPanel(this.ctx);
+      case 'revetement': return coveringPanel(this.ctx);
       case 'ouvertures': return openingsPanel(this.ctx);
       case 'mobilier': return this.ctx.ui.s.sel?.kind === 'objects' ? objectPanel(this.ctx) : furniturePanel(this.ctx);
       case 'images': return this.ctx.ui.s.sel?.kind === 'image' ? imagePanel(this.ctx) : imagesPanel(this.ctx);
@@ -252,6 +256,7 @@ export class Editor {
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
       else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('ads_click', 'Clic sur une ouverture : la régler'), H('open_with', 'Glisser : déplacer')];
       else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
+      else if (s.tool === 'revetement' || (s.tool === 'murs' && s.wallFace === 'int')) parts = [H('left_click', 'Clic dans une pièce : la décorer'), H('pan_tool_alt', 'Glisser : déplacer la vue')];
       else if (s.tool === 'images') parts = [H('left_click', 'Clic sur un repère : choisir l’image'), H('ads_click', 'Clic sur un mur : y ajouter une image')];
       else parts = [H('left_click', 'Clic sur un mur ou une cloison : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
       hint.replaceChildren(...parts);

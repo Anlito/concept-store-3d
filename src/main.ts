@@ -5,6 +5,7 @@ import { newProject, sampleProject } from './model/project';
 import type { Project } from './model/types';
 import { UIStore, bindSnapSteps, defaultUI, type Ctx } from './app/state';
 import { closeHelp, closeOffer, initGuide, offerTour, startTour } from './app/guide/guide';
+import { rooms } from './model/rooms';
 import { closeStepsPanel, openStepsPanel, showStepsAtStart } from './app/guide/steps';
 import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
@@ -142,7 +143,7 @@ window.addEventListener('beforeunload', e => {
 
 // Accès pour les tests automatisés et le débogage.
 (window as unknown as { cs3d: unknown }).cs3d = {
-  store, ui, ctx, get editor() { return editor; }, backupNow, startTour, openStepsPanel: () => openStepsPanel(ctx),
+  store, ui, ctx, get editor() { return editor; }, backupNow, startTour, rooms: () => rooms(store.doc).map(r => ({ area: Math.round(r.area * 100) / 100, holes: r.holes.length })), openStepsPanel: () => openStepsPanel(ctx),
   start: (which: 'new' | 'sample') => start(which === 'new' ? newProject() : sampleProject(), { view: which === 'new' ? '2d' : '3d' }),
 };
 

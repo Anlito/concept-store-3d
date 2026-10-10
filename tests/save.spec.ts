@@ -116,7 +116,7 @@ test('le projet modèle du professeur n’est jamais écrasé', async ({ page })
   expect(fs.files['modele-boutique-a-completer.json']).toBe(tpl);
   // Ensuite « Enregistrer » réécrit son propre fichier sans redemander
   const calls = fs.saveCalls.length;
-  await page.locator('[data-tool="murs"]').click();
+  await page.locator('[data-tool="sol"]').click();
   const hgt = page.getByTestId('panel').getByLabel('Hauteur');
   await hgt.fill('250'); await hgt.press('Enter');
   await expect(status(page)).toHaveText('Non enregistré');
@@ -155,7 +155,7 @@ test('revenir à l’accueil sans enregistrer demande confirmation', async ({ pa
   await page.goto(distUrl('index.html'));
   await page.getByTestId('template').click();
   await page.getByRole('button', { name: 'Boutique exemple' }).click();
-  await page.locator('[data-tool="murs"]').click();
+  await page.locator('[data-tool="sol"]').click();
   const hgt = page.getByTestId('panel').getByLabel('Hauteur');
   await hgt.fill('280'); await hgt.press('Enter');
   await page.locator('.tb-logo').click();

@@ -2,7 +2,8 @@ import type { OpeningType, Vec2 } from '../model/types';
 import type { Store } from '../model/store';
 import type { FileState } from './files';
 
-export type Tool = 'sol' | 'murs' | 'ouvertures' | 'mobilier' | 'images';
+/** Outils : 'sol' = Surface (tracé), 'revetement' = Sol (revêtements). */
+export type Tool = 'sol' | 'revetement' | 'murs' | 'ouvertures' | 'mobilier' | 'images';
 export type View = '2d' | '3d';
 export type Selection =
   | null
@@ -10,7 +11,9 @@ export type Selection =
   | { kind: 'opening'; id: string }
   | { kind: 'vertex'; index: number }
   | { kind: 'objects'; ids: string[] }
-  | { kind: 'image'; id: string };
+  | { kind: 'image'; id: string }
+  /** Pièce (zone fermée par le contour et les cloisons), par son rang dans rooms(). */
+  | { kind: 'room'; index: number };
 export type ShadowQuality = 'off' | 'low' | 'high';
 export type SaveStatus = 'new' | 'saved' | 'unsaved' | 'saving';
 

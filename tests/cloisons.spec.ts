@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   await page.getByTestId('template').click();
   await page.getByRole('button', { name: 'Boutique exemple' }).click(); // 10 × 7 m
   await page.getByRole('button', { name: 'Plan 2D' }).click();
-  await page.locator('[data-tool=murs]').click();
+  await page.locator('[data-tool=sol]').click();
 });
 test.afterEach(() => expect(errors).toEqual([]));
 
@@ -55,12 +55,10 @@ test('régler une cloison : longueur, hauteur, côtés, 3D', async ({ page }) =>
   await expect(panel).toContainText('Cloison n° 2');
   await panel.getByLabel('Longueur').fill('250'); await panel.getByLabel('Longueur').press('Enter');
   await panel.getByLabel('Hauteur').fill('120'); await panel.getByLabel('Hauteur').press('Enter');
-  await panel.getByRole('button', { name: 'Côté 2' }).click();
-  await panel.getByRole('button', { name: 'Brique' }).click();
+  await expect(panel).toContainText('prend le revêtement des murs de sa pièce');
   const c = (await doc(page)).partitions[1];
   expect(c.b).toEqual({ x: 9.5, y: 3 });
   expect(c.height).toBe(1.2);
-  expect(c.style).toMatchObject({ material: 'peinture', outMaterial: 'brique' });
   // Trop longue : elle sortirait de la boutique.
   await panel.getByLabel('Longueur').fill('900'); await panel.getByLabel('Longueur').press('Enter');
   await expect(page.locator('.toast')).toContainText('sortirait');
@@ -100,7 +98,7 @@ test('porte ou passage dans une cloison, suivis quand le sol change, supprimés 
   expect(d.openings.find((o: any) => o.id === op.id).wall).toBe(5);
 
   // Supprimer la cloison retire sa porte ; la cloison suivante devient le mur n° 5.
-  await page.locator('[data-tool=murs]').click();
+  await page.locator('[data-tool=sol]').click();
   await clickPlan(page, { x: 7, y: 2.6 });
   await expect(page.getByTestId('panel')).toContainText('Cloison n° 1');
   await page.keyboard.press('Delete');
@@ -149,4 +147,49 @@ test('depuis l’outil Surface : cloison à la longueur tapée au clavier', asyn
   await clickPlan(page, { x: 6, y: 1.2 });
   await expect(page.getByTestId('panel')).toContainText('Cloison n° 1');
   expect(await page.evaluate(() => (window as any).cs3d.ui.s.tool)).toBe('sol');
+});
+
+test('pièces : chaque pièce a son sol et ses murs, un mur coupé par une cloison change de revêtement', async ({ page }) => {
+  await drawStore(page);
+  expect(await page.evaluate(() => (window as any).cs3d.rooms())).toEqual([{ area: 9, holes: 0 }, { area: 61, holes: 0 }]);
+  // Sol de la réserve (pièce 1)
+  await page.locator('[data-tool=revetement]').click();
+  await expect(page.getByTestId('panel')).toContainText('Clique dans une pièce');
+  await clickPlan(page, { x: 8.5, y: 1.5 });
+  await expect(page.getByTestId('panel')).toContainText('Sol de la pièce n° 1');
+  await page.getByRole('button', { name: 'Carrelage' }).click();
+  // Murs de la réserve : clic sur le mur du fond, côté réserve
+  await page.locator('[data-tool=murs]').click();
+  const mats = () => page.evaluate(() => { const g = (window as any).cs3d.editor.view3d.scene.getObjectByName('mur-1'); const m = new Set<string>(); g.traverse((o: any) => { if (o.isMesh) m.add(o.material.uuid); }); return m.size; });
+  const before = await mats();
+  await clickPlan(page, { x: 8.5, y: 0.03 });
+  await expect(page.getByTestId('panel')).toContainText('Murs de la pièce n° 1');
+  await page.getByRole('button', { name: 'Brique' }).click();
+  let d = await doc(page);
+  expect(d.rooms).toHaveLength(1);
+  expect(d.rooms[0]).toMatchObject({ floor: { material: 'carrelage' }, wall: { material: 'brique' } });
+  expect(d.floor.material).toBe('parquet'); // le reste de la boutique ne change pas
+  // Le mur n° 1 a maintenant deux revêtements intérieurs (boutique / réserve)
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  expect(await mats()).toBe(before + 1);
+  const floors = await page.evaluate(() => { const n: string[] = []; (window as any).cs3d.editor.view3d.scene.traverse((o: any) => { if (o.name.startsWith('sol-piece')) n.push(o.name); }); return n.sort(); });
+  expect(floors).toEqual(['sol-piece-1', 'sol-piece-2']);
+  // « Appliquer à toutes les pièces » : plus de revêtement propre
+  await page.getByRole('button', { name: 'Plan 2D' }).click();
+  await page.getByRole('button', { name: 'Appliquer à toutes les pièces' }).click();
+  d = await doc(page);
+  expect(d.rooms[0].wall).toBeUndefined();
+  expect(d.walls.styles.every((s: any) => s.material === 'brique')).toBe(true);
+  // Sans cloison, une seule pièce ; le revêtement accroché reste dans le fichier
+  await page.locator('[data-tool=sol]').click();
+  await clickPlan(page, { x: 8.5, y: 3 }); await page.keyboard.press('Delete');
+  expect(await page.evaluate(() => (window as any).cs3d.rooms())).toEqual([{ area: 70, holes: 0 }]);
+});
+
+test('pièce au milieu d’une autre (cabine) : un trou dans le sol de la grande pièce', async ({ page }) => {
+  await page.getByRole('button', { name: 'Tracer une cloison' }).click();
+  for (const q of [{ x: 4, y: 2 }, { x: 6, y: 2 }, { x: 6, y: 4 }, { x: 4, y: 4 }, { x: 4, y: 2 }]) await clickPlan(page, q);
+  await page.keyboard.press('Escape');
+  const rs = await page.evaluate(() => (window as any).cs3d.rooms());
+  expect(rs.sort((a: any, b: any) => a.area - b.area)).toEqual([{ area: 4, holes: 0 }, { area: 66, holes: 1 }]);
 });

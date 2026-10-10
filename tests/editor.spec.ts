@@ -145,17 +145,21 @@ test('les ouvertures ne se chevauchent pas', async ({ page }) => {
 
 test('régler les murs et basculer en 3D', async ({ page }) => {
   await drawRect(page, 5, 4);
-  await page.locator('[data-tool="murs"]').click();
+  // La hauteur des murs se règle avec la surface (le tracé)
   const hgt = page.getByTestId('panel').getByLabel('Hauteur');
   await hgt.fill('250'); await hgt.press('Enter');
   expect((await doc(page)).walls.height).toBeCloseTo(2.5, 5);
-  // Choisir un mur sur le plan et changer sa matière
-  await clickPlan(page, { x: 2.5, y: -0.07 });
-  await expect(page.getByTestId('panel')).toContainText('Mur n° 1');
+  // Murs : sans pièce choisie, la matière va à tous les murs
+  await page.locator('[data-tool="murs"]').click();
   await page.getByRole('button', { name: 'Brique' }).click();
-  const d = await doc(page);
-  expect(d.walls.styles[0].material).toBe('brique');
-  expect(d.walls.styles[1].material).toBe('peinture');
+  let d = await doc(page);
+  expect(d.walls.styles.every((s: any) => s.material === 'brique')).toBe(true);
+  // Clic sur un mur (intérieur) : c'est la pièce qui est choisie
+  await clickPlan(page, { x: 2.5, y: -0.07 });
+  await expect(page.getByTestId('panel')).toContainText('Murs de la pièce n° 1');
+  await page.getByRole('button', { name: 'Béton' }).click();
+  d = await doc(page);
+  expect(d.rooms[0].wall.material).toBe('beton');
   // Vue 3D : le canevas se dessine
   await page.locator('button[data-view="3d"]').click();
   await page.waitForTimeout(800);

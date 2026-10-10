@@ -4,14 +4,14 @@ import type { Ctx } from '../state';
    premier élément visible) ; « prepare » remet l'écran dans l'état voulu avant de la mesurer.
    Mise en forme des textes : **gras**, [[touche]]. */
 
-export type Part = 'accueil' | 'sol' | 'murs' | 'ouvertures' | 'mobilier' | 'images' | 'vue3d' | 'atelier' | 'plan';
+export type Part = 'accueil' | 'sol' | 'revetement' | 'murs' | 'ouvertures' | 'mobilier' | 'images' | 'vue3d' | 'atelier' | 'plan';
 
 export const PART_LABEL: Record<Part, string> = {
-  accueil: 'Accueil', sol: 'Surface', murs: 'Murs', ouvertures: 'Portes / fenêtres', mobilier: 'Mobilier', images: 'Images',
+  accueil: 'Accueil', sol: 'Surface', revetement: 'Sol', murs: 'Murs', ouvertures: 'Portes / fenêtres', mobilier: 'Mobilier', images: 'Images',
   vue3d: 'Vue 3D', atelier: 'Atelier de mobilier', plan: 'Plan A3',
 };
 export const PART_ICON: Record<Part, string> = {
-  accueil: 'home', sol: 'grid_on', murs: 'border_outer', ouvertures: 'door_front', mobilier: 'chair', images: 'image',
+  accueil: 'home', sol: 'grid_on', revetement: 'grid_view', murs: 'border_outer', ouvertures: 'door_front', mobilier: 'chair', images: 'image',
   vue3d: 'view_in_ar', atelier: 'handyman', plan: 'print',
 };
 
@@ -34,7 +34,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '[data-tour=steps]', title: 'Les étapes du projet', text: 'Ce bouton rappelle quoi faire, dans l’ordre : concept, surface et pièces, plan A3, aménagement, mobilier, décoration, installation.', prepare: v2d },
       { at: '[data-tour=rail]', title: 'Les outils', text: 'Un outil par étape : **Surface**, **Murs**, **Portes / fenêtres**, **Mobilier**, **Images**. Tu peux y revenir quand tu veux.' },
       { at: '.vp', title: 'Le plan 2D', text: 'Ta boutique vue du dessus. **Un clic par coin**, puis clic sur le point de départ (ou [[Entrée]]) pour fermer la surface. Les murs se créent tout seuls. Maximum **10 × 7 m**.' },
-      { at: '.pn', title: 'Le panneau de l’outil', text: 'Forme **libre** ou **rectangle**, dimensions exactes au clavier, puis revêtement et couleur du sol. Une fois la surface fermée, **Tracer une cloison** sépare les pièces.' },
+      { at: '.pn', title: 'Le panneau de l’outil', text: 'Forme **libre** ou **rectangle**, dimensions exactes au clavier, puis puis les **cloisons** des pièces et la **hauteur des murs**. Les revêtements viennent après, avec **Sol** et **Murs**.' },
       { at: '.fbar', title: 'Grille, aimantation et cotes', text: 'Les coins s’accrochent sur la grille. Le **pas** du tracé est de 1 m : change-le ici si ta boutique a des demi-mètres.' },
       { at: '.hintbar', title: 'Les consignes', text: 'Cette bande rappelle ce que fait la souris avec l’outil choisi.' },
       { at: '[data-tour=view]', title: 'Plan 2D ou Vue 3D', text: 'Passe en **Vue 3D** pour voir ta boutique en volume.' },
@@ -42,12 +42,16 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '[data-tour=save]', title: 'Enregistre souvent', text: '[[Ctrl+S]] : le projet va dans le **dossier de ton équipe**. La flèche ▾ propose « Enregistrer sous ».' },
       { at: '[data-tour=help]', title: 'Besoin d’aide ?', text: 'Les questions fréquentes, et cette visite à relancer quand tu veux.' },
     ];
+    case 'revetement': return [
+      { at: '[data-tool=revetement]', title: 'L’outil Sol', text: 'Ici, tu choisis le **revêtement du sol** : parquet, béton, carrelage… et sa couleur.', prepare: v2d },
+      { at: '.vp', title: 'Pièce par pièce', text: '**Clique dans une pièce** du plan (ou en 3D) : elle a son propre sol. Les pièces sont les espaces fermés par tes **cloisons**.' },
+      { at: '.pn', title: 'Le revêtement', text: 'Sans pièce choisie, le revêtement va à **toute la boutique**. Avec une pièce choisie, seulement à elle.' },
+    ];
     case 'murs': return [
-      { at: '[data-tool=murs]', title: 'L’outil Murs', text: 'Les murs suivent le bord de la surface. Ici, tu règles leur aspect.' },
-      { at: '.vp', title: 'Choisir un mur', text: 'Clique sur un mur (plan ou 3D) pour le régler **seul**. Sans mur choisi, les réglages vont à **tous** les murs.' },
-      { at: '.pn', title: 'Intérieur ou façade', text: 'Choisis la face à décorer : **Façade** pour le côté rue, celui qui attire les clients. Puis matière et couleur.' },
+      { at: '[data-tool=murs]', title: 'L’outil Murs', text: 'Les murs se tracent avec l’outil **Surface**. Ici, tu choisis leur **revêtement** : matière et couleur.' },
+      { at: '.vp', title: 'Les murs d’une pièce', text: '**Intérieur** : clique dans une pièce (plan ou 3D) pour décorer **ses** murs. Un mur coupé par une cloison peut avoir un revêtement différent de chaque côté.' },
+      { at: '.pn', title: 'Intérieur ou façade', text: '**Façade** : le côté rue, celui qui attire les clients. Clique sur un mur pour décorer seulement sa façade.' },
       { at: '.pn', title: 'Couleur exacte', text: 'Le **+** au bout des pastilles ouvre une palette pour choisir une couleur précise (code ou pipette).' },
-      { at: '.pn', title: 'Des cloisons pour les espaces', text: 'En bas du panneau, **Tracer une cloison** : réserve, cabines d’essayage, caisse… Un clic au départ, un clic à l’arrivée sur le plan 2D.' },
       { at: '[data-tour=view]', title: 'Vérifie en 3D', text: 'En **Vue 3D**, le bouton **Façade** montre la boutique depuis la rue.' },
     ];
     case 'ouvertures': return [

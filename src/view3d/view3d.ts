@@ -5,7 +5,7 @@ import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
 import { OPENING_DEFAULTS, findFreeT, imageExtent, insideFloor, rugCorners, wallHeight, wallLength, wallSegs } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
-import { placeOpening, selectPick } from "../app/actions";
+import { placeOpening, selectPick, selectRoomAt } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
 import { toast } from '../ui/components';
 import { buildImages, type BuiltImages } from './images3d';
@@ -264,7 +264,7 @@ export class View3D {
   /** Reconstruit la boutique si le sol, les murs ou les ouvertures ont changé. */
   private sync() {
     const d = this.ctx.store.doc;
-    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.openings]);
+    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.rooms, d.openings]);
     if (key !== this.shopKey) {
       this.shopKey = key;
       if (this.shop) { this.scene.remove(this.shop.root); disposeTree(this.shop.root); }
@@ -409,6 +409,12 @@ export class View3D {
         return;
       }
       if (hit.pick.kind === 'image') { selectPick(this.ctx, hit.pick); return; }
+      // Outils Sol et Murs (intérieur) : un clic sur le sol ou un mur choisit la pièce (du côté de la caméra).
+      if ((ui.s.tool === 'revetement' || (ui.s.tool === 'murs' && ui.s.wallFace === 'int')) && (hit.pick.kind === 'floor' || hit.pick.kind === 'wall')) {
+        const back = this.camera.position.clone().sub(hit.point).setY(0).normalize().multiplyScalar(0.08);
+        if (selectRoomAt(this.ctx, { x: hit.point.x + back.x, y: hit.point.z + back.z }) || selectRoomAt(this.ctx, { x: hit.point.x - back.x, y: hit.point.z - back.z })) down.empty = false;
+        return;
+      }
       if (hit.pick.kind === "opening") {
         const o = store.doc.openings.find(q => q.id === (hit.pick as { id: string }).id)!;
         selectPick(this.ctx, hit.pick);

@@ -38,7 +38,7 @@ export const PROJECT_STEPS: ProjectStep[] = [
     text: 'Matières et couleurs des murs et du sol, **façade** côté rue, images : affiches, logo sur la **vitrine**, tapis…',
     actions: [
       { label: 'Murs et façade', icon: 'border_outer', run: tool('murs') },
-      { label: 'Sol', icon: 'grid_on', run: tool('sol') },
+      { label: 'Sol', icon: 'grid_view', run: tool('revetement') },
       { label: 'Images', icon: 'image', run: tool('images') },
     ] },
   { id: 'installation', icon: 'chair', title: 'Installer le mobilier dans la surface commerciale',
