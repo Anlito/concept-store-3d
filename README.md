@@ -1,70 +1,60 @@
-# Concept Store 3D — outil élève
+# Concept Store 3D
 
-Application web autonome pour le projet « Concept Store » (technologie, cycle 4).
-Cahier des charges : voir le PDF fourni. Maquettes : dossier `maquettes/`.
+Outil web pour le projet **« Concept Store »** en technologie (cycle 4) : les élèves dessinent la surface
+de leur boutique, ses pièces et ses ouvertures, impriment le plan A3 qui sert de gabarit à la maquette
+en carton, puis l'aménagent et la décorent en 3D.
 
-## Utilisation au collège
+Il fonctionne **sans installation ni Internet** : un double-clic sur `index.html` (Chrome ou Edge),
+même depuis un dossier réseau du collège. Aucune donnée n'est envoyée en ligne.
 
-Le dossier `dist/` est le livrable : le copier sur le réseau, puis **double-cliquer sur `index.html`**
-(Chrome ou Edge). Aucune installation, aucun accès Internet.
+## Ce que font les élèves
 
-- `dist/diagnostic.html` : **test du poste** (navigateur, WebGL, performances, fichiers).
-  À lancer d'abord sur un PC du collège, puis transmettre le rapport téléchargé.
-- Mode serveur (facultatif) : `node scripts/serve.mjs dist 8080`, ou n'importe quel serveur statique.
+1. **Surface** : tracé du contour (10 × 7 m au plus), des **cloisons** qui forment les pièces
+   (réserve, toilettes, cabines…), hauteur des murs. Longueurs au clavier, aimantation réglable.
+2. **Portes / fenêtres** : portes (sens d'ouverture, passage sans porte), fenêtres, vitrines, plusieurs styles.
+3. **Plan A3** : PDF à l'échelle 1 m = 3 cm (murs de 10 cm = carton de 3 mm), cartouche obligatoire,
+   enregistrement dans le dossier de l'équipe.
+4. **Sol** et **Murs** : revêtements pièce par pièce ou pan de mur par pan de mur, façade côté rue.
+5. **Mobilier** : bibliothèque de meubles, **Atelier** pour créer les siens (volumes ou fichier Tinkercad OBJ).
+6. **Images** : affiches, tapisseries, tapis, logos sur la vitrine (PNG ou JPG).
+7. **Vue 3D** et **photos** du rendu (PNG ou JPG) pour la présentation.
+
+Un bouton **Étape** rappelle la démarche en 7 étapes (du concept validé à l'installation du mobilier).
+L'aide intégrée propose des **visites guidées** de chaque partie et des **questions fréquentes**.
+
+## Installer au collège
+
+Télécharger le zip de la dernière version (onglet **Releases**), le dézipper, puis copier le dossier
+`Concept-Store-3D` dans le dossier de chaque classe :
+
+- `index.html` : l'outil (un seul fichier, tout est dedans) ;
+- `diagnostic.html` : test d'un PC du collège (navigateur, 3D, enregistrement) ;
+- `Fiche-eleve.pdf` : fiche A4 à distribuer ;
+- `Mobilier/` : modèles 3D ajoutés par le professeur (voir `Mobilier/LISEZMOI.txt`).
+
+Les projets des élèves sont des fichiers `.json`, rangés dans le dossier de leur équipe.
 
 ## Développement
 
-Node.js portable est installé dans `.tools/` (non versionné).
+Pile : TypeScript, Three.js, jsPDF, fflate, Vite (fichier HTML unique). Pas de framework d'interface.
 
 ```
 npm install
-npm run build     # dist/index.html + dist/diagnostic.html (fichiers uniques)
-npm test          # tests Playwright sur les fichiers construits, en file://
-npm run dev       # serveur de développement Vite
+npm run build     # dist/index.html et dist/diagnostic.html
+npm test          # tests Playwright, sur les fichiers construits ouverts en file://
+npm run package   # build + fiche élève + livrables/Concept-Store-3D-<version>.zip
+npm run dev       # serveur de développement
 ```
 
-Pile : TypeScript, Three.js, jsPDF, Vite + vite-plugin-singlefile. Pas de framework d'interface.
-Icônes : Material Symbols Rounded (Apache 2.0), embarquées par `scripts/build-icons.mjs`.
-Police : Nunito (SIL OFL), embarquée.
+- `src/model/` : données du projet (surface, cloisons, pièces, ouvertures…), sans dépendance à l'affichage.
+- `src/view2d/`, `src/view3d/` : plan 2D (SVG) et vue 3D (Three.js).
+- `src/app/` : écrans, panneaux, aide (`guide/`).
+- `src/export/` : plan A3 en PDF.
+- `library/` : modèles 3D de la bibliothèque, leur inventaire et leurs licences.
+- `fiche/` : fiche élève (HTML → PDF).
 
-## Bibliothèque de mobilier (niveau A)
+## Licence
 
-- `library/catalogue.json` : sélection des modèles (nom, catégorie, taille réelle, objets muraux…).
-- `library/modeles/*.glb` : modèles retenus (CC0), regroupés en GLB par `scripts/import-packs.mjs`
-  à partir des packs téléchargés dans `.tools/packs/`.
-- `library/inventaire.json` : source, auteur et licence de chaque modèle (règle : CC0 ou CC-BY uniquement).
-- `scripts/build-library.mjs` intègre les modèles dans le HTML (base64), lancé par `npm run build`.
-
-Crédits : Kenney « Furniture Kit » (CC0, kenney.nl) · Kay Lousberg « KayKit Furniture Bits » (CC0, kaylousberg.com).
-
-## Sauvegarde des projets
-
-- Un projet = un fichier `.json` (sol, murs, ouvertures, objets, cartouche).
-- Chrome / Edge : « Enregistrer » ouvre le sélecteur de dossier (dossier de l'équipe), puis réécrit ce fichier.
-  Autres navigateurs : le projet est téléchargé.
-- **Projet modèle** : le professeur prépare une boutique puis « Enregistrer ▾ › Enregistrer comme modèle ».
-  Le fichier `modele-….json` porte la marque `isTemplate` : l'outil refuse de l'écraser et un élève
-  qui l'ouvre doit toujours enregistrer sous un nouveau nom. Astuce : mettre ce fichier en lecture seule
-  sur le réseau.
-- Copie de secours automatique dans le navigateur (IndexedDB) ; « Projets récents » sur l'accueil ;
-  avertissement si on ferme l'onglet sans enregistrer.
-
-## Dossier « Mobilier » du professeur (niveau C)
-
-Le livrable `dist/` contient un dossier `Mobilier/` (voir `Mobilier/LISEZMOI.txt`) :
-- déposer des `.glb` (sous-dossiers = catégories ; `_170cm` à la fin du nom = hauteur réelle) ;
-- double-cliquer sur `Mettre-a-jour-le-mobilier.bat` : il génère `mobilier-prof.js`, lu au démarrage
-  (un `.js` voisin reste lisible en double-clic, contrairement à un `.json`) ;
-- ou, sous Chrome / Edge, « Charger le dossier du professeur » dans la bibliothèque (dossier mémorisé).
-Échelle devinée (modèle en cm ou en mm), correction possible sur la carte ; avertissement au-delà
-de 5 Mo ou 50 000 triangles, modèle ignoré au-delà de 25 Mo.
-
-## Version 1.0 : finitions
-
-- Aide intégrée (bouton « Aide » de l'accueil et « ? » de l'éditeur) et page « Crédits et licences ».
-- Photos du rendu 3D (bouton « Photo ») : PNG ou JPG, HD, grande ou carrée, angles prédéfinis
-  (façade, 3/4, intérieur, dessus) ou les 4 angles en `.zip`, sans les poignées de sélection.
-- La page de diagnostic transmet la qualité d'ombres conseillée ; la 3D propose de couper les ombres
-  si elle devient saccadée.
-- `npm run package` : construit et crée `livrables/Concept-Store-3D-<version>.zip` (dossier à copier).
-- `dist/LISEZMOI.txt` : installation au collège.
+Code sous licence **MIT** (voir `LICENSE`). Les éléments tiers gardent leur licence :
+modèles 3D CC0 (Kenney, Kay Lousberg ; détail dans `library/inventaire.json`), police Nunito (SIL OFL 1.1),
+icônes Material Symbols (Apache 2.0), Three.js, jsPDF et fflate (MIT).
