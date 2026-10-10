@@ -1,7 +1,7 @@
 import type { Ctx } from '../app/state';
 import type { Opening, Vec2 } from '../model/types';
-import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, projectOnSegment, snapTo, sub, v, area, cross } from '../model/geometry';
-import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, insertVertex, insideFloor, moveVertex, openingStyle, shopExtent, wallLength, wallSegs } from '../model/project';
+import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offsetPolygon, pointInPolygon, projectOnSegment, snapTo, sub, v, area, cross } from '../model/geometry';
+import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, imageExtent, insertVertex, insideFloor, moveVertex, openingStyle, rugCorners, shopExtent, wallLength, wallSegs, wallShort } from '../model/project';
 import { closeDraft, createPartition, placeOpening, selectPick, stopPartitions } from "../app/actions";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
@@ -179,6 +179,29 @@ export class Plan2D {
     }
     return null;
   }
+/** Repères des images (outil Images) : segment le long de la face, ou contour du tapis. */
+  private imageMarks() {
+    const d = this.ctx.store.doc, out: { id: string; target: string; a?: Vec2; b?: Vec2; rug?: Vec2[] }[] = [];
+    for (const im of d.images) {
+      const rug = rugCorners(d, im);
+      if (rug) { out.push({ id: im.id, target: im.target, rug }); continue; }
+      const ex = imageExtent(d, im); if (!ex) continue;
+      const s = ex.ext ? ex.e.T + 9 / this.k : -9 / this.k, at = (u: number) => add(add(ex.e.a, mul(ex.e.u, u)), mul(ex.e.n, s));
+      out.push({ id: im.id, target: im.target, a: at(Math.max(0, ex.u0)), b: at(Math.min(ex.e.length, ex.u1)) });
+    }
+    return out;
+  }
+  private hitImage(p: Vec2) {
+    let best: string | null = null, bd = 9 / this.k;
+    for (const m of this.imageMarks()) {
+      if (m.a && m.b) { const dd = projectOnSegment(p, m.a, m.b).d; if (dd < bd) { bd = dd; best = m.id; } }
+    }
+    if (best) return best;
+    // Tapis : clic à l'intérieur (le plus petit d'abord, pour atteindre un tapis posé sur un tapis répété)
+    const rugs = this.imageMarks().filter(m => m.rug).sort((x, y) => area(x.rug!) - area(y.rug!));
+    return rugs.find(m => pointInPolygon(p, m.rug!))?.id ?? null;
+  }
+
   /** Extrémité de la cloison choisie sous le point. */
   private hitPartEnd(p: Vec2): 'a' | 'b' | null {
     const j = this.selPartition; if (j < 0) return null;
@@ -273,6 +296,7 @@ export class Plan2D {
           return;
         }
       }
+      if (s.tool === 'images') { const im = this.hitImage(p); if (im) { selectPick(this.ctx, { kind: 'image', id: im }); return; } }
       if (s.tool !== "ouvertures" && this.objectDown(e, p)) return;
       const op = this.hitOpening(p);
       if (op) {
@@ -357,6 +381,7 @@ export class Plan2D {
         if (this.hitVertex(p) >= 0) cursor = 'move';
         else { const mi = this.hitMid(p); if (mi >= 0) { this.hoverMid = mi; cursor = 'copy'; } }
       }
+      if (!cursor && s.tool === 'images' && this.hitImage(p)) cursor = 'pointer';
       if (!cursor && this.hitPartEnd(p)) cursor = 'move';
       if (!cursor && this.selPartition >= 0 && this.hitWall(p)?.wall === contourCount(store.doc) + this.selPartition && !this.hitOpening(p)) cursor = 'move';
       if (!cursor && this.rotHandleHit(p)) cursor = "alias";
@@ -515,8 +540,10 @@ export class Plan2D {
         if (op.type === 'porte') {
           const st = openingStyle(op).value;
           /** Vantail ouvrant vers l'intérieur : charnière en a, battant de largeur r, arc jusqu'à b. */
-          const leaf = (a: Vec2, b: Vec2, r: number) => {
-            const end = add(a, mul(e.n, -r));
+          // Vantail vers l'intérieur (côté 1, −n) ou vers la rue (côté 2, +n, depuis la face extérieure).
+          const sg = op.openOut ? 1 : -1, face = (q: Vec2) => (op.openOut ? add(q, mul(e.n, T)) : q);
+          const leaf = (a0: Vec2, b0: Vec2, r: number) => {
+            const a = face(a0), b = face(b0), end = add(a, mul(e.n, sg * r));
             line(a, end, `stroke:${col};stroke-width:2`);
             const sweep = cross(sub(end, a), sub(b, a)) > 0 ? 1 : 0;
             o.push(`<path d="M${X(end.x).toFixed(1)} ${Y(end.y).toFixed(1)} A${(r * k).toFixed(1)} ${(r * k).toFixed(1)} 0 0 ${sweep} ${X(b.x).toFixed(1)} ${Y(b.y).toFixed(1)}" style="fill:none;stroke:${col};stroke-width:1.2;stroke-dasharray:4 3"/>`);
@@ -526,7 +553,7 @@ export class Plan2D {
           else if (st === 'coulissante') { // deux panneaux décalés dans l'épaisseur
             const p1 = mul(e.n, T * 0.35), p2 = mul(e.n, T * 0.65), mid = add(e.a, mul(e.u, op.t + op.width * 0.08)), mid2 = add(e.a, mul(e.u, op.t - op.width * 0.08));
             line(add(i0, p1), add(mid, p1), `stroke:${col};stroke-width:2.5`); line(add(mid2, p2), add(i1, p2), `stroke:${col};stroke-width:2.5`);
-          } else leaf(i0, i1, op.width);
+          } else if (op.flipHinge) leaf(i1, i0, op.width); else leaf(i0, i1, op.width);
         } else {
           const n = op.type === 'vitrine' ? 3 : 2;
           for (let j = 1; j <= n; j++) { const f = j / (n + 1); line(add(i0, mul(e.n, T * f)), add(i1, mul(e.n, T * f)), `stroke:${col};stroke-width:${op.type === 'vitrine' ? 1.6 : 1.2}`); }
@@ -599,6 +626,25 @@ export class Plan2D {
         }
       }
 
+      // Outil Images : numéro de chaque mur et repère de chaque image (couleur selon le type)
+      if (s.tool === 'images') {
+        const COL: Record<string, string> = { cadre: A, tapisserie: '#5B6B7A', vitrine: '#2F8F86', tapis: '#B07A2A' };
+        const selImg = s.sel?.kind === 'image' ? s.sel.id : null;
+        for (const m of this.imageMarks()) {
+          const on = m.id === selImg, c = COL[m.target] ?? A;
+          if (m.rug) o.push(`<path d="${path(m.rug)}" data-image="${m.id}" style="fill:${c};fill-opacity:${on ? 0.28 : 0.14};stroke:${c};stroke-width:${on ? 3 : 2};stroke-dasharray:6 4"/>`);
+          else if (m.a && m.b) {
+            if (on) line(m.a, m.b, 'stroke:#fff;stroke-width:13;stroke-linecap:round');
+            o.push(`<line x1="${X(m.a.x).toFixed(1)}" y1="${Y(m.a.y).toFixed(1)}" x2="${X(m.b.x).toFixed(1)}" y2="${Y(m.b.y).toFixed(1)}" data-image="${m.id}" style="stroke:${c};stroke-width:${on ? 9 : 6};stroke-linecap:round"/>`);
+          }
+        }
+        for (const w of S) {
+          const q = add(add(w.a, mul(w.u, w.length / 2)), mul(w.n, w.part >= 0 ? w.T / 2 : -26 / k));
+          const lab = wallShort(d, w.i);
+          o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="${lab.length > 1 ? 13 : 11}" style="fill:${INK}"/>`);
+          text(X(q.x), Y(q.y) + 0.5, lab, 'font-size:12px;font-weight:800;fill:#fff');
+        }
+      }
       // Longueur des cloisons, écrite sur la cloison
       if (s.dims) for (const w of parts) {
         if (w.length * k < 50) continue;

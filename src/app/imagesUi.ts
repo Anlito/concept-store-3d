@@ -2,8 +2,8 @@ import type { Ctx } from './state';
 import type { ImageAsset, ImageTarget, PlacedImage, Project } from '../model/types';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, section, segmented, tiles, toast, toggle } from '../ui/components';
-import { bounds, uid } from '../model/geometry';
-import { isPartition, wallName, wallSegs } from '../model/project';
+import { add, bounds, mul, offsetPolygon, uid } from '../model/geometry';
+import { isPartition, wallName, wallSegs, wallShort } from '../model/project';
 import { fmtBytes, readImageFile, MAX_IMAGE_MB } from '../library/images';
 import { type Panel, makePanel } from './panels';
 import { deleteImage } from './actions';
@@ -29,6 +29,50 @@ function defaults(t: ImageTarget): Partial<PlacedImage> {
   }
 }
 
+/* ---------- Choix du mur sur un mini-plan ---------- */
+/** Plan de la boutique vu de dessus : un clic sur un mur ou une cloison le choisit. La face décorée est soulignée. */
+function wallPicker(a: Access): Bound {
+  const box = h('div', { class: 'wp', role: 'group', 'aria-label': 'Choisir le mur' });
+  const cap = h('div', { class: 'wp-t' });
+  box.addEventListener('click', e => {
+    const g = (e.target as Element).closest('[data-wall]'); if (!g) return;
+    const w = +(g.getAttribute('data-wall') as string);
+    if (w !== a.get().wall) { a.set({ wall: w }); a.end(); }
+  });
+  box.addEventListener('keydown', e => {
+    const g = (e.target as Element).closest('[data-wall]');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (g as SVGElement).dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+  });
+  const refresh = () => {
+    const d = a.doc(); if (!d.floor) return;
+    const im = a.get(), S = wallSegs(d), T = d.walls.thickness;
+    const b = bounds(offsetPolygon(d.floor.points, T)), m = 0.8;
+    const P = (q: { x: number; y: number }) => `${q.x.toFixed(3)} ${q.y.toFixed(3)}`;
+    const poly = (pts: { x: number; y: number }[]) => 'M' + pts.map(P).join('L') + 'Z';
+    const o: string[] = [`<path d="${poly(d.floor.points)}" fill="#EFE9DF"/>`];
+    for (const w of S) {
+      const on = w.i === im.wall, rect = [w.a, w.b, add(w.b, mul(w.n, w.T)), add(w.a, mul(w.n, w.T))];
+      const mid = add(add(w.a, mul(w.u, w.length / 2)), mul(w.n, w.part >= 0 ? w.T / 2 : -0.62));
+      const name = wallName(d, w.i);
+      o.push(`<g data-wall="${w.i}" role="button" tabindex="0" aria-label="${name.charAt(0).toUpperCase() + name.slice(1)}" aria-pressed="${on}" class="wp-w${on ? ' on' : ''}">`
+        + `<path d="M${P(add(w.a, mul(w.n, w.T / 2)))}L${P(add(w.b, mul(w.n, w.T / 2)))}" class="wp-hit"/>`
+        + `<path d="${poly(rect)}" class="wp-r"/>`
+        + `<circle cx="${mid.x.toFixed(3)}" cy="${mid.y.toFixed(3)}" r="0.46" class="wp-n"/>`
+        + `<text x="${mid.x.toFixed(3)}" y="${(mid.y + 0.01).toFixed(3)}">${wallShort(d, w.i)}</text></g>`);
+      if (on) { // face décorée : intérieur (côté 1) ou façade (côté 2)
+        const s = im.side === 'ext' ? w.T + 0.16 : -0.16;
+        o.push(`<path d="M${P(add(w.a, mul(w.n, s)))}L${P(add(w.b, mul(w.n, s)))}" class="wp-face"/>`);
+      }
+    }
+    box.innerHTML = `<svg viewBox="${(b.x0 - m).toFixed(2)} ${(b.y0 - m).toFixed(2)} ${(b.w + 2 * m).toFixed(2)} ${(b.h + 2 * m).toFixed(2)}" preserveAspectRatio="xMidYMid meet">${o.join('')}</svg>`;
+    const w = S[im.wall];
+    const part = isPartition(d, im.wall), face = im.side === 'ext' ? (part ? 'côté 2' : 'façade (rue)') : (part ? 'côté 1' : 'intérieur');
+    cap.replaceChildren(h('b', null, wallName(d, im.wall).replace(/^./, c => c.toUpperCase())), w ? ` · ${w.length.toFixed(2).replace('.', ',')} m · ${face}` : '');
+  };
+  refresh();
+  return { el: h('div', { class: 'wp-wrap' }, box, cap), refresh };
+}
+
 /* ---------- Réglages partagés (fenêtre et panneau) ---------- */
 interface Access { get(): PlacedImage; set(patch: Partial<PlacedImage>, live?: boolean): void; end(): void; doc(): Project }
 
@@ -46,9 +90,8 @@ function slider(label: string, unit: string, min: number, max: number, step: num
 function settings(a: Access, binds: Bound[]): HTMLElement {
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
   const im = a.get(), d = a.doc();
-  const wallSel = h('select', { class: 'at-select', 'aria-label': 'Mur', onchange: (e: Event) => { a.set({ wall: +(e.target as HTMLSelectElement).value }); a.end(); } },
-    ...wallSegs(d).map(e => h('option', { value: String(e.i) }, `${cap(wallName(d, e.i))} · ${e.length.toFixed(2).replace('.', ',')} m`)));
-  binds.push({ el: wallSel, refresh: () => { wallSel.value = String(a.get().wall); } });
+  const picker = wallPicker(a);
+  binds.push(picker);
   const isWall = im.target !== 'tapis';
   const maxSize = im.target === 'tapis' ? 400 : im.target === 'tapisserie' ? 200 : 250;
   const rep = toggle('Répéter l’image', 'apps', () => a.get().repeat, v => { a.set({ repeat: v }); a.end(); });
@@ -59,7 +102,7 @@ function settings(a: Access, binds: Bound[]): HTMLElement {
     : [{ value: 'int', label: 'Intérieur', icon: 'chair' }, { value: 'ext', label: 'Façade (rue)', icon: 'storefront' }],
     () => a.get().side ?? 'int', v => { a.set({ side: v }); a.end(); });
   return h('div', { class: 'p-sec', style: { gap: '14px' } },
-    isWall ? h('label', { class: 'tf' }, 'Sur le mur', wallSel) : null,
+    isWall ? h('div', { class: 'tf' }, 'Sur quel mur ? Clique sur le plan', picker.el) : null,
     isWall ? b(side) : null,
     b(slider(tiled ? 'Taille du motif' : 'Largeur', 'cm', 20, maxSize, 5, () => a.get().size * 100, (v, l) => a.set({ size: v / 100 }, l), a.end)),
     tiled ? null : b(slider(isWall ? 'Position horizontale' : 'Position gauche-droite', '%', 0, 100, 1, () => a.get().x * 100, (v, l) => a.set({ x: v / 100 }, l), a.end)),
@@ -167,19 +210,21 @@ export function openImageDialog(ctx: Ctx) {
     store.update(doc => { if (!doc.assets.some(x => x.id === a.id)) doc.assets.push(a); doc.images.push(im); });
     ui.set({ view: '3d', tool: 'images', sel: { kind: 'image', id: im.id } });
     close();
+    ctx.showImage(im.id); // la caméra se place face à l'image
     toast(`Image placée : ${targetLabel(im.target).toLowerCase()}. Elle se voit en 3D (pas sur le plan A3).`);
   }
   render();
 }
 
 /* ---------- Panneaux de l'outil « Images » ---------- */
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** « Ajouter une image », ou « … sur le mur n° 3 » si un mur est choisi sur le plan. */
+const selWallLabel = (ctx: Ctx) => (ctx.ui.s.sel?.kind === 'wall' ? `Ajouter une image sur le ${wallName(ctx.store.doc, ctx.ui.s.sel.index).replace('cloison', 'la cloison').replace('le la ', 'la ')}` : 'Ajouter une image');
 
 export function imagesPanel(ctx: Ctx): Panel {
   const d = ctx.store.doc;
   const list = d.images.map(im => {
     const a = d.assets.find(x => x.id === im.asset);
-    return h('button', { class: 'im-row', type: 'button', onclick: () => ctx.ui.set({ sel: { kind: 'image', id: im.id }, view: '3d' }) },
+    return h('button', { class: 'im-row', type: 'button', onclick: () => { ctx.ui.set({ sel: { kind: 'image', id: im.id }, view: '3d' }); ctx.showImage(im.id); } },
       h('span', { class: 'im-th', style: { backgroundImage: a ? `url(${a.data})` : '' } }),
       h('span', { class: 'im-t' }, h('b', null, a?.name ?? 'Image'), h('span', null, targetLabel(im.target) + (im.target !== 'tapis' ? ` · ${wallName(d, im.wall)}` : ''))),
       icon('chevron_right'));
@@ -188,7 +233,8 @@ export function imagesPanel(ctx: Ctx): Panel {
     h('p', { class: 'p-help' }, 'Cadres, tapisseries, tapis et vitrophanies à partir de tes images ', h('b', null, 'PNG ou JPG'), '.'),
     alert('info', 'Seulement en 3D', 'Les images ne sont pas imprimées sur le plan A3 (il ne montre que les murs).'),
     list.length ? section('Dans la boutique', h('div', { class: 'im-list' }, list)) : null,
-  ], h('div', { class: 'pn-f' }, button('Ajouter une image', 'add_photo_alternate', 'btn-primary btn-lg', () => openImageDialog(ctx))));
+    h('p', { class: 'p-help' }, 'Sur le ', h('b', null, 'Plan 2D'), ', chaque image est un repère coloré le long de son mur. Clique sur un mur pour y ajouter une image.'),
+  ], h('div', { class: 'pn-f' }, button(selWallLabel(ctx), 'add_photo_alternate', 'btn-primary btn-lg', () => openImageDialog(ctx))));
 }
 
 export function imagePanel(ctx: Ctx): Panel {
@@ -207,6 +253,7 @@ export function imagePanel(ctx: Ctx): Panel {
     v => store.update(d => { Object.assign(d.images.find(i => i.id === id)!, { target: v }, defaults(v)); }), 2);
   binds.push(t);
   const p = makePanel('image', a?.name ?? 'Image', () => targetLabel(cur().target), [
+    button('Voir l’image en 3D', 'visibility', 'btn-secondary', () => ctx.showImage(id), 'La caméra se place face à l’image, qui est entourée en orange'),
     section('Type', t.el),
     section('Réglages', settings(access, binds)),
   ], h('div', { class: 'pn-f two' },

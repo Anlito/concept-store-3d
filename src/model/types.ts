@@ -25,6 +25,10 @@ export interface Opening {
   style?: string;
   /** Couleur de la menuiserie (cadre, ou vantail d'une porte pleine) ; absente = couleur du style. */
   color?: string;
+  /** Porte : s'ouvre vers la rue (ou le côté 2 d'une cloison) au lieu de l'intérieur (côté 1). */
+  openOut?: boolean;
+  /** Porte : charnière à droite (vue depuis l'intérieur ou le côté 1) au lieu de la gauche. */
+  flipHinge?: boolean;
 }
 
 export interface Floor {

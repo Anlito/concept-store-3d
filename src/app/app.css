@@ -517,8 +517,11 @@
 .ex-where b { color: var(--ink); }
 
 /* Étapes du projet */
-.tb-steps { color: var(--accent-hover); }
-.tb-steps .ic { color: var(--accent); }
+.tr button.tr-steps { min-height: 78px; background: var(--accent); color: #fff; font-weight: 800; box-shadow: 0 4px 12px rgba(191,78,54,.35); animation: steps-pulse 1.8s ease-out 3; }
+.tr button.tr-steps:hover { background: var(--accent-hover); }
+.tr-steps-n { font-size: 12.5px; line-height: 1.15; text-align: center; }
+.tr-sep { height: 1px; background: var(--sep); margin: 4px 6px; flex: none; }
+@keyframes steps-pulse { 0% { box-shadow: 0 0 0 0 rgba(191,78,54,.55); } 100% { box-shadow: 0 0 0 14px rgba(191,78,54,0); } }
 .st-scroll { flex: 1; overflow: auto; padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 14px; }
 .st-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .st { display: flex; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--bg-app); }
@@ -536,3 +539,20 @@
 .st p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
 .st-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .st-acts .btn { height: 34px; font-size: 13px; padding: 0 12px 0 10px; }
+
+/* Images : mini-plan pour choisir le mur */
+.wp-wrap { display: flex; flex-direction: column; gap: 6px; }
+.wp { background: var(--bg-2d); border-radius: 12px; box-shadow: inset 0 0 0 1.5px var(--field-border); padding: 4px; }
+.wp svg { display: block; width: 100%; height: 150px; }
+.wp-w { cursor: pointer; outline: none; }
+.wp-hit { stroke: transparent; stroke-width: 0.7; fill: none; }
+.wp-r { fill: #3A3936; }
+.wp-w:hover .wp-r, .wp-w:focus-visible .wp-r { fill: #8A8782; }
+.wp-w.on .wp-r { fill: var(--accent); }
+.wp-n { fill: #fff; stroke: #3A3936; stroke-width: 0.06; }
+.wp-w.on .wp-n { stroke: var(--accent); }
+.wp text { font: 800 0.46px var(--font); fill: #3A3936; text-anchor: middle; dominant-baseline: central; }
+.wp-w.on text { fill: var(--accent); }
+.wp-face { stroke: var(--accent); stroke-width: 0.12; stroke-linecap: round; stroke-dasharray: 0.25 0.15; }
+.wp-t { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.wp-t b { color: var(--ink); }

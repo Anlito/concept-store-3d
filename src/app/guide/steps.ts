@@ -26,7 +26,7 @@ export const PROJECT_STEPS: ProjectStep[] = [
       { label: 'Portes / fenêtres', icon: 'door_front', run: tool('ouvertures') },
     ] },
   { id: 'plan', icon: 'print', title: 'Générer le plan A3 et l’enregistrer',
-    text: 'Remplis le cartouche et enregistre le PDF dans le **dossier de ton équipe**. Imprimé en taille réelle, c’est le gabarit de ta **maquette en carton**.',
+    text: 'Remplis le cartouche et enregistre le PDF dans le **dossier de ton équipe** : ton professeur l’imprime. C’est le gabarit de ta **maquette en carton**.',
     actions: [{ label: 'Plan A3', icon: 'print', run: ctx => ctx.exportPlan() }] },
   { id: 'amenagement', icon: 'route', title: 'Réfléchir à l’aménagement de l’espace',
     text: 'Où placer la caisse, les présentoirs, les cabines ? Par où passent les clients ? Quels meubles faut-il ? Fais un croquis sur le plan imprimé avant de placer les meubles.',
@@ -61,13 +61,14 @@ function toggleStep(ctx: Ctx, id: string) {
 
 const rich = (s: string) => { const el = h('span'); el.innerHTML = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return el; };
 
-/** Bouton de la barre du haut : « Étape 2/7 ». */
+/** Tuile en haut de la barre d'outils : « Étape 2/7 », en couleur pour être vue tout de suite. */
 export function stepsButton(ctx: Ctx) {
-  const label = h('span');
-  const el = h('button', { class: 'btn btn-ghost tb-steps', type: 'button', 'data-tour': 'steps', title: 'Les étapes du projet, dans l’ordre', onclick: () => openStepsPanel(ctx) }, icon('checklist'), label);
+  const label = h('span', { class: 'tr-steps-n' });
+  const el = h('button', { class: 'tr-steps', type: 'button', 'data-tour': 'steps', onclick: () => openStepsPanel(ctx) }, icon('checklist'), label);
   const refresh = () => {
     const i = currentStep(ctx), n = PROJECT_STEPS.length;
     label.textContent = i >= n ? 'Étapes ✓' : `Étape ${i + 1}/${n}`;
+    el.title = i >= n ? 'Toutes les étapes sont faites' : `À faire : ${PROJECT_STEPS[i].title}`;
   };
   ctx.store.subscribe(refresh); refresh();
   return el;

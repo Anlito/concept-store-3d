@@ -35,6 +35,22 @@ export function styleThumb(type: OpeningType, style: string, color: string): str
   return wrapSvg(parts);
 }
 
+/** Vue de dessus d'un sens d'ouverture : rue (ou côté 2) en haut, intérieur (ou côté 1) en bas. */
+export function swingThumb(out: boolean, flip: boolean, double: boolean): string {
+  const p: string[] = [];
+  p.push('<rect x="0" y="0" width="60" height="24" fill="#FFFFFF"/><rect x="0" y="24" width="60" height="24" fill="#EFE9DF"/>');
+  p.push('<rect x="0" y="21" width="18" height="6" fill="#3A3936"/><rect x="42" y="21" width="18" height="6" fill="#3A3936"/>');
+  const y0 = out ? 21 : 27, dy = out ? -1 : 1;
+  const leaf = (hx: number, ox: number, r: number) => {
+    const ex = hx, ey = y0 + dy * r, sweep = (ox > hx) === out ? 1 : 0;
+    p.push(`<line x1="${hx}" y1="${y0}" x2="${ex}" y2="${ey}" stroke="#BF4E36" stroke-width="2.5" stroke-linecap="round"/>`);
+    p.push(`<path d="M${ex} ${ey} A${r} ${r} 0 0 ${sweep} ${ox} ${y0}" fill="none" stroke="#BF4E36" stroke-width="1.2" stroke-dasharray="2.5 2"/>`);
+  };
+  if (double) { leaf(18, 30, 12); leaf(42, 30, 12); }
+  else if (flip) leaf(42, 18, 20); else leaf(18, 42, 20);
+  return wrapSvg(p);
+}
+
 /** Couleurs proposées pour les menuiseries. */
 export const FRAME_COLORS = [
   { name: 'Noir', hex: '#2E2D2B' }, { name: 'Blanc', hex: '#ECE9E3' }, { name: 'Gris aluminium', hex: '#B8B4AD' }, { name: 'Bleu ardoise', hex: '#5B6B7A' },

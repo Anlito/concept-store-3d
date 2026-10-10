@@ -101,7 +101,7 @@ test('image côté rue et bouton « Façade » de la vue 3D', async ({ page }) =
   await dlg.getByRole('button', { name: 'Choisir une image' }).click();
   await (await fc).setFiles('tests/fixtures/soldes.png');
   await dlg.getByRole('button', { name: 'Vitrine', exact: true }).click();
-  await dlg.getByLabel('Mur', { exact: true }).selectOption({ index: 2 });
+  await dlg.getByRole('button', { name: 'Mur n° 3' }).click(); // mini-plan
   await dlg.getByRole('button', { name: 'Façade (rue)' }).click();
   await dlg.getByRole('button', { name: 'Placer l’image' }).click();
   expect((await doc(page)).images[0]).toMatchObject({ target: 'vitrine', wall: 2, side: 'ext' });

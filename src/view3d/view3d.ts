@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Ctx, ShadowQuality } from '../app/state';
 import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
-import { OPENING_DEFAULTS, findFreeT, wallHeight, wallLength, wallSegs } from '../model/project';
+import { OPENING_DEFAULTS, findFreeT, imageExtent, insideFloor, rugCorners, wallHeight, wallLength, wallSegs } from '../model/project';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
 import { placeOpening, selectPick } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
@@ -214,6 +214,33 @@ export class View3D {
     this.camera.position.set(mid.x + e.n.x * dist, 1.6, mid.z + e.n.y * dist);
     this.controls.update(); this.needsRender = true;
   }
+  /** Place la caméra face à une image : devant le mur (dans la boutique, ou dans la rue pour la façade), ou au-dessus d'un tapis. */
+  lookAtImage(id: string) {
+    const d = this.ctx.store.doc, im = d.images.find(q => q.id === id);
+    if (!im || !d.floor) return;
+    if (this.ctx.ui.s.view !== '3d') this.ctx.ui.set({ view: '3d' });
+    const rug = rugCorners(d, im), ex = imageExtent(d, im);
+    if (rug) {
+      const c = rug.reduce((s, q) => ({ x: s.x + q.x / rug.length, y: s.y + q.y / rug.length }), { x: 0, y: 0 });
+      this.controls.target.set(c.x, 0, c.y);
+      this.camera.position.set(c.x, 4.5, c.y + 3);
+    } else if (ex) {
+      const { e } = ex, fov = THREE.MathUtils.degToRad(this.camera.fov);
+      const uc = (ex.u0 + ex.u1) / 2, vc = Math.min((ex.h0 + ex.h1) / 2, 2.2);
+      const dir = ex.ext ? e.n : { x: -e.n.x, y: -e.n.y }; // vers celui qui regarde
+      const base = { x: e.a.x + e.u.x * uc + (ex.ext ? e.n.x * e.T : 0), y: e.a.y + e.u.y * uc + (ex.ext ? e.n.y * e.T : 0) };
+      const width = Math.max(ex.u1 - ex.u0, 1.6) * 1.5;
+      let dist = Math.max(1.6, width / 2 / Math.tan(fov / 2) / this.camera.aspect);
+      const at = (k: number) => ({ x: base.x + dir.x * k, y: base.y + dir.y * k });
+      // Face intérieure (ou côté d'une cloison) : la caméra reste dans la boutique.
+      if (!ex.ext || e.part >= 0) while (dist > 0.9 && !insideFloor(d, at(dist))) dist -= 0.2;
+      if (ex.ext && e.part < 0) this.ctx.ui.set({ cutaway: false }); // façade : les murs restent debout
+      const cam = at(dist);
+      this.controls.target.set(base.x, vc, base.y);
+      this.camera.position.set(cam.x, Math.max(1.5, vc), cam.y);
+    }
+    this.controls.update(); this.needsRender = true;
+  }
   zoom(f: number) {
     const off = this.camera.position.clone().sub(this.controls.target).multiplyScalar(f);
     if (off.length() < this.controls.minDistance || off.length() > this.controls.maxDistance) return;
@@ -302,15 +329,15 @@ export class View3D {
     const T = d.walls.thickness;
     const mat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
     const line = new THREE.LineBasicMaterial({ color: ACCENT });
-    const addRect = (wall: number, u0: number, u1: number, h0: number, h1: number) => {
+    const addRect = (wall: number, u0: number, u1: number, h0: number, h1: number, zs = [0.004, -T - 0.004], m = mat, ln = line) => {
       const e = E[wall]; if (!e) return;
       const k = this.lowered.has(wall) ? LOW_WALL / e.H : 1;
       const g = new THREE.Group(); g.matrixAutoUpdate = false; g.matrix.copy(wallMatrix(e.a.x, e.a.y, e.u.x, e.u.y));
-      for (const z of [0.004, -T - 0.004]) {
-        const pl = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, (h1 - h0) * k), mat);
+      for (const z of zs) {
+        const pl = new THREE.Mesh(new THREE.PlaneGeometry(u1 - u0, (h1 - h0) * k), m);
         pl.position.set((u0 + u1) / 2, ((h0 + h1) / 2) * k, z); g.add(pl);
         const pts = [new THREE.Vector3(u0, h0 * k, z), new THREE.Vector3(u1, h0 * k, z), new THREE.Vector3(u1, h1 * k, z), new THREE.Vector3(u0, h1 * k, z)];
-        g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), line));
+        const lp = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), ln); lp.renderOrder = 10; g.add(lp);
       }
       this.overlay.add(g);
     };
@@ -318,6 +345,19 @@ export class View3D {
     if (sel.kind === 'opening') {
       const o = d.openings.find(q => q.id === sel.id);
       if (o) addRect(o.wall, o.t - o.width / 2, o.t + o.width / 2, o.sill, o.sill + o.height);
+    }
+    if (sel.kind === 'image') {
+      // Image choisie : cadre orange visible à travers tout, sur la bonne face (ou au sol pour un tapis).
+      const im = d.images.find(q => q.id === sel.id);
+      const see = { transparent: true, depthTest: false, depthWrite: false };
+      const m2 = new THREE.MeshBasicMaterial({ color: ACCENT, opacity: 0.18, side: THREE.DoubleSide, ...see }), l2 = new THREE.LineBasicMaterial({ color: ACCENT, ...see });
+      const ex = im && imageExtent(d, im), pad = 0.06;
+      if (ex) addRect(im!.wall, ex.u0 - pad, ex.u1 + pad, Math.max(0, ex.h0 - pad), ex.h1 + pad, [ex.ext ? -T - 0.04 : 0.04], m2, l2);
+      const rug = im && rugCorners(d, im);
+      if (rug) {
+        const loop = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(rug.map(q => new THREE.Vector3(q.x, 0.02, q.y))), l2);
+        loop.renderOrder = 10; this.overlay.add(loop);
+      }
     }
     this.needsRender = true;
   }

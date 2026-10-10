@@ -29,6 +29,7 @@ const ctx: Ctx = {
   store, ui, file: emptyFileState(),
   home: () => void leaveToHome(),
   exportPlan: () => { leaveScreen(); app.replaceChildren(exportScreen(ctx, backToEditor)); },
+  showImage: id => { if (editor) requestAnimationFrame(() => editor!.view3d.lookAtImage(id)); },
   openAtelier: id => {
     leaveScreen();
     const creation = id ? findCreation(ctx, id) : undefined;

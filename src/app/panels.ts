@@ -9,7 +9,7 @@ import { clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByL
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
 import { thumbnail } from '../library/thumbs';
-import { FRAME_COLORS, styleThumb } from './openingStyles';
+import { FRAME_COLORS, styleThumb, swingThumb } from './openingStyles';
 import { alignObjects, deleteObjects, duplicateObjects, editObjects, rotateObjects, toggleLock } from './objectActions';
 
 /* Panneau de propriétés (à droite). Il est reconstruit quand l'outil ou la sélection change,
@@ -273,11 +273,27 @@ export function openingsPanel(ctx: Ctx): Panel {
     if (msg) toast(msg, undefined, 'warning');
   };
   const isDoor = () => o().type === 'porte';
+  /** Sens d'ouverture d'une porte battante : vers quel côté, charnière à gauche ou à droite. */
+  const swingSection = () => {
+    const st = openingStyle(o()).value;
+    if (!isDoor() || st === 'passage' || st === 'coulissante') return null;
+    const part = isPartition(store.doc, o().wall), dbl = st === 'double';
+    const sideIn = part ? 'Côté 1' : 'Intérieur', sideOut = part ? 'Côté 2' : 'Rue';
+    const opts = (dbl ? [[false, false], [true, false]] : [[false, false], [false, true], [true, false], [true, true]]).map(([out, flip]) => ({
+      value: `${out ? 1 : 0}${flip ? 1 : 0}`,
+      label: (out ? (part ? 'Vers le côté 2' : 'Vers la rue') : (part ? 'Vers le côté 1' : 'Vers l’intérieur')) + (dbl ? '' : flip ? ' · droite' : ' · gauche'),
+      thumb: (() => { const t = h('div', { class: 'thumb thumb-svg' }); t.innerHTML = swingThumb(out, flip, dbl); return t; })(),
+    }));
+    return section('Sens d’ouverture', b(tiles(opts, () => `${o().openOut ? 1 : 0}${o().flipHinge && !dbl ? 1 : 0}`,
+      v => set(x => { x.openOut = v[0] === '1' || undefined; x.flipHinge = v[1] === '1' || undefined; }), 2)),
+      h('p', { class: 'p-help' }, `Vue de dessus : ${sideOut.toLowerCase()} en haut, ${sideIn.toLowerCase()} en bas. Gauche et droite : vu depuis ${part ? 'le côté 1' : 'l’intérieur'}.`));
+  };
   const p = shell(TYPE_ICON[o().type], OPENING_DEFAULTS[o().type].label, () => `Sur ${isPartition(store.doc, o().wall) ? 'la' : 'le'} ${wallName(store.doc, o().wall)} · ${fmtM(L())}`, [
     section('Type', b(segmented((Object.keys(OPENING_DEFAULTS) as OpeningType[]).map(t => ({ value: t, label: OPENING_DEFAULTS[t].label })), () => o().type,
       t => { set(x => { x.type = t; x.sill = OPENING_DEFAULTS[t].sill; x.style = undefined; x.color = undefined; }); }))),
     section('Style', b(tiles(OPENING_STYLES[o().type].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(o().type, s.value, o().color ?? s.color) })),
       () => openingStyle(o()).value, v => set(x => { x.style = v; }), 2))),
+    swingSection(),
     section('Couleur de la menuiserie', b(frameSwatches(() => o().color, c => set(x => { x.color = c; })))),
     section('Dimensions', h('div', { class: 'g2' },
       b(numberField({ label: 'Largeur', unit: 'cm', min: 30, max: 1000, get: () => o().width * 100, set: v => set(x => { x.width = v / 100; }) })),

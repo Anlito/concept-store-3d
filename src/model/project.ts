@@ -1,4 +1,4 @@
-import type { Floor, Opening, OpeningType, Partition, Project, Vec2, WallStyle } from './types';
+import type { Floor, Opening, OpeningType, Partition, PlacedImage, Project, Vec2, WallStyle } from './types';
 import { add, bounds, dist, edges, mul, norm, normalizeWinding, pointInPolygon, projectOnSegment, round3, sub, uid, v, type Edge } from './geometry';
 
 export const DEFAULT_WALL: WallStyle = { material: 'peinture', color: '#FCFBF9' };
@@ -72,6 +72,8 @@ export const wallHeight = (p: Project, i: number) => wallSeg(p, i)?.H ?? p.walls
 export const isPartition = (p: Project, i: number) => i >= contourCount(p);
 /** Revêtement d'un mur ou d'une cloison (objet du document, modifiable). */
 export const wallStyleOf = (p: Project, i: number): WallStyle | undefined => (i < contourCount(p) ? p.walls.styles[i] : p.partitions[i - contourCount(p)]?.style);
+/** Repère court sur les plans : « 3 » pour le mur n° 3, « C1 » pour la cloison n° 1. */
+export const wallShort = (p: Project, i: number) => (isPartition(p, i) ? `C${i - contourCount(p) + 1}` : String(i + 1));
 /** « mur n° 3 » ou « cloison n° 1 ». */
 export const wallName = (p: Project, i: number) => (isPartition(p, i) ? `cloison n° ${i - contourCount(p) + 1}` : `mur n° ${i + 1}`);
 
@@ -247,3 +249,26 @@ export const OPENING_STYLES: Record<OpeningType, { value: string; label: string;
 };
 export const openingStyle = (o: Opening) => OPENING_STYLES[o.type].find(s => s.value === o.style) ?? OPENING_STYLES[o.type][0];
 export const openingColor = (o: Opening) => o.color ?? openingStyle(o).color;
+
+/* ---------- Emplacement des images ---------- */
+/** Où se trouve une image murale : mur, face, et rectangle [u0, u1] × [h0, h1] dans le repère de sa face de départ
+    (u le long du mur, h en hauteur ; boîte englobante si l'image est tournée ; tout le mur pour une tapisserie répétée). */
+export function imageExtent(p: Project, im: PlacedImage) {
+  const e = wallSegs(p)[im.wall], a = p.assets.find(x => x.id === im.asset);
+  if (!e || !a || im.target === 'tapis') return null;
+  const ext = im.side === 'ext';
+  if (im.repeat) return { e, ext, u0: 0, u1: e.length, h0: 0, h1: e.H };
+  const w = im.size, hh = im.size * (a.h / a.w), r = (im.rot * Math.PI) / 180;
+  const bw = Math.abs(w * Math.cos(r)) + Math.abs(hh * Math.sin(r)), bh = Math.abs(w * Math.sin(r)) + Math.abs(hh * Math.cos(r));
+  const u = (ext ? 1 - im.x : im.x) * e.length, h = im.y * e.H;
+  return { e, ext, u0: u - bw / 2, u1: u + bw / 2, h0: h - bh / 2, h1: h + bh / 2 };
+}
+/** Coins d'un tapis au sol (tout le sol s'il est répété). */
+export function rugCorners(p: Project, im: PlacedImage): Vec2[] | null {
+  const a = p.assets.find(x => x.id === im.asset);
+  if (!p.floor || !a || im.target !== 'tapis') return null;
+  if (im.repeat) return p.floor.points;
+  const b = bounds(p.floor.points), c = v(b.x0 + im.x * b.w, b.y0 + im.y * b.h);
+  const w = im.size / 2, hh = (im.size * (a.h / a.w)) / 2, r = (im.rot * Math.PI) / 180, cs = Math.cos(r), sn = Math.sin(r);
+  return [[-w, -hh], [w, -hh], [w, hh], [-w, hh]].map(([x, y]) => v(c.x + x * cs - y * sn, c.y + x * sn + y * cs));
+}

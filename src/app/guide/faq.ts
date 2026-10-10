@@ -7,7 +7,7 @@ export interface Faq { q: string; a: string }
 
 export const FAQ: Record<FaqGroup, Faq[]> = {
   general: [
-    { q: 'Par quoi commencer ?', a: 'Bouton **Étape** en haut de l’éditeur : les 7 étapes du projet, dans l’ordre, du concept validé par ton professeur à l’installation des meubles. Coche chaque étape quand elle est finie.' },
+    { q: 'Par quoi commencer ?', a: 'Bouton orange **Étape**, en haut à gauche de l’éditeur : les 7 étapes du projet, dans l’ordre, du concept validé par ton professeur à l’installation des meubles. Coche chaque étape quand elle est finie.' },
     { q: 'Où est enregistré mon projet ?', a: 'Avec [[Ctrl+S]] (ou **Enregistrer**), dans un fichier **.json** que tu ranges dans le dossier de ton équipe. Une copie de secours reste aussi sur ce poste, mais seul le fichier est en sécurité.' },
     { q: 'J’ai fermé sans enregistrer : tout est perdu ?', a: 'Non. Rouvre l’outil **sur le même poste** : ton projet est dans **Projets récents**, sur l’accueil. Enregistre-le tout de suite.' },
     { q: 'Comment continuer mon projet sur un autre PC ?', a: 'Accueil › **Ouvrir un projet**, puis choisis le fichier .json de ton équipe. Les meubles de l’Atelier et les images sont dans le fichier.' },
@@ -49,6 +49,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'C’est quoi l’allège ?', a: 'La hauteur entre le sol et le bas de la fenêtre ou de la vitrine.' },
     { q: 'Comment changer la couleur du cadre ?', a: 'Clique sur l’ouverture › **Couleur de la menuiserie**.' },
     { q: 'Comment supprimer une ouverture ?', a: 'Clique dessus, puis [[Suppr]] ou le bouton **Supprimer**.' },
+    { q: 'Comment choisir le sens d’ouverture d’une porte ?', a: 'Clique sur la porte › **Sens d’ouverture** : vers l’intérieur ou vers la rue (côté 1 ou côté 2 pour une cloison), charnière à gauche ou à droite. Les dessins montrent la porte vue de dessus.' },
     { q: 'Comment faire une ouverture sans porte entre deux espaces ?', a: 'Choisis **Porte**, style **Passage (sans porte)**, puis clique sur la cloison.' },
   ],
   mobilier: [
@@ -62,6 +63,8 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
   ],
   images: [
     { q: 'Quelles images puis-je utiliser ?', a: '**PNG ou JPG**, 5 Mo maximum, **faites par toi** (Canva…) ou **libres de droits**.' },
+    { q: 'Je ne sais pas où est mon image.', a: 'Clique sur l’image dans la liste, ou sur **Voir l’image en 3D** : la caméra se place face à elle et elle est entourée en orange. Sur le **Plan 2D**, chaque image est un repère coloré le long de son mur.' },
+    { q: 'Comment choisir le mur d’une image ?', a: 'Dans les réglages, **clique sur le mur** sur le petit plan : il passe en orange. Les numéros sont les mêmes que sur le plan 2D (C1, C2… pour les cloisons).' },
     { q: 'Comment mettre un logo sur la vitrine ?', a: 'Ajouter une image › **Vitrine**. Un PNG à fond transparent donne l’effet d’un lettrage collé.' },
     { q: 'Comment décorer la façade avec une image ?', a: 'Dans les réglages de l’image, choisis **Façade (rue)** au lieu d’Intérieur.' },
     { q: 'Comment répéter un motif sur tout le mur ?', a: 'Choisis **Tapisserie murale** : le motif peut couvrir tout le mur.' },
@@ -83,7 +86,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Comment réutiliser mes créations dans un autre projet ?', a: 'Bibliothèque › Mes créations › **Importer d’un autre projet**.' },
   ],
   plan: [
-    { q: 'Comment bien imprimer le plan ?', a: 'Format **A3 paysage**, en **« Taille réelle »** ou **100 %**, sans « Ajuster à la page ».' },
+    { q: 'Qui imprime le plan ?', a: 'Ton professeur. Toi, tu remplis le cartouche et tu enregistres le PDF dans le **dossier de ton équipe**.' },
     { q: 'Comment vérifier l’échelle ?', a: 'Mesure la **barre d’échelle** à la règle : sa longueur exacte est écrite à côté (9 cm à l’échelle 1 m = 3 cm).' },
     { q: 'Le plan ne tient pas sur la feuille.', a: 'Choisis une échelle plus petite (1 m = 2 cm) ou réduis la boutique.' },
     { q: 'Pourquoi les meubles ne sont pas sur le plan ?', a: 'Le plan est le **gabarit de la maquette** : murs, portes, fenêtres et cotes.' },

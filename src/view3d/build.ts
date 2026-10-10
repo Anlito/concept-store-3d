@@ -180,11 +180,13 @@ export function fixture(o: Opening, T: number): THREE.Group {
     if (style === 'passage') return g; // ouverture nue, sans menuiserie
     const fd = T + 0.02, dark = style === 'pleine' ? M.dark : col;
     frame(lo, hi, 0, top, f, fd, cz, dark, false); // dormant (sans traverse basse)
-    const zl = -T + 0.04, lw = w - 2 * f, lh = H - f;
+    // Vantail du côté où la porte s'ouvre ; poignée à l'opposé de la charnière (miroir si charnière à droite).
+    const zl = o.openOut ? -T + 0.04 : -0.04, lw = w - 2 * f, lh = H - f;
+    const hx = (x: number) => (o.flipHinge ? lo + hi - x : x);
     if (style === 'pleine') {
       g.add(box(lw, lh, 0.04, col, o.t, lh / 2, zl));
       const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), M.dark);
-      knob.position.set(hi - f - 0.09, 1.0, zl + 0.05); g.add(knob);
+      knob.position.set(hx(hi - f - 0.09), 1.0, zl + 0.05); g.add(knob);
       const k2 = knob.clone(); k2.position.z = zl - 0.05; g.add(k2);
     } else if (style === 'vitree' || style === 'atelier') {
       const s = 0.08; // montants du vantail
@@ -192,7 +194,7 @@ export function fixture(o: Opening, T: number): THREE.Group {
       g.add(box(lw, 0.18, 0.045, col, o.t, 0.09, zl)); // soubassement
       g.add(glass(lw - 2 * s, lh - s - 0.18, o.t, 0.18 + (lh - s - 0.18) / 2, zl));
       if (style === 'atelier') grid(lo + f + s, hi - f - s, 0.18, lh - s, 2, 4, zl, col);
-      g.add(handle(hi - f - s - 0.05, zl + 0.05), handle(hi - f - s - 0.05, zl - 0.05));
+      g.add(handle(hx(hi - f - s - 0.05), zl + 0.05), handle(hx(hi - f - s - 0.05), zl - 0.05));
     } else if (style === 'double') {
       const s = 0.07, half = lw / 2;
       for (const sx of [-1, 1]) {

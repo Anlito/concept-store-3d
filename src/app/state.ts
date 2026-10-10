@@ -88,6 +88,8 @@ export interface Ctx {
   file: FileState;
   /** Ouvre l'atelier de création (nouveau meuble, ou création existante à modifier). */
   openAtelier(creationId?: string): void;
+  /** Montre une image posée : vue 3D, caméra face à elle. */
+  showImage(id: string): void;
 }
 
 /** Pas d'aimantation proposés (m). */

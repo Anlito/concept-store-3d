@@ -14,7 +14,8 @@ export function selectPick(ctx: Ctx, p: Pick | null) {
   if (p.kind === 'object') return;
   if (p.kind === 'wall') {
     // Une cloison choisie avec l'outil Surface reste dans cet outil (on y trace aussi les cloisons).
-    const t = ctx.ui.s.tool, keep = t === 'ouvertures' || (t === 'sol' && p.index >= contourCount(ctx.store.doc));
+    // Avec l'outil Images, un clic sur un mur le choisit pour la prochaine image.
+    const t = ctx.ui.s.tool, keep = t === 'ouvertures' || t === 'images' || (t === 'sol' && p.index >= contourCount(ctx.store.doc));
     ctx.ui.set({ sel: { kind: 'wall', index: p.index }, tool: keep ? t : 'murs' });
   }
   else ctx.ui.set({ sel: { kind: 'opening', id: p.id }, tool: 'ouvertures' });

@@ -61,8 +61,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
           status,
           h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Sur la feuille'), legend, cotesTg.el),
           h('div', { class: 'p-sec', 'data-tour': 'ex-team' }, h('div', { class: 'p-sec-t' }, 'Équipe (cartouche)'),
-            field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B'), cartouche),
-          alert('info', 'Pour imprimer', 'Choisis « Taille réelle » ou « 100 % » et désactive « Ajuster à la page ». Vérifie ensuite à la règle la longueur de la barre d’échelle, écrite à côté d’elle.')),
+            field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B'), cartouche)),
         h('div', { class: 'pn-f' }, h('div', { class: 'ex-where' }, icon('folder_open'), h('span', null, 'À enregistrer dans le dossier de ton équipe : ', h('b', null, TEAM_FOLDER))), dl))));
 
   function render() {
@@ -109,7 +108,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
       const name = await saveBlob(`Plan-A3-${who || 'equipe'}.pdf`, blob, { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } });
       if (!name) return; // explorateur fermé sans enregistrer
       markStep(ctx, 'plan');
-      toast(`Plan enregistré : « ${name} ». Imprime-le en A3, taille réelle (100 %).`);
+      toast(`Plan enregistré : « ${name} ». Ton professeur l’imprimera.`);
     } catch {
       toast('Impossible d’enregistrer ici : choisis le dossier de ton équipe.', undefined, 'warning');
     }
