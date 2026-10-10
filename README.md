@@ -7,6 +7,8 @@ en carton, puis l'aménagent et la décorent en 3D.
 Il fonctionne **sans installation ni Internet** : un double-clic sur `index.html` (Chrome ou Edge),
 même depuis un dossier réseau du collège. Aucune donnée n'est envoyée en ligne.
 
+**Essayer en ligne :** https://anlito.github.io/concept-store-3d/ (les projets restent enregistrés sur l'ordinateur de l'élève).
+
 ## Ce que font les élèves
 
 1. **Surface** : tracé du contour (10 × 7 m au plus), des **cloisons** qui forment les pièces
