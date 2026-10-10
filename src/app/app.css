@@ -501,3 +501,38 @@
 .hl-none b { color: var(--ink); }
 .hl-f { flex: none; padding: 12px 18px 16px; border-top: 1px solid var(--sep); display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-3); }
 .hl-links { display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* Carte mise en avant dans un panneau (ex. « Cloisons et pièces ») */
+.p-cta { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 14px; background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--danger-border); }
+.p-cta-t { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); }
+.p-cta-t .ic { color: var(--accent); font-size: 22px; }
+.p-cta p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.p-cta .btn { align-self: flex-start; }
+
+/* Plan A3 : cartouche obligatoire, dossier d'enregistrement */
+.tf .req { color: var(--accent); }
+.tf input.missing { border-color: var(--warn); background: var(--warn-bg); }
+.ex-where { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.4; color: var(--text-2); font-weight: 600; }
+.ex-where .ic { color: var(--accent); font-size: 18px; flex: none; margin-top: 1px; }
+.ex-where b { color: var(--ink); }
+
+/* Étapes du projet */
+.tb-steps { color: var(--accent-hover); }
+.tb-steps .ic { color: var(--accent); }
+.st-scroll { flex: 1; overflow: auto; padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.st-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.st { display: flex; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--bg-app); }
+.st.now { background: #fff; box-shadow: inset 0 0 0 2px var(--accent); }
+.st.ok { opacity: .72; }
+.st-check { width: 30px; height: 30px; flex: none; border-radius: 50%; border: 2px solid var(--accent); background: #fff; color: var(--accent);
+  font: 800 14px var(--font); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+.st-check { font-size: 14px; }
+.st.ok .st-check { background: var(--ok); border-color: var(--ok); color: #fff; font-size: 18px; }
+.st-check:hover { box-shadow: 0 0 0 3px var(--accent-soft); }
+.st-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.st-t { display: flex; align-items: center; gap: 8px; font-size: 14.5px; line-height: 1.3; }
+.st-t .ic { color: var(--accent); font-size: 20px; flex: none; }
+.st-now { margin-left: auto; flex: none; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-hover); }
+.st p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-2); }
+.st-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.st-acts .btn { height: 34px; font-size: 13px; padding: 0 12px 0 10px; }

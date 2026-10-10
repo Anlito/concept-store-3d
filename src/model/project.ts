@@ -204,6 +204,7 @@ export function sanitizeProject(raw: unknown): Project {
     .filter(c => c && c.a && c.b && Number.isFinite(+c.a.x) && Number.isFinite(+c.a.y) && Number.isFinite(+c.b.x) && Number.isFinite(+c.b.y))
     .map(c => ({ id: c.id || uid(), a: { x: +c.a.x, y: +c.a.y }, b: { x: +c.b.x, y: +c.b.y }, ...(c.height ? { height: +c.height } : {}), style: { ...DEFAULT_WALL, ...(c.style || {}) } }));
   if (!p.floor) p.partitions = [];
+  p.steps = Array.isArray(r.steps) ? r.steps.filter(x => typeof x === 'string') : [];
   p.openings = (p.openings || []).map(o => ({ ...o }));
   p.objects = (p.objects || []).map(o => ({ ...o, size: { ...o.size }, color: o.color ?? null, locked: !!o.locked, z: +o.z || 0 }));
   p.creations = (p.creations || []).filter(c => c && Array.isArray(c.volumes)).map(c => ({ ...c, volumes: c.volumes.map(v => ({ ...v })) }));

@@ -129,3 +129,23 @@ test('le plan A3 dessine les cloisons ; le fichier projet les garde, avec leurs 
   expect(d.partitions).toEqual(saved.partitions);
   expect(d.openings.filter((o: any) => o.wall === 5)).toHaveLength(1);
 });
+
+test('depuis l’outil Surface : cloison à la longueur tapée au clavier', async ({ page }) => {
+  await page.locator('[data-tool=sol]').click();
+  const card = page.getByTestId('panel').locator('.p-cta');
+  await expect(card).toContainText('Cloisons et pièces');
+  await card.getByRole('button', { name: 'Tracer une cloison' }).click();
+  expect(await page.evaluate(() => (window as any).cs3d.ui.s.tool)).toBe('sol');
+  await clickPlan(page, { x: 6, y: 0.03 });
+  const towards = await screen(page, { x: 6, y: 5 });
+  await page.mouse.move(towards.x, towards.y); // la souris montre la direction
+  await page.keyboard.type('250');
+  await expect(page.getByLabel('Longueur de la cloison')).toHaveValue('250');
+  await page.keyboard.press('Enter');
+  expect((await doc(page)).partitions.map((c: any) => [c.a, c.b])).toEqual([[{ x: 6, y: 0 }, { x: 6, y: 2.5 }]]);
+  await page.keyboard.press('Escape');
+  // Un clic sur la cloison garde l'outil Surface et ouvre ses réglages.
+  await clickPlan(page, { x: 6, y: 1.2 });
+  await expect(page.getByTestId('panel')).toContainText('Cloison n° 1');
+  expect(await page.evaluate(() => (window as any).cs3d.ui.s.tool)).toBe('sol');
+});

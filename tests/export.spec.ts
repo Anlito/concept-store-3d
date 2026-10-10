@@ -26,9 +26,18 @@ async function openExport(page: Page) {
   await page.getByRole('button', { name: 'Plan A3' }).click();
   await expect(page.getByTestId('export')).toBeVisible();
 }
+/** Cartouche obligatoire : nom de l'équipe, prénoms, classe. */
+async function fillCartouche(page: Page) {
+  await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
+  await page.getByLabel('Prénoms').fill('Léa, Malik');
+  await page.getByLabel('Classe').fill('4e B');
+  await page.getByLabel('Classe').press('Tab');
+}
+/** Sans explorateur (navigateur ancien) : le PDF est téléchargé. */
 async function download(page: Page, path: string) {
+  await page.evaluate(() => { delete (window as any).showSaveFilePicker; });
   const dl = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Télécharger le PDF' }).click();
+  await page.getByRole('button', { name: 'Enregistrer le PDF' }).click();
   const d = await dl;
   await d.saveAs(path);
   return d.suggestedFilename();
@@ -49,13 +58,10 @@ test('le PDF est un A3 paysage, à l’échelle exacte, avec le cartouche', asyn
   // La boutique exemple fait 10 × 7 m (le maximum) : elle tient à 1 m = 3 cm
   await expect(page.getByRole('button', { name: '1 m = 3 cm', exact: true })).toHaveClass(/on/);
   await expect(page.getByText('Le plan tient sur la feuille')).toBeVisible();
-  await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
-  await page.getByLabel('Prénoms').fill('Léa, Malik');
-  await page.getByLabel('Classe').fill('4e B');
-  await page.getByLabel('Classe').press('Tab');
+  await fillCartouche(page);
   await expect(page.getByTestId('sheet')).toContainText('ÉQUIPELes Bâtisseurs');
   const file = info.outputPath('plan.pdf');
-  expect(await download(page, file)).toBe('plan-A3-boutique-exemple-1m-3cm.pdf');
+  expect(await download(page, file)).toBe('Plan-A3-Lea-Malik.pdf');
   const pdf = readPdf(file);
   expect(pdf.header).toBe('%PDF-');
   expect(pdf.w).toBeCloseTo(420, 1);
@@ -74,18 +80,19 @@ test('plan trop grand : avertissement, téléchargement bloqué, corrections pro
   // Murs de 50 cm : la boutique de 10 × 7 m dépasse à 1 m = 3 cm avec les cotes
   await page.evaluate(() => (window as any).cs3d.store.update((d: any) => { d.walls.thickness = 0.5; }));
   await openExport(page);
+  await fillCartouche(page);
   // L'outil a déjà choisi 1 m = 2 cm ; on force 1 m = 3 cm
   await expect(page.getByRole('button', { name: '1 m = 2 cm', exact: true })).toHaveClass(/on/);
   await page.getByRole('button', { name: '1 m = 3 cm', exact: true }).click();
   await expect(page.getByText('Boutique trop grande pour cette échelle')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Enregistrer le PDF' })).toBeDisabled();
   // Sans les cotes, elle tient
   await page.getByRole('button', { name: 'Masquer les cotes' }).click();
-  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Enregistrer le PDF' })).toBeEnabled();
   // Ou bien à une échelle plus petite
   await page.getByRole('button', { name: 'Cotes des murs' }).click();
   await page.getByRole('button', { name: 'Passer à 1 m = 2 cm' }).click();
-  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Enregistrer le PDF' })).toBeEnabled();
   // 1 m = 1 cm : la barre d'échelle mesure 10 cm pour 10 m
   await page.getByRole('button', { name: '1 m = 1 cm', exact: true }).click();
   await expect(page.getByTestId('sheet')).toContainText('cette barre mesure exactement 10 cm (= 10 m dans la boutique)');
@@ -97,8 +104,9 @@ test('une boutique plus profonde que large est tournée sur la feuille', async (
     d.openings = [];
   }));
   await openExport(page);
+  await fillCartouche(page);
   await expect(page.getByTestId('sheet')).toContainText('Plan tourné d’un quart de tour');
-  await expect(page.getByRole('button', { name: 'Télécharger le PDF' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Enregistrer le PDF' })).toBeEnabled();
   const f = info.outputPath('p.pdf'); await download(page, f);
   const pdf = readPdf(f);
   expect(pdf.segs.some(l => Math.abs(l - 300) < 0.05)).toBe(true);
@@ -107,6 +115,7 @@ test('une boutique plus profonde que large est tournée sur la feuille', async (
 
 test('le plan ne contient que les murs : pas de mobilier', async ({ page }, info) => {
   await openExport(page);
+  await fillCartouche(page);
   const a = info.outputPath('a.pdf'); await download(page, a);
   await page.getByRole('button', { name: 'Retour à l’éditeur' }).click();
   await page.locator('[data-tool="mobilier"]').click();
@@ -130,4 +139,37 @@ test('portes et fenêtres : le trait du mur devient pointillé sur la largeur ex
   expect(door).toEqual(expect.arrayContaining([36, 36, 27, 27]));
   // Fenêtre de 2,50 m et vitrines de 2,80 m → 75 mm et 84 mm
   expect(win).toEqual(expect.arrayContaining([75, 75, 84, 84, 84, 84]));
+});
+
+test('cartouche obligatoire, puis l’explorateur s’ouvre dans le dossier de l’équipe', async ({ page }) => {
+  // Explorateur simulé : on garde les options et le fichier écrit.
+  await page.evaluate(() => {
+    const w = window as any; w.__saved = null;
+    w.showSaveFilePicker = async (o: any) => ({ name: o.suggestedName, createWritable: async () => {
+      const parts: Blob[] = [];
+      return { write: async (b: Blob) => { parts.push(b); }, close: async () => { w.__saved = { opts: o, head: await new Blob(parts).slice(0, 5).text() }; } };
+    } });
+  });
+  await openExport(page);
+  const save = page.getByRole('button', { name: 'Enregistrer le PDF' });
+  await expect(save).toBeDisabled();
+  await expect(page.getByText('Cartouche à compléter')).toBeVisible();
+  await expect(page.getByLabel('Classe')).toHaveClass(/missing/);
+  await expect(page.getByText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom-Prénom')).toBeVisible();
+  await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
+  await page.getByLabel('Prénoms').fill('Léa, Malik');
+  await expect(save).toBeDisabled(); // la classe manque encore
+  await page.getByLabel('Classe').fill('4e B');
+  await expect(save).toBeEnabled();
+  await expect(page.getByText('Cartouche à compléter')).toBeHidden();
+  await save.click();
+  await expect(page.locator('.toast')).toContainText('Plan enregistré : « Plan-A3-Lea-Malik.pdf »');
+  const saved = await page.evaluate(() => (window as any).__saved);
+  expect(saved.opts).toMatchObject({ id: 'cs3d-equipe', suggestedName: 'Plan-A3-Lea-Malik.pdf' });
+  expect(saved.opts.types[0].accept).toEqual({ 'application/pdf': ['.pdf'] });
+  expect(saved.head).toBe('%PDF-');
+  // L'étape « Plan A3 » est cochée, le cartouche gardé dans le projet.
+  const d = await page.evaluate(() => (window as any).cs3d.store.doc);
+  expect(d.steps).toContain('plan');
+  expect(d.team).toEqual({ name: 'Les Bâtisseurs', members: 'Léa, Malik', klass: '4e B' });
 });

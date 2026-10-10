@@ -33,6 +33,8 @@ export function currentParts(): Part[] {
 const SEEN_KEY = 'cs3d-visites', OFF_KEY = 'cs3d-visites-off';
 function seen(): Record<string, string> { try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch { return {}; } }
 function markSeen(p: Part, how: 'faite' | 'refusee') { const s = seen(); s[p] = how; try { localStorage.setItem(SEEN_KEY, JSON.stringify(s)); } catch { /* stockage bloqué */ } }
+/** Sous pilotage automatisé (tests) : pas d'aide qui s'ouvre toute seule, sauf si un test la demande. */
+export function underTest() { try { return navigator.webdriver && localStorage.getItem('cs3d-visites-test') !== '1'; } catch { return false; } }
 function offersOff() {
   try {
     if (localStorage.getItem(OFF_KEY) === '1') return true;
@@ -53,7 +55,8 @@ export function offerTour(part: Part) {
   offerPart = part;
   offerTimer = window.setTimeout(() => {
     // Une fenêtre est ouverte ou la partie a déjà changé : on proposera une autre fois.
-    if (document.querySelector('.modal-veil') || !currentParts().includes(part)) { offerPart = null; return; }
+    // Une fenêtre ou les étapes du projet sont ouvertes, ou la partie a changé : on proposera une autre fois.
+    if (document.querySelector('.modal-veil, .steps-panel') || !currentParts().includes(part)) { offerPart = null; return; }
     const no = () => { markSeen(part, 'refusee'); closeOffer(); };
     offerEl = h('div', { class: 'tour-offer', role: 'dialog', 'aria-label': 'Visite guidée' },
       h('div', { class: 'to-ic' }, icon(PART_ICON[part])),
@@ -174,6 +177,7 @@ const GROUP_LABEL = (g: FaqGroup) => (g === 'general' ? 'Questions générales' 
 
 export function openHelpPanel() {
   if (helpEl) { closeHelp(); return; }
+  document.dispatchEvent(new Event('cs3d-close-panels')); // un seul panneau à droite
   closeOffer();
   const parts = currentParts();
   const order: FaqGroup[] = [...parts, 'general', ...(Object.keys(FAQ) as FaqGroup[]).filter(g => g !== 'general' && !parts.includes(g as Part))];

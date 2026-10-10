@@ -27,6 +27,31 @@ type PickerWindow = Window & {
 };
 const W = window as PickerWindow;
 const TYPES = [{ description: 'Projet Concept Store 3D', accept: { 'application/json': ['.json'] } }];
+/** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché avant d'enregistrer). */
+export const TEAM_FOLDER = '4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom-Prénom';
+/** Même identifiant pour tous les sélecteurs : Chrome rouvre le dernier dossier choisi (celui de l'équipe). */
+export const PICKER_ID = 'cs3d-equipe';
+type SaveWindow = Window & { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
+/** Enregistre un fichier en ouvrant l'explorateur (Chrome, Edge), sinon le télécharge. Renvoie le nom, ou null si annulé. */
+export async function saveBlob(name: string, blob: Blob, type: { description: string; accept: Record<string, string[]> }): Promise<string | null> {
+  const w = window as SaveWindow;
+  if (typeof w.showSaveFilePicker !== 'function') {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return name;
+  }
+  try {
+    const handle = await w.showSaveFilePicker({ id: PICKER_ID, suggestedName: name, types: [type] });
+    const out = await (handle as FileSystemFileHandle & { createWritable(): Promise<FileSystemWritableFileStream> }).createWritable();
+    await out.write(blob); await out.close();
+    return handle.name;
+  } catch (e) {
+    if ((e as DOMException)?.name === 'AbortError') return null;
+    throw e;
+  }
+}
+
 export const hasPickers = () => typeof W.showSaveFilePicker === 'function' && typeof W.showOpenFilePicker === 'function';
 
 const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
@@ -88,7 +113,7 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
         toast(`Projet téléchargé : « ${name} ». Range-le dans le dossier de ton équipe.`);
         return true;
       }
-      handle = await W.showSaveFilePicker!({ suggestedName: name, types: TYPES });
+      handle = await W.showSaveFilePicker!({ id: PICKER_ID, suggestedName: name, types: TYPES });
       if (await isTemplateFile(handle)) {
         toast('C’est un fichier modèle : choisis un autre nom pour ne pas l’écraser.', undefined, 'warning');
         return false;
@@ -134,7 +159,7 @@ export async function readProjectFile(f: File, handle: FileSystemFileHandle | nu
 export async function pickProjectFile(): Promise<OpenedFile | null> {
   try {
     if (typeof W.showOpenFilePicker === 'function') {
-      const [h] = await W.showOpenFilePicker({ types: TYPES, multiple: false });
+      const [h] = await W.showOpenFilePicker({ id: PICKER_ID, types: TYPES, multiple: false });
       return await readProjectFile(await h.getFile(), h);
     }
     const f = await new Promise<File | null>(resolve => {

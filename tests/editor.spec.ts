@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
   await page.getByTestId('new-project').click();
-  await expect(page.getByTestId('panel')).toContainText('Tracer le sol');
+  await expect(page.getByTestId('panel')).toContainText('Tracer la surface');
 });
 test.afterEach(() => expect(errors).toEqual([]));
 
@@ -27,7 +27,7 @@ test('tracer un sol libre aimanté à la grille et le fermer', async ({ page }) 
   // Points volontairement imprécis : l'aimantation les ramène sur la grille de 10 cm.
   for (const p of [{ x: 0.02, y: 0.01 }, { x: 6.03, y: 0 }, { x: 6, y: 4.04 }, { x: 0, y: 3.98 }]) await clickPlan(page, p);
   await expect(page.getByText('4 points posés')).toBeVisible();
-  await page.getByRole('button', { name: 'Fermer le sol' }).click();
+  await page.getByRole('button', { name: 'Fermer la surface' }).click();
   const d = await doc(page);
   expect(d.floor.points).toHaveLength(4);
   for (const q of d.floor.points) { expect(Math.round(q.x * 10) / 10).toBeCloseTo(q.x, 6); expect(Math.round(q.y * 10) / 10).toBeCloseTo(q.y, 6); }
@@ -65,7 +65,7 @@ test('rectangle aux dimensions exactes, puis annuler et rétablir', async ({ pag
 
 test('les côtés qui se croisent sont refusés', async ({ page }) => {
   for (const p of [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 0, y: 4 }, { x: 4, y: 4 }]) await clickPlan(page, p);
-  await page.getByRole('button', { name: 'Fermer le sol' }).click();
+  await page.getByRole('button', { name: 'Fermer la surface' }).click();
   await expect(page.getByText('Les côtés se croisent')).toBeVisible();
   expect((await doc(page)).floor).toBeNull();
 });
@@ -190,7 +190,7 @@ test('la boutique ne dépasse pas 10 × 7 m', async ({ page }) => {
 test('pas d’aimantation : 1 m pour le sol, 10 cm pour le reste, réglable partout', async ({ page }) => {
   const s = () => page.evaluate(() => (window as any).cs3d.ui.s);
   // Outil Sol : pas de 1 m, les points tombent sur les mètres
-  await expect(page.locator('.step').first()).toContainText('Pas du sol');
+  await expect(page.locator('.step').first()).toContainText('Pas du tracé');
   expect((await s()).step).toBe(1);
   for (const p of [{ x: 0.3, y: 0.2 }, { x: 5.6, y: 0.1 }, { x: 5.8, y: 4.3 }, { x: 0.2, y: 3.7 }]) await clickPlan(page, p);
   await clickPlan(page, { x: 0, y: 0 });

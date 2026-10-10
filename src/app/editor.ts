@@ -10,13 +10,14 @@ import { imagePanel, imagesPanel } from './imagesUi';
 import { saveProject } from './files';
 import { openPhotoDialog } from './photoDialog';
 import { helpButton, offerTour } from './guide/guide';
+import { stepsButton } from './guide/steps';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
 import { closeDraft, deleteSelection, stopPartitions } from './actions';
 import { wallSegs, wallStyleOf } from '../model/project';
 import { floorTints, wallTints } from '../view3d/materials';
 
 const TOOLS: { id: Tool; icon: string; label: string; soon?: boolean }[] = [
-  { id: 'sol', icon: 'grid_on', label: 'Sol' },
+  { id: 'sol', icon: 'grid_on', label: 'Surface' },
   { id: 'murs', icon: 'border_outer', label: 'Murs' },
   { id: 'ouvertures', icon: 'door_front', label: 'Portes / fenêtres' },
   { id: 'mobilier', icon: 'chair', label: 'Mobilier' },
@@ -52,7 +53,7 @@ export class Editor {
         h('button', { class: 'tb-logo', type: 'button', title: 'Accueil', onclick: () => ctx.home() }, icon('storefront')),
         h('div', { class: 'tb-title' }, name, status)),
       h('div', { class: 'tb-c' }, h('div', { class: 'vsw', 'data-tour': 'view' }, b2d, b3d)),
-      h('div', { class: 'tb-r' }, helpButton(), undo, redo, h('div', { class: 'tb-sep' }),
+      h('div', { class: 'tb-r' }, stepsButton(ctx), helpButton(), undo, redo, h('div', { class: 'tb-sep' }),
         h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => ctx.exportPlan() }, icon('print'), 'Plan A3'),
         this.saveGroup()));
 
@@ -152,7 +153,7 @@ export class Editor {
     const faceCol = (w: WallStyle) => ext ? w.outColor ?? '' : w.color;
     const op = s.sel?.kind === 'opening' ? d.openings.find(o => o.id === (s.sel as { id: string }).id) : undefined;
     const key = JSON.stringify([s.tool, s.sel, !!d.floor, s.floorShape, d.floor && floorTints(d.floor.material),
-      s.wallFace, s.partDraw, s.tool === 'murs' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, s.placeType,
+      s.wallFace, s.partDraw, s.tool === 'murs' || s.tool === 'sol' ? d.partitions.length : null, wallStyleOf(d, selWall) && wallTints(faceMat(wallStyleOf(d, selWall)!)), op?.type, op?.style, op?.color, s.placeType,
       s.sel?.kind === 'image' ? d.images.filter(i => i.id === (s.sel as { id: string }).id).map(i => i.target + i.repeat + i.side + i.wall) : null,
       s.tool === 'images' && !s.sel ? d.images.map(i => i.id + i.target + i.wall) : null,
       s.tool === 'murs' && !s.sel && d.walls.styles.some(w => faceMat(w) !== faceMat(d.walls.styles[0]) || faceCol(w) !== faceCol(d.walls.styles[0]))]);
@@ -181,7 +182,7 @@ export class Editor {
     const el = h('label', { class: 'step', title: 'Les points, meubles et ouvertures s’accrochent sur une grille de ce pas' }, icon('grid_4x4'), label, sel);
     const refresh = () => {
       sel.value = String(ui.s.step);
-      label.textContent = ui.s.tool === 'sol' ? 'Pas du sol' : 'Pas';
+      label.textContent = ui.s.tool === 'sol' ? 'Pas du tracé' : 'Pas';
       el.classList.toggle('off', !ui.s.snap);
     };
     refresh();
@@ -192,9 +193,9 @@ export class Editor {
   private overlay3d() {
     const { ui } = this.ctx;
     const empty = h('div', { class: 'vp-empty' }, h('div', null,
-      h('div', { class: 'big' }, icon('grid_on')), h('h2', null, 'Commence par le sol'),
+      h('div', { class: 'big' }, icon('grid_on')), h('h2', null, 'Commence par la surface'),
       h('p', null, 'Trace la surface de ta boutique sur le plan 2D : les murs se créeront tout seuls.'),
-      h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => ui.set({ view: '2d', tool: 'sol' }) }, icon('grid_on'), 'Tracer le sol')));
+      h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => ui.set({ view: '2d', tool: 'sol' }) }, icon('grid_on'), 'Tracer la surface')));
     const cut = toggle('Murs abaissés', 'vertical_align_bottom', () => ui.s.cutaway, v => ui.set({ cutaway: v }));
     cut.el.dataset.tour = 'cut';
     cut.el.title = 'Abaisser les murs entre la caméra et la boutique pour voir l’intérieur';
@@ -244,13 +245,13 @@ export class Editor {
       tg.forEach(t => t.refresh()); step.refresh();
       const s = ui.s, d = store.doc;
       let parts: HTMLElement[];
-      if (s.tool === 'sol' && !d.floor) parts = s.floorShape === 'rectangle'
+      if (s.partDraw && d.floor && (s.tool === 'sol' || s.tool === 'murs')) parts = [H('left_click', s.draft.length ? 'Clic : fin de la cloison' : 'Clic : début de la cloison'), H(null, '45°', 'Maj'), H(null, 'terminer', 'Échap')];
+      else if (s.tool === 'sol' && !d.floor) parts = s.floorShape === 'rectangle'
         ? [H('left_click', s.draft.length ? 'Clic : coin opposé' : 'Clic : premier coin'), H(null, 'annuler', 'Échap')]
         : [H('left_click', 'Clic : poser un point'), H('ads_click', 'Double-clic : terminer'), H(null, 'annuler', 'Échap')];
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
       else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('open_with', 'Glisser : déplacer')];
       else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
-      else if (s.tool === 'murs' && s.partDraw) parts = [H('left_click', s.draft.length ? 'Clic : fin de la cloison' : 'Clic : début de la cloison'), H(null, '45°', 'Maj'), H(null, 'terminer', 'Échap')];
       else parts = [H('left_click', 'Clic sur un mur ou une cloison : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];
       hint.replaceChildren(...parts);
     };
@@ -294,6 +295,11 @@ export class Editor {
         nudgeObjects(this.ctx, dx, dy); return;
       }
       // Saisie d'une longueur au clavier pendant le tracé
+      if (ui.s.partDraw && ui.s.draft.length && /^[0-9]$/.test(e.key) && !ctrl) { // longueur de la cloison au clavier
+        const input = this.panelHost.querySelector<HTMLInputElement>('input[aria-label="Longueur de la cloison"]');
+        if (input) { e.preventDefault(); input.dataset.typed = '1'; input.focus(); input.value = e.key; }
+        return;
+      }
       if (drawing && ui.s.floorShape === 'libre' && ui.s.draft.length && /^[0-9]$/.test(e.key) && !ctrl) {
         const input = this.panelHost.querySelector<HTMLInputElement>('input[aria-label="Longueur du côté suivant"]');
         if (input) { e.preventDefault(); input.dataset.typed = '1'; input.focus(); input.value = e.key; }

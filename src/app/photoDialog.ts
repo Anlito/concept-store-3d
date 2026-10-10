@@ -28,7 +28,7 @@ function download(name: string, href: string) {
 }
 
 export function openPhotoDialog(ctx: Ctx, view: View3D) {
-  if (!ctx.store.doc.floor) { toast('Trace d’abord le sol de la boutique.', undefined, 'warning'); return; }
+  if (!ctx.store.doc.floor) { toast('Trace d’abord la surface de la boutique.', undefined, 'warning'); return; }
   let angle: PhotoView | 'quatre' = 'actuelle', format: 'png' | 'jpg' = 'png', size = 'hd', best = true, bg = '#EFEEEA';
   const img = h('img', { alt: 'Aperçu de la photo', class: 'ph-img' });
   const angleTiles = h('div', { class: 'ph-angles' });

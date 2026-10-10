@@ -7,12 +7,13 @@ export interface Faq { q: string; a: string }
 
 export const FAQ: Record<FaqGroup, Faq[]> = {
   general: [
+    { q: 'Par quoi commencer ?', a: 'Bouton **Étape** en haut de l’éditeur : les 7 étapes du projet, dans l’ordre, du concept validé par ton professeur à l’installation des meubles. Coche chaque étape quand elle est finie.' },
     { q: 'Où est enregistré mon projet ?', a: 'Avec [[Ctrl+S]] (ou **Enregistrer**), dans un fichier **.json** que tu ranges dans le dossier de ton équipe. Une copie de secours reste aussi sur ce poste, mais seul le fichier est en sécurité.' },
     { q: 'J’ai fermé sans enregistrer : tout est perdu ?', a: 'Non. Rouvre l’outil **sur le même poste** : ton projet est dans **Projets récents**, sur l’accueil. Enregistre-le tout de suite.' },
     { q: 'Comment continuer mon projet sur un autre PC ?', a: 'Accueil › **Ouvrir un projet**, puis choisis le fichier .json de ton équipe. Les meubles de l’Atelier et les images sont dans le fichier.' },
     { q: 'Comment annuler une erreur ?', a: '[[Ctrl+Z]] ou le bouton **Annuler** en haut. [[Ctrl+Y]] pour rétablir.' },
     { q: 'Comment renommer mon projet ?', a: 'Clique sur son nom, en haut à gauche, et tape le nouveau nom.' },
-    { q: 'Comment changer le pas de l’aimantation ?', a: 'Menu **Pas**, dans la barre au-dessus de la vue : 1 m par défaut pour le sol, 10 cm pour le reste. Tu peux aussi couper l’aimantation.' },
+    { q: 'Comment changer le pas de l’aimantation ?', a: 'Menu **Pas**, dans la barre au-dessus de la vue : 1 m par défaut pour la surface, 10 cm pour le reste. Tu peux aussi couper l’aimantation.' },
     { q: 'Je ne trouve pas la couleur que je veux.', a: 'Clique sur le **+** au bout des pastilles : palette, pipette ou code exact (#RRGGBB). Tes couleurs restent ensuite dans la liste.' },
     { q: 'La 3D est lente, que faire ?', a: 'En Vue 3D, choisis **Sans ombres** ou **Ombres légères**. Ferme les autres onglets. Un modèle Tinkercad très détaillé peut aussi ralentir.' },
     { q: 'L’outil a-t-il besoin d’Internet ?', a: 'Non. Tout fonctionne sur le poste et **aucune donnée n’est envoyée** sur Internet.' },
@@ -24,13 +25,13 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'La croix d’un projet récent efface-t-elle mon fichier ?', a: 'Non, elle le retire seulement de la liste. Le fichier .json reste dans ton dossier.' },
   ],
   sol: [
-    { q: 'Comment tracer le sol ?', a: 'Outil **Sol**, en **Plan 2D** : un clic par coin, puis clic sur le point de départ, double-clic ou [[Entrée]] pour fermer. Les murs se créent tout seuls.' },
+    { q: 'Comment tracer la surface de la boutique ?', a: 'Outil **Surface**, en **Plan 2D** : un clic par coin, puis clic sur le point de départ, double-clic ou [[Entrée]] pour fermer. Les murs se créent tout seuls.' },
     { q: 'Comment faire un rectangle aux bonnes dimensions ?', a: 'Dans le panneau, choisis **Rectangle**, tape la largeur et la profondeur, puis **Créer ce rectangle**.' },
     { q: 'Comment taper une longueur exacte ?', a: 'Pendant le tracé, tape un nombre au clavier : il va dans **Longueur du côté suivant**. Valide avec [[Entrée]].' },
     { q: 'Pourquoi pas plus de 10 × 7 m ?', a: 'C’est la taille maximale du projet : à l’échelle **1 m = 3 cm**, le plan tient sur une feuille A3.' },
-    { q: 'Comment modifier la forme du sol ?', a: '**Glisse un point** pour le déplacer, clique sur un **+** pour en ajouter un, [[Suppr]] retire le point choisi.' },
-    { q: 'Comment recommencer le sol ?', a: 'Bouton **Effacer le sol et recommencer**, en bas du panneau. [[Ctrl+Z]] peut l’annuler.' },
-    { q: 'Comment changer le revêtement du sol ?', a: 'Panneau **Sol** › **Revêtement** et **Couleur**.' },
+    { q: 'Comment modifier la forme de la surface ?', a: '**Glisse un point** pour le déplacer, clique sur un **+** pour en ajouter un, [[Suppr]] retire le point choisi.' },
+    { q: 'Comment recommencer la surface ?', a: 'Bouton **Effacer la surface et recommencer**, en bas du panneau. [[Ctrl+Z]] peut l’annuler.' },
+    { q: 'Comment changer le revêtement du sol ?', a: 'Panneau **Surface** › **Revêtement** et **Couleur**.' },
   ],
   murs: [
     { q: 'Pourquoi les murs font-ils 10 cm ?', a: 'À l’échelle de la maquette (1 m = 3 cm), 10 cm donnent **3 mm** : l’épaisseur du carton.' },

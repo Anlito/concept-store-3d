@@ -4,6 +4,8 @@ import { alert, segmented, toast, toggle } from '../ui/components';
 import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
 import { helpButton, offerTour } from './guide/guide';
+import { TEAM_FOLDER, saveBlob } from './files';
+import { markStep } from './guide/steps';
 
 /* Écran « Plan A3 à imprimer » (maquette 07) : aperçu de la feuille, échelle, cartouche, téléchargement. */
 
@@ -18,17 +20,20 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
 
   const sheetBox = h('div', { class: 'ex-sheet' });
   const status = h('div');
-  const dl = h('button', { class: 'btn btn-primary btn-xl', type: 'button', onclick: () => download() }, icon('download'), 'Télécharger le PDF');
+  const dl = h('button', { class: 'btn btn-primary btn-xl', type: 'button', onclick: () => void download() }, icon('download'), 'Enregistrer le PDF');
+  const cartouche = h('div');
+  const inputs = new Map<string, HTMLInputElement>();
   const perM = h('div', { class: 'p-help' });
 
   const scaleSeg = segmented(SCALES.map(s => ({ value: s.k as Scale, label: s.label })), () => scale, s => { scale = s; render(); }, 'seg-lg');
   const cotesTg = toggle('Cotes des murs', 'straighten', () => cotes, v => { cotes = v; render(); });
   const field = (label: string, key: keyof typeof team, ph: string) => {
-    const input = h('input', { value: team[key], placeholder: ph, 'aria-label': label, maxLength: 80 });
+    const input = h('input', { value: team[key], placeholder: ph, 'aria-label': label, maxLength: 80, required: true });
+    inputs.set(key, input);
     input.addEventListener('input', () => { team[key] = input.value; render(); });
     input.addEventListener('change', () => store.update(doc => { doc.team[key] = input.value.trim(); }));
     input.addEventListener('keydown', e => e.stopPropagation());
-    return h('label', { class: 'tf' }, label, input);
+    return h('label', { class: 'tf' }, h('span', null, label, h('span', { class: 'req', title: 'Obligatoire' }, ' *')), input);
   };
   const legendRow = (dash: string, label: string) => {
     const sample = h('span', { class: 'ex-sample' });
@@ -56,15 +61,15 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
           status,
           h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Sur la feuille'), legend, cotesTg.el),
           h('div', { class: 'p-sec', 'data-tour': 'ex-team' }, h('div', { class: 'p-sec-t' }, 'Équipe (cartouche)'),
-            field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B')),
+            field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B'), cartouche),
           alert('info', 'Pour imprimer', 'Choisis « Taille réelle » ou « 100 % » et désactive « Ajuster à la page ». Vérifie ensuite à la règle la longueur de la barre d’échelle, écrite à côté d’elle.')),
-        h('div', { class: 'pn-f' }, dl))));
+        h('div', { class: 'pn-f' }, h('div', { class: 'ex-where' }, icon('folder_open'), h('span', null, 'À enregistrer dans le dossier de ton équipe : ', h('b', null, TEAM_FOLDER))), dl))));
 
   function render() {
     scaleSeg.refresh(); cotesTg.refresh();
     const doc = store.doc;
     if (!doc.floor) {
-      sheetBox.replaceChildren(h('div', { class: 'vp-empty', style: { position: 'static' } }, h('div', null, h('h2', null, 'Pas encore de sol'), h('p', null, 'Trace le sol de ta boutique pour obtenir son plan.'))));
+      sheetBox.replaceChildren(h('div', { class: 'vp-empty', style: { position: 'static' } }, h('div', null, h('h2', null, 'Pas encore de surface'), h('p', null, 'Trace la surface de ta boutique pour obtenir son plan.'))));
       status.replaceChildren(); dl.disabled = true; return;
     }
     const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
@@ -83,17 +88,31 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
       if (!next && !fitsWithoutCotes) box.appendChild(h('span', null, 'La boutique ne tient pas sur la feuille : réduis la surface au sol.'));
       status.replaceChildren(a);
     }
-    dl.disabled = !lay.fits;
-    dl.title = lay.fits ? '' : 'Choisis une échelle qui fait tenir le plan sur la feuille';
+    // Cartouche obligatoire : nom de l'équipe, prénoms, classe.
+    const missing = (['name', 'members', 'klass'] as const).filter(k => !team[k].trim());
+    for (const [k, input] of inputs) input.classList.toggle('missing', missing.includes(k as typeof missing[number]));
+    cartouche.replaceChildren(...(missing.length ? [alert('warning', 'Cartouche à compléter', 'Le nom de l’équipe, les prénoms et la classe sont obligatoires pour enregistrer le plan.')] : []));
+    dl.disabled = !lay.fits || missing.length > 0;
+    dl.title = !lay.fits ? 'Choisis une échelle qui fait tenir le plan sur la feuille' : missing.length ? 'Remplis d’abord le cartouche' : '';
   }
 
-  function download() {
+  async function download() {
     const doc = store.doc; if (!doc.floor) return;
     const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
-    if (!lay.fits) return;
-    const safe = (doc.name || 'boutique').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
-    sheetPdf(lay, `${doc.name} · plan des murs`).save(`plan-A3-${safe || 'boutique'}-1m-${scale / 10}cm.pdf`);
-    toast('PDF téléchargé : imprime-le en taille réelle (100 %).');
+    if (!lay.fits || !team.name.trim() || !team.members.trim() || !team.klass.trim()) return;
+    store.update(d => { d.team = { name: team.name.trim(), members: team.members.trim(), klass: team.klass.trim() }; });
+    // Nom proposé : « Plan-A3-Prenom-Prenom.pdf », comme le dossier de l'équipe.
+    const who = team.members.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-zA-Z0-9]+/).filter(Boolean)
+      .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('-');
+    const blob = sheetPdf(lay, `${doc.name} · plan des murs`).output('blob');
+    try {
+      const name = await saveBlob(`Plan-A3-${who || 'equipe'}.pdf`, blob, { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } });
+      if (!name) return; // explorateur fermé sans enregistrer
+      markStep(ctx, 'plan');
+      toast(`Plan enregistré : « ${name} ». Imprime-le en A3, taille réelle (100 %).`);
+    } catch {
+      toast('Impossible d’enregistrer ici : choisis le dossier de ton équipe.', undefined, 'warning');
+    }
   }
 
   render();

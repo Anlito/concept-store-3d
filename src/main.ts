@@ -5,6 +5,7 @@ import { newProject, sampleProject } from './model/project';
 import type { Project } from './model/types';
 import { UIStore, bindSnapSteps, defaultUI, type Ctx } from './app/state';
 import { closeHelp, closeOffer, initGuide, offerTour, startTour } from './app/guide/guide';
+import { closeStepsPanel, openStepsPanel, showStepsAtStart } from './app/guide/steps';
 import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
 import { exportScreen } from './app/exportScreen';
@@ -39,14 +40,14 @@ const ctx: Ctx = {
 };
 initGuide(ctx);
 /** Changement d'écran : la carte de visite et le panneau d'aide de l'écran précédent se ferment. */
-function leaveScreen() { closeOffer(); closeHelp(); }
+function leaveScreen() { closeOffer(); closeHelp(); closeStepsPanel(false); }
 function backToEditor() { leaveScreen(); if (editor) app.replaceChildren(editor.el); }
 
 function showHome() {
   inEditor = false;
   leaveScreen();
   app.replaceChildren(homeScreen({
-    newProject: () => start(newProject(), { view: '2d' }),
+    newProject: () => { start(newProject(), { view: '2d' }); showStepsAtStart(ctx); },
     openProject: async () => { const f = await pickProjectFile(); if (f) openFile(f); },
     template: () => void chooseTemplate(),
     openRecent: b => void openRecent(b),
@@ -140,7 +141,7 @@ window.addEventListener('beforeunload', e => {
 
 // Accès pour les tests automatisés et le débogage.
 (window as unknown as { cs3d: unknown }).cs3d = {
-  store, ui, ctx, get editor() { return editor; }, backupNow, startTour,
+  store, ui, ctx, get editor() { return editor; }, backupNow, startTour, openStepsPanel: () => openStepsPanel(ctx),
   start: (which: 'new' | 'sample') => start(which === 'new' ? newProject() : sampleProject(), { view: which === 'new' ? '2d' : '3d' }),
 };
 

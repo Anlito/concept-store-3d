@@ -72,6 +72,8 @@ export interface Project {
   /** Images importées et images posées. */
   assets: ImageAsset[];
   images: PlacedImage[];
+  /** Étapes du projet cochées par l'équipe (identifiants, voir app/guide/steps.ts). */
+  steps?: string[];
   /** Projet modèle fourni par l'enseignant : ne jamais l'écraser. */
   isTemplate?: boolean;
 }

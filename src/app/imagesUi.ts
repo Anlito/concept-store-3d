@@ -107,7 +107,7 @@ function preview(d: Project, im: PlacedImage, asset: ImageAsset | null): HTMLEle
 export function openImageDialog(ctx: Ctx) {
   const { store, ui } = ctx;
   const d = store.doc;
-  if (!d.floor) { toast('Trace d’abord le sol de la boutique.', undefined, 'warning'); return; }
+  if (!d.floor) { toast('Trace d’abord la surface de la boutique.', undefined, 'warning'); return; }
   const startWall = ui.s.sel?.kind === 'wall' ? ui.s.sel.index : 0;
   let asset: ImageAsset | null = null, info = '';
   const draft: PlacedImage = { id: uid(), asset: '', target: 'cadre', wall: startWall, x: 0.5, y: 0.5, size: 0.6, rot: 0, repeat: false };

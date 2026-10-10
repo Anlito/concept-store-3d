@@ -18,9 +18,15 @@ test('la visite est proposée une fois par partie, peut être refusée ou suivie
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
   await page.getByTestId('new-project').click();
-
+  // Nouveau projet : les étapes du projet d'abord ; la visite attend qu'elles soient fermées.
+  const steps = page.getByRole('dialog', { name: 'Étapes du projet' });
+  await expect(steps).toBeVisible();
+  await page.waitForTimeout(900);
   const offer = page.getByRole('dialog', { name: 'Visite guidée' });
-  await expect(offer).toContainText('Première fois dans « Sol »');
+  await expect(offer).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(steps).toBeHidden();
+  await expect(offer).toContainText('Première fois dans « Surface »');
   await offer.getByRole('button', { name: 'Non merci' }).click();
   await expect(offer).toBeHidden();
 
@@ -136,4 +142,31 @@ test('chaque étape de chaque visite éclaire une zone visible', async ({ page }
   await page.getByRole('button', { name: 'Retour à la boutique' }).click();
   await page.getByRole('button', { name: 'Plan A3' }).click();
   await tour('plan');
+});
+
+test('étapes du projet : ouvertes au nouveau projet, cochées et gardées dans le fichier', async ({ page }) => {
+  await page.goto(distUrl('index.html'));
+  await page.evaluate(() => localStorage.setItem('cs3d-visites-off', '1'));
+  await page.getByTestId('new-project').click();
+  const steps = page.getByRole('dialog', { name: 'Étapes du projet' });
+  await expect(steps).toBeVisible();
+  await expect(steps).toContainText('Maquette 3D = maquette en carton');
+  await expect(steps.locator('.st')).toHaveCount(7);
+  await expect(steps.locator('.st.now')).toContainText('Valider le concept du magasin');
+  const btn = page.locator('[data-tour=steps]');
+  await expect(btn).toHaveText('Étape 1/7');
+  await steps.getByRole('checkbox', { name: /Valider le concept/ }).click();
+  await expect(btn).toHaveText('Étape 2/7');
+  await expect(steps.locator('.st.now')).toContainText('Tracer la surface commerciale');
+  // Un bouton d'étape mène au bon outil et ferme le panneau.
+  await steps.locator('.st.now').getByRole('button', { name: 'Portes / fenêtres' }).click();
+  await expect(steps).toBeHidden();
+  expect(await page.evaluate(() => (window as any).cs3d.ui.s.tool)).toBe('ouvertures');
+  expect(await page.evaluate(() => (window as any).cs3d.store.doc.steps)).toEqual(['concept']);
+  // Le panneau d'aide et celui des étapes ne s'ouvrent pas l'un sur l'autre.
+  await btn.click();
+  await expect(steps).toBeVisible();
+  await page.getByRole('button', { name: 'Aide' }).click();
+  await expect(steps).toBeHidden();
+  await expect(page.getByRole('dialog', { name: 'Aide' })).toBeVisible();
 });

@@ -3,7 +3,7 @@ import type { Pick } from '../view3d/build';
 import type { Vec2 } from '../model/types';
 import { MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, addPartition, contourCount, deletePartition, deleteVertex, findFreeT, setFloorPoints, shopExtent, wallHeight, wallLength } from '../model/project';
 import { deleteObjects } from './objectActions';
-import { dist, isSimplePolygon, uid } from '../model/geometry';
+import { dist, isSimplePolygon, norm, sub, uid, v } from '../model/geometry';
 import { toast } from '../ui/components';
 
 /* Actions de l'éditeur partagées par la vue 3D, le plan 2D, les panneaux et les raccourcis clavier. */
@@ -12,7 +12,11 @@ export function selectPick(ctx: Ctx, p: Pick | null) {
   if (!p || p.kind === 'floor') { ctx.ui.set({ sel: null }); return; }
   if (p.kind === 'image') { ctx.ui.set({ sel: { kind: 'image', id: p.id }, tool: 'images', libraryOpen: false }); return; }
   if (p.kind === 'object') return;
-  if (p.kind === 'wall') ctx.ui.set({ sel: { kind: 'wall', index: p.index }, tool: ctx.ui.s.tool === 'ouvertures' ? 'ouvertures' : 'murs' });
+  if (p.kind === 'wall') {
+    // Une cloison choisie avec l'outil Surface reste dans cet outil (on y trace aussi les cloisons).
+    const t = ctx.ui.s.tool, keep = t === 'ouvertures' || (t === 'sol' && p.index >= contourCount(ctx.store.doc));
+    ctx.ui.set({ sel: { kind: 'wall', index: p.index }, tool: keep ? t : 'murs' });
+  }
   else ctx.ui.set({ sel: { kind: 'opening', id: p.id }, tool: 'ouvertures' });
 }
 
@@ -57,7 +61,7 @@ export function deleteSelection(ctx: Ctx) {
   } else if (sel.kind === 'vertex') {
     let ok = true;
     store.update(d => { ok = deleteVertex(d, sel.index) && isSimplePolygon(d.floor!.points); return ok; });
-    if (!ok) toast(store.doc.floor!.points.length <= 3 ? 'Le sol doit garder au moins 3 points.' : 'Impossible : les côtés se croiseraient.', undefined, 'warning');
+    if (!ok) toast(store.doc.floor!.points.length <= 3 ? 'La surface doit garder au moins 3 points.' : 'Impossible : les côtés se croiseraient.', undefined, 'warning');
     ui.set({ sel: null });
   } else if (sel.kind === 'wall' && sel.index >= contourCount(store.doc)) {
     const j = sel.index - contourCount(store.doc);
@@ -65,7 +69,7 @@ export function deleteSelection(ctx: Ctx) {
     ui.set({ sel: null });
     toast('Cloison supprimée', { label: 'Annuler', run: () => store.undo() });
   } else if (sel.kind === 'wall') {
-    toast('Les murs suivent le sol : modifie le sol pour retirer un mur.', undefined, 'warning');
+    toast('Les murs suivent le contour de la surface : modifie la surface pour retirer un mur.', undefined, 'warning');
   }
 }
 
@@ -76,7 +80,7 @@ export function closeDraft(ctx: Ctx, pts?: Vec2[]) {
   // Supprime les points doublés (double-clic) et un dernier point posé sur le départ.
   const clean = raw.filter((p, i) => i === 0 || dist(p, raw[i - 1]) > 0.005);
   if (clean.length > 3 && dist(clean[0], clean[clean.length - 1]) < 0.005) clean.pop();
-  if (clean.length < 3) { toast('Il faut au moins 3 points pour fermer le sol.', undefined, 'warning'); return false; }
+  if (clean.length < 3) { toast('Il faut au moins 3 points pour fermer la surface.', undefined, 'warning'); return false; }
   if (!isSimplePolygon(clean)) { toast('Les côtés se croisent : retire ou déplace un point.', undefined, 'warning'); return false; }
   const ext = shopExtent(clean);
   if (!ext.ok) {
@@ -85,20 +89,20 @@ export function closeDraft(ctx: Ctx, pts?: Vec2[]) {
   }
   store.update(d => setFloorPoints(d, clean));
   ui.set({ draft: [], cursor: null, sel: null });
-  toast('Sol fermé : les murs sont créés.');
+  toast('Surface fermée : les murs sont créés.');
   return true;
 }
 
 export function clearFloor(ctx: Ctx) {
   ctx.store.update(d => { d.floor = null; d.walls.styles = []; d.openings = []; d.partitions = []; });
   ctx.ui.set({ sel: null, draft: [], tool: 'sol', view: '2d' });
-  toast('Sol effacé : trace un nouveau sol.', { label: 'Annuler', run: () => ctx.store.undo() });
+  toast('Surface effacée : trace une nouvelle surface.', { label: 'Annuler', run: () => ctx.store.undo() });
 }
 
 /** Passe en tracé de cloisons : plan 2D, un clic au départ, un clic à l'arrivée (on peut enchaîner). */
 export function startPartitions(ctx: Ctx) {
-  if (!ctx.store.doc.floor) { toast('Trace d’abord le sol de la boutique.', undefined, 'warning'); return; }
-  ctx.ui.set({ view: '2d', tool: 'murs', libraryOpen: false, sel: null, draft: [], cursor: null, partDraw: true });
+  if (!ctx.store.doc.floor) { toast('Trace d’abord la surface de la boutique.', undefined, 'warning'); return; }
+  ctx.ui.set({ view: '2d', tool: ctx.ui.s.tool === 'sol' ? 'sol' : 'murs', libraryOpen: false, sel: null, draft: [], cursor: null, partDraw: true });
 }
 export function stopPartitions(ctx: Ctx) { ctx.ui.set({ partDraw: false, draft: [], cursor: null }); }
 
@@ -109,6 +113,17 @@ export function createPartition(ctx: Ctx, a: Vec2, b: Vec2) {
   ctx.store.update(d => { ok = !!addPartition(d, a, b); return ok; });
   if (!ok) toast('Une cloison se trace à l’intérieur de la boutique.', undefined, 'warning');
   return ok;
+}
+
+/** Cloison de longueur l (m) depuis le point de départ, dans la direction du curseur (presque droite → droite). */
+export function partitionByLength(ctx: Ctx, l: number) {
+  const s = ctx.ui.s, a = s.draft[0];
+  if (!a) { toast('Clique d’abord le point de départ de la cloison sur le plan.', undefined, 'warning'); return; }
+  let dir = s.cursor && dist(s.cursor, a) > 1e-3 ? norm(sub(s.cursor, a)) : v(1, 0);
+  const ang = Math.atan2(dir.y, dir.x), snap = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4);
+  if (Math.abs(ang - snap) < 0.14) dir = v(Math.cos(snap), Math.sin(snap));
+  const b = v(Math.round((a.x + dir.x * l) * 1000) / 1000, Math.round((a.y + dir.y * l) * 1000) / 1000);
+  if (createPartition(ctx, a, b)) ctx.ui.set({ draft: [b] });
 }
 
 /** Supprime une image posée ; l'image importée est retirée du projet si plus rien ne l'utilise. */

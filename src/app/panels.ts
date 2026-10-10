@@ -5,7 +5,7 @@ import { type Bound, alert, button, measureRow, numberField, section, segmented,
 import { add, area, dist, edges, fmtArea, fmtM, isSimplePolygon, mul, norm, perimeter, sub } from '../model/geometry';
 import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
-import { clearFloor, closeDraft, deleteSelection, duplicateOpening, startPartitions, stopPartitions } from './actions';
+import { clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByLength, startPartitions, stopPartitions } from './actions';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
 import { thumbnail } from '../library/thumbs';
@@ -54,13 +54,13 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
     const libre = ui.s.floorShape === 'libre';
     const stats = () => plan.draftStats();
     const rect = { w: 10, d: 7 };
-    const close = h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => closeDraft(ctx) }, icon('check'), 'Fermer le sol');
+    const close = h('button', { class: 'btn btn-primary btn-lg', type: 'button', onclick: () => closeDraft(ctx) }, icon('check'), 'Fermer la surface');
     const undoPt = button('Retirer le dernier point', 'backspace', 'btn-ghost', () => ui.set({ draft: ui.s.draft.slice(0, -1) }));
     const foot = libre ? h('div', { class: 'pn-f' }, close, undoPt) : undefined;
     const lenField = numberField({ label: 'Longueur du côté suivant', unit: 'm', decimals: 2, min: 0.1, max: 100,
       get: () => stats().seg, set: l => { const q = plan.pointAtLength(l); if (q) ui.set({ draft: [...ui.s.draft, q] }); },
       title: 'Tape une longueur puis Entrée : le point suivant est posé dans la direction du curseur.', blurOnEnter: true });
-    const p = shell('grid_on', 'Tracer le sol', () => libre ? `${ui.s.draft.length} point${ui.s.draft.length > 1 ? 's' : ''} posé${ui.s.draft.length > 1 ? 's' : ''}` : 'Forme rectangulaire', [
+    const p = shell('grid_on', 'Tracer la surface', () => libre ? `${ui.s.draft.length} point${ui.s.draft.length > 1 ? 's' : ''} posé${ui.s.draft.length > 1 ? 's' : ''}` : 'Forme rectangulaire', [
       section('Forme', b(segmented<'libre' | 'rectangle'>([{ value: 'libre', label: 'Libre', icon: 'polyline' }, { value: 'rectangle', label: 'Rectangle', icon: 'rectangle' }],
         () => ui.s.floorShape, v => ui.set({ floorShape: v, draft: [] })))),
       h('div', { class: 'mrs' },
@@ -85,7 +85,9 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
     return fin;
   }
 
-  // Sol fermé : édition
+  // Surface fermée : édition (et cloisons, qu'on trace aussi depuis cet outil)
+  if (ui.s.partDraw) return partitionDrawPanel(ctx);
+  if (ui.s.sel?.kind === 'wall' && ui.s.sel.index >= contourCount(store.doc)) return partitionPanel(ctx, ui.s.sel.index);
   const f = () => store.doc.floor!;
   const sel = ui.s.sel?.kind === 'vertex' ? ui.s.sel.index : -1;
   const vertexBlock = sel >= 0 ? section(`Point n° ${sel + 1}`,
@@ -100,15 +102,16 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
     if (!shopExtent(pts).ok) { toast(MAX_SHOP_MSG, undefined, 'warning'); return; }
     store.update(d => moveVertex(d, sel, q));
   }
-  const p = shell('grid_on', 'Sol', () => `${f().points.length} côtés · ${fmtArea(area(f().points))}`, [
+  const p = shell('grid_on', 'Surface', () => `${f().points.length} côtés · ${fmtArea(area(f().points))}`, [
     h('div', { class: 'mrs' },
       b(measureRow('Surface', () => fmtArea(area(f().points)), true)),
       b(measureRow('Périmètre', () => fmtM(perimeter(f().points)))),
       b(extentRow(() => f().points))),
     vertexBlock ?? h('p', { class: 'p-help' }, h('b', null, 'Glisse un point'), ' pour le déplacer, clique sur un ', h('b', null, '+'), ' pour ajouter un point, puis ', h('b', null, 'Suppr'), ' pour retirer le point choisi.'),
+    partitionsCard(ctx),
     section('Revêtement', b(floorTiles())),
     floorTints(f().material) ? section('Couleur', b(swatches(FLOOR_COLORS, () => f().color, c => store.update(d => { d.floor!.color = c; })))) : null,
-  ], h('div', { class: 'pn-f' }, button('Effacer le sol et recommencer', 'ink_eraser', 'btn-danger', () => clearFloor(ctx))));
+  ], h('div', { class: 'pn-f' }, button('Effacer la surface et recommencer', 'ink_eraser', 'btn-danger', () => clearFloor(ctx))));
   return finish(p, binds);
 }
 
@@ -117,7 +120,7 @@ export function wallsPanel(ctx: Ctx): Panel {
   const { store, ui } = ctx;
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
-  if (!store.doc.floor) return emptyPanel('border_outer', 'Murs', 'Les murs se créent tout seuls autour du sol. Commence par tracer le sol.', ctx);
+  if (!store.doc.floor) return emptyPanel('border_outer', 'Murs', 'Les murs se créent tout seuls autour de la surface. Commence par tracer la surface.', ctx);
   if (ui.s.partDraw) return partitionDrawPanel(ctx);
   const sel = ui.s.sel?.kind === 'wall' ? ui.s.sel.index : -1;
   if (sel >= contourCount(store.doc)) return partitionPanel(ctx, sel);
@@ -143,6 +146,7 @@ export function wallsPanel(ctx: Ctx): Panel {
     () => ui.s.wallFace, v => ui.set({ wallFace: v, ...(v === 'ext' ? { cutaway: false } : {}) }));
   const p = shell('border_outer', sel >= 0 ? `Mur n° ${sel + 1}` : 'Murs',
     () => sel >= 0 ? `Longueur ${fmtM(wallLength(store.doc, sel))}` : `${store.doc.walls.styles.length} murs · sans toit`, [
+      sel < 0 ? partitionsCard(ctx) : null,
       section('Tous les murs', h('div', { class: 'g2' },
         b(numberField({ label: 'Hauteur', unit: 'cm', min: WALL_LIMITS.height[0] * 100, max: WALL_LIMITS.height[1] * 100, get: () => store.doc.walls.height * 100,
           set: v => store.update(d => { d.walls.height = v / 100; clampAllOpenings(d); }) })),
@@ -154,10 +158,6 @@ export function wallsPanel(ctx: Ctx): Panel {
       ext ? h('p', { class: 'p-help' }, 'La façade, c’est ce que voit le client depuis la rue. En vue 3D, les murs ne sont plus abaissés pour la montrer ; le bouton ', h('b', null, 'Façade'), ' de la vue 3D place la caméra devant.') : null,
       section((ext ? 'Façade' : 'Intérieur') + (sel >= 0 ? ' · matière' : ' · matière de tous les murs'), b(matTiles)),
       wallTints(matOf(ref())) ? section('Couleur', b(swatches(WALL_COLORS, () => colOf(ref()), c => setStyle({ color: c })))) : null,
-      sel < 0 ? section('Cloisons',
-        h('p', { class: 'p-help' }, 'Sépare des espaces dans ta boutique : réserve, cabines d’essayage, caisse… ',
-          store.doc.partitions.length ? `${store.doc.partitions.length} cloison${store.doc.partitions.length > 1 ? 's' : ''} pour l’instant : clique sur une cloison pour la régler.` : ''),
-        button('Tracer une cloison', 'add', 'btn-secondary', () => startPartitions(ctx))) : null,
     ], sel >= 0 ? h('div', { class: 'pn-f' }, button('Appliquer à tous les murs', 'format_paint', 'btn-secondary', () => {
       const s = { ...styleOf(sel) }; store.update(d => { d.walls.styles = d.walls.styles.map(() => ({ ...s })); }); toast('Style appliqué à tous les murs.');
     })) : undefined);
@@ -167,17 +167,30 @@ export function wallsPanel(ctx: Ctx): Panel {
 }
 
 /* ---------- Cloisons ---------- */
+/** Carte « Cloisons et pièces », bien visible dans les panneaux Surface et Murs. */
+function partitionsCard(ctx: Ctx) {
+  const n = ctx.store.doc.partitions.length;
+  return h('div', { class: 'p-cta', 'data-tour': 'partitions' },
+    h('div', { class: 'p-cta-t' }, icon('border_outer'), h('b', null, 'Cloisons et pièces')),
+    h('p', null, 'Réserve, toilettes, salle du personnel, atelier, cabines d’essayage… Sépare les espaces avec des cloisons.',
+      n ? ` ${n} cloison${n > 1 ? 's' : ''} pour l’instant : clique dessus pour la régler.` : ''),
+    button('Tracer une cloison', 'add', 'btn-primary', () => startPartitions(ctx)));
+}
 /** Tracé en cours : consignes et longueur du segment. */
 function partitionDrawPanel(ctx: Ctx): Panel {
   const { ui } = ctx;
   const len = () => { const a = ui.s.draft[0], c = ui.s.cursor; return a && c ? dist(a, c) : 0; };
+  const lenField = numberField({ label: 'Longueur de la cloison', unit: 'cm', min: MIN_PARTITION * 100, max: 1300, get: () => len() * 100,
+    set: v => partitionByLength(ctx, v / 100), blurOnEnter: true,
+    title: 'Tape une longueur puis Entrée : la cloison part du point de départ, dans la direction du curseur.' });
   const p = shell('add', 'Tracer une cloison', () => (ui.s.draft.length ? `Longueur : ${fmtM(len())}` : 'Clique au point de départ'), [
     h('p', { class: 'p-help' }, h('b', null, 'Clique'), ' au point de départ sur le plan, puis ', h('b', null, 'clique'), ' au point d’arrivée. La cloison suivante part de là : continue pour fermer un espace.'),
     h('p', { class: 'p-help' }, 'Les extrémités s’accrochent aux murs, aux autres cloisons et à la grille. ', h('b', null, 'Maj'), ' : angles de 45°.'),
+    section('Au clavier', lenField.el, h('p', { class: 'p-help' }, 'Après le point de départ, montre la direction avec la souris, tape la longueur en cm puis ', h('b', null, 'Entrée'), '.')),
     h('p', { class: 'p-help' }, h('b', null, 'Échap'), ' ou double-clic : arrêter le tracé.'),
     alert('info', 'Épaisseur', 'Une cloison a la même épaisseur que les murs (10 cm : le carton de 3 mm de la maquette).'),
   ], h('div', { class: 'pn-f' }, button('Terminer le tracé', 'check', 'btn-primary btn-lg', () => stopPartitions(ctx))));
-  return finish(p, []);
+  return finish(p, [lenField]);
 }
 
 /** Cloison choisie : longueur, hauteur, revêtement de chaque côté, suppression. */
@@ -231,7 +244,7 @@ export function openingsPanel(ctx: Ctx): Panel {
   const { store, ui } = ctx;
   const binds: Bound[] = [];
   const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
-  if (!store.doc.floor) return emptyPanel('door_front', 'Portes / fenêtres', 'Les ouvertures se posent sur les murs. Commence par tracer le sol.', ctx);
+  if (!store.doc.floor) return emptyPanel('door_front', 'Portes / fenêtres', 'Les ouvertures se posent sur les murs. Commence par tracer la surface.', ctx);
   const sel = ui.s.sel?.kind === 'opening' ? ui.s.sel.id : null;
   const typeOpts = (Object.keys(OPENING_DEFAULTS) as OpeningType[]).map(t => ({ value: t, label: OPENING_DEFAULTS[t].label, thumb: h('div', { class: 'thumb-ic' }, icon(TYPE_ICON[t])) }));
   if (!sel) {
@@ -283,7 +296,7 @@ export function openingsPanel(ctx: Ctx): Panel {
 export function emptyPanel(ic: string, title: string, text: string, ctx?: Ctx, soon = false): Panel {
   const body: (Node | null)[] = [h('p', { class: 'p-help' }, text)];
   if (soon) body.push(alert('info', 'Bientôt disponible', 'Cette partie arrive dans une prochaine version de l’outil.'));
-  const foot = ctx && !ctx.store.doc.floor && !soon ? h('div', { class: 'pn-f' }, button('Tracer le sol', 'grid_on', 'btn-primary btn-lg', () => ctx.ui.set({ tool: 'sol', view: '2d' }))) : undefined;
+  const foot = ctx && !ctx.store.doc.floor && !soon ? h('div', { class: 'pn-f' }, button('Tracer la surface', 'grid_on', 'btn-primary btn-lg', () => ctx.ui.set({ tool: 'sol', view: '2d' }))) : undefined;
   const p = shell(ic, title, () => '', body, foot);
   return finish(p, []);
 }

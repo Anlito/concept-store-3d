@@ -17,6 +17,7 @@ body { font-family: Nunito, Arial, sans-serif; font-weight: 600; color: var(--in
   padding: 8mm 11mm 7mm; display: flex; flex-direction: column; gap: 3.2mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 svg.ic { width: 1.25em; height: 1.25em; fill: currentColor; flex: none; vertical-align: -0.25em; }
 b { font-weight: 800; }
+.h2-note { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--t3); font-size: 8.5pt; }
 h2 { font-size: 10.5pt; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2mm;
   display: flex; align-items: center; gap: 1.5mm; }
 .box { border: 1px solid var(--line); border-radius: 3mm; padding: 3mm 3.5mm; }
@@ -67,26 +68,23 @@ footer { margin-top: auto; display: flex; justify-content: space-between; color:
   <b>Ouvrir un projet</b> (le fichier .json de ton équipe) ou <b>Projet modèle</b> si ton professeur en a préparé un.</div></div>
 
 <section>
-  <h2>{{ic:architecture}} Les étapes du projet</h2>
+  <h2>{{ic:checklist}} Les étapes du projet <span class="h2-note">(bouton <b>Étape</b> en haut de l’outil)</span></h2>
   <ol class="steps">
-    <li><span class="n">1</span><div class="st"><b>{{ic:grid_on}} Trace le sol</b>
-      <p>Outil <b>Sol</b>, en <b>Plan 2D</b> : un clic par coin, puis clic sur le point de <b>Départ</b> pour fermer (ou dessine un rectangle).</p>
-      <p>Tu peux taper une longueur au clavier puis Entrée. Maximum <b>10 × 7 m</b>.</p></div></li>
-    <li><span class="n">2</span><div class="st"><b>{{ic:border_outer}} Règle les murs</b>
-      <p>Outil <b>Murs</b> : hauteur, matière et couleur. Choisis <b>Intérieur</b> ou <b>Façade</b> pour décorer le côté rue et attirer les clients.</p>
-      <p><b>Tracer une cloison</b> : sépare la réserve, les cabines, la caisse…</p></div></li>
-    <li><span class="n">3</span><div class="st"><b>{{ic:door_front}} Pose portes et vitrines</b>
-      <p>Outil <b>Portes / fenêtres</b> : choisis le type et le style, puis clique sur un mur. Glisse-les pour les déplacer, règle les cotes dans le panneau.</p></div></li>
-    <li><span class="n">4</span><div class="st"><b>{{ic:chair}} Aménage la boutique</b>
-      <p>Outil <b>Mobilier</b> : prends un meuble dans la bibliothèque, glisse-le, tourne-le (<b>R</b>), change sa taille et sa couleur.</p>
-      <p>Il manque un meuble ? <b>Créer un meuble</b> ouvre l’<b>Atelier</b> (formes simples ou fichier <b>Tinkercad OBJ</b>).</p></div></li>
-    <li><span class="n">5</span><div class="st"><b>{{ic:image}} Ajoute tes images</b>
-      <p>Outil <b>Images</b> : cadre, tapisserie, tapis, vitrophanie (logo sur la vitrine). PNG ou JPG <b>faits par toi ou libres de droits</b>.</p></div></li>
-    <li><span class="n">6</span><div class="st"><b>{{ic:view_in_ar}} Vérifie en 3D</b>
-      <p><b>Vue 3D</b> pour visiter. <b>Façade</b> : la boutique vue de la rue. <b>Photo</b> : images PNG/JPG du rendu pour ta présentation.</p></div></li>
-    <li class="last"><span class="n">7</span><div class="st"><b>{{ic:print}} Imprime le plan A3 pour la maquette</b>
-      <p>Bouton <b>Plan A3</b> : échelle <b>1 m = 3 cm</b>, remplis le cartouche (noms, classe), télécharge le PDF. Imprime en <b>«&nbsp;Taille&nbsp;réelle&nbsp;» / 100&nbsp;%</b>,
-      puis vérifie à la règle : la barre d’échelle doit mesurer <b>9 cm</b>. Les murs de 10 cm deviennent du <b>carton de 3 mm</b>.</p></div></li>
+    <li><span class="n">1</span><div class="st"><b>{{ic:lightbulb}} Valide le concept du magasin</b>
+      <p>Avec ton équipe : nom, produits vendus, clients, ambiance. Fais-le <b>valider par ton professeur</b>.</p></div></li>
+    <li><span class="n">2</span><div class="st"><b>{{ic:grid_on}} Trace la surface, les pièces, les ouvertures</b>
+      <p>Outil <b>Surface</b> : un clic par coin (10 × 7 m au plus). <b>Tracer une cloison</b> : toilettes, réserve, salle du personnel, atelier… Puis <b>Portes / fenêtres</b>.</p></div></li>
+    <li><span class="n">3</span><div class="st"><b>{{ic:print}} Génère le plan A3 et enregistre-le</b>
+      <p>Bouton <b>Plan A3</b> : remplis le cartouche, enregistre le PDF dans <b>ton dossier d’équipe</b>. Imprime en <b>«&nbsp;Taille&nbsp;réelle&nbsp;»</b> : la barre d’échelle mesure <b>9 cm</b>.</p></div></li>
+    <li><span class="n">4</span><div class="st"><b>{{ic:route}} Réfléchis à l’aménagement</b>
+      <p>Caisse, présentoirs, cabines, circulation des clients : fais un croquis sur le plan imprimé.</p></div></li>
+    <li><span class="n">5</span><div class="st"><b>{{ic:handyman}} Crée le mobilier et les accessoires</b>
+      <p>Outil <b>Mobilier</b> › <b>Créer un meuble</b> : l’<b>Atelier</b> (volumes ou fichier <b>Tinkercad OBJ</b>).</p></div></li>
+    <li><span class="n">6</span><div class="st"><b>{{ic:format_paint}} Décore murs, sol, façade, vitrine</b>
+      <p>Outils <b>Murs</b> (intérieur, <b>Façade</b>, cloisons) et <b>Images</b> (affiches, logo sur la vitrine). Images <b>faites par toi ou libres de droits</b>.</p></div></li>
+    <li class="last"><span class="n">7</span><div class="st"><b>{{ic:chair}} Installe le mobilier dans la surface commerciale</b>
+      <p>Outil <b>Mobilier</b> : glisse, tourne (<b>R</b>), règle les meubles. Vérifie en <b>Vue 3D</b>, puis <b>Photo</b> pour ta présentation.
+      <b>La maquette 3D doit rester cohérente avec la maquette en carton</b> (murs de 10 cm = carton de 3 mm).</p></div></li>
   </ol>
 </section>
 
@@ -110,7 +108,7 @@ footer { margin-top: auto; display: flex; justify-content: space-between; color:
   <section class="box">
     <h2>{{ic:info}} Bon à savoir</h2>
     <ul class="rules">
-      <li>{{ic:grid_4x4}}<span><b>Pas</b> (barre du haut) : les objets s’accrochent tous les 1 m pour le sol, 10 cm pour le reste. Change-le si besoin.</span></li>
+      <li>{{ic:grid_4x4}}<span><b>Pas</b> (barre du haut) : les objets s’accrochent tous les 1 m pour la surface, 10 cm pour le reste. Change-le si besoin.</span></li>
       <li>{{ic:palette}}<span>Pas la bonne couleur ? <b>+</b> au bout des pastilles : choisis une couleur exacte.</span></li>
       <li>{{ic:speed}}<span>3D lente ? Baisse les <b>Ombres</b> dans la barre de la vue 3D.</span></li>
       <li>{{ic:restart_alt}}<span>Fermé sans enregistrer ? Ton projet est dans <b>Projets récents</b> sur l’accueil (même poste).</span></li>

@@ -43,8 +43,9 @@ test('parcours complet d’une équipe, de l’accueil au PDF A3 et à la photo'
   await page.getByRole('button', { name: 'Plan A3' }).click();
   await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await page.getByLabel('Prénoms').fill('Léa, Malik, Inès, Tom');
+  await page.getByLabel('Classe').fill('4e B');
   const pdf = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Télécharger le PDF' }).click();
+  await page.getByRole('button', { name: 'Enregistrer le PDF' }).click();
   const pdfFile = info.outputPath('plan.pdf'); await (await pdf).saveAs(pdfFile);
   expect(readFileSync(pdfFile).subarray(0, 5).toString()).toBe('%PDF-');
   await page.getByRole('button', { name: 'Retour à l’éditeur' }).click();

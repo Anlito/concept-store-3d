@@ -92,11 +92,11 @@ export class Plan2D {
 
   private get drawing() { const s = this.ctx.ui.s; return s.tool === 'sol' && !this.ctx.store.doc.floor; }
   /** Tracé de cloisons en cours (outil Murs). */
-  private get partDrawing() { const s = this.ctx.ui.s; return s.partDraw && s.tool === 'murs' && !!this.ctx.store.doc.floor; }
+  private get partDrawing() { const s = this.ctx.ui.s; return s.partDraw && (s.tool === 'murs' || s.tool === 'sol') && !!this.ctx.store.doc.floor; }
   /** Rang de la cloison choisie avec l'outil Murs, ou −1. */
   private get selPartition() {
     const s = this.ctx.ui.s, d = this.ctx.store.doc;
-    if (s.tool !== 'murs' || s.sel?.kind !== 'wall') return -1;
+    if ((s.tool !== 'murs' && s.tool !== 'sol') || s.sel?.kind !== 'wall') return -1;
     const j = s.sel.index - contourCount(d);
     return j >= 0 && j < d.partitions.length ? j : -1;
   }
@@ -578,7 +578,7 @@ export class Plan2D {
           o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="10" style="fill:#fff;stroke:${A};stroke-width:2"/>`);
           text(X(q.x), Y(q.y) + 0.5, lab, `font-size:12px;font-weight:800;fill:${A}`);
         }
-        if (s.tool === 'murs') for (const q of [d.partitions[w.part].a, d.partitions[w.part].b])
+        if (s.tool === 'murs' || s.tool === 'sol') for (const q of [d.partitions[w.part].a, d.partitions[w.part].b])
           o.push(`<circle cx="${X(q.x).toFixed(1)}" cy="${Y(q.y).toFixed(1)}" r="7" style="fill:#fff;stroke:${INK};stroke-width:3" data-partition-end="1"/>`);
       }
       if (sel?.kind === 'opening') {
