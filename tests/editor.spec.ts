@@ -100,14 +100,19 @@ test('poser, déplacer et supprimer des portes et fenêtres', async ({ page }) =
   expect(d.openings).toHaveLength(1);
   expect(d.openings[0]).toMatchObject({ type: 'porte', wall: 2, width: 0.9, sill: 0 });
   expect(d.openings[0].t).toBeCloseTo(4, 1);
-  await expect(page.getByTestId('panel')).toContainText('Sur le mur n° 3');
-  // Une fenêtre sur le mur du haut
-  await page.keyboard.press('Escape');
+  // Après la pose, on reste en mode « pose » : changer de type ne transforme pas la porte posée.
+  await expect(page.getByTestId('panel')).toContainText('À poser');
   await page.getByRole('button', { name: 'Fenêtre', exact: true }).click();
+  expect((await doc(page)).openings[0].type).toBe('porte');
+  await clickPlan(page, { x: 4, y: 5.07 }); // clic sur la porte : ses réglages
+  await expect(page.getByTestId('panel')).toContainText('Sur le mur n° 3');
+  await page.keyboard.press('Escape');
+  // Une fenêtre sur le mur du haut
   await clickPlan(page, { x: 2, y: -0.07 });
   d = await doc(page);
   expect(d.openings).toHaveLength(2);
   expect(d.openings[1]).toMatchObject({ type: 'fenetre', wall: 0, sill: 1 });
+  await clickPlan(page, { x: 2, y: -0.07 }); // la choisir
   // Largeur au clavier
   const width = page.getByTestId('panel').getByLabel('Largeur');
   await width.fill('150'); await width.press('Enter');

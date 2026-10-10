@@ -253,7 +253,7 @@ export function openingsPanel(ctx: Ctx): Panel {
       section('À poser', b(tiles(typeOpts, () => ui.s.placeType, t => ui.set({ placeType: t }), 3))),
       section('Style', b(tiles(OPENING_STYLES[ui.s.placeType].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(ui.s.placeType, s.value, s.color) })),
         () => ui.s.placeStyles[ui.s.placeType] ?? OPENING_STYLES[ui.s.placeType][0].value, v => ui.set({ placeStyles: { ...ui.s.placeStyles, [ui.s.placeType]: v } }), 2))),
-      h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour y poser l’ouverture choisie. Clique ensuite sur une ouverture pour la régler ou ', h('b', null, 'glisse-la'), ' le long du mur.'),
+      h('p', { class: 'p-help' }, h('b', null, 'Clique sur un mur'), ' pour y poser l’ouverture choisie : tu peux en poser plusieurs à la suite. Pour en régler une, ', h('b', null, 'clique dessus'), ' ; ', h('b', null, 'glisse-la'), ' pour la déplacer le long du mur.'),
       n === 0 ? alert('info', 'Pense à la porte d’entrée !', 'Une boutique a au moins une porte, et souvent une vitrine.') : null,
     ]);
     return finish(p, binds);
@@ -289,6 +289,7 @@ export function openingsPanel(ctx: Ctx): Panel {
       h('p', { class: 'p-help' }, `Vue de dessus : ${sideOut.toLowerCase()} en haut, ${sideIn.toLowerCase()} en bas. Gauche et droite : vu depuis ${part ? 'le côté 1' : 'l’intérieur'}.`));
   };
   const p = shell(TYPE_ICON[o().type], OPENING_DEFAULTS[o().type].label, () => `Sur ${isPartition(store.doc, o().wall) ? 'la' : 'le'} ${wallName(store.doc, o().wall)} · ${fmtM(L())}`, [
+    button('Poser d’autres ouvertures', 'arrow_back', 'btn-ghost', () => ui.set({ sel: null }), 'Revenir au choix de l’ouverture à poser (Échap)'),
     section('Type', b(segmented((Object.keys(OPENING_DEFAULTS) as OpeningType[]).map(t => ({ value: t, label: OPENING_DEFAULTS[t].label })), () => o().type,
       t => { set(x => { x.type = t; x.sill = OPENING_DEFAULTS[t].sill; x.style = undefined; x.color = undefined; }); }))),
     section('Style', b(tiles(OPENING_STYLES[o().type].map(s => ({ value: s.value, label: s.label, thumb: thumbOf(o().type, s.value, o().color ?? s.color) })),

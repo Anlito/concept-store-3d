@@ -250,7 +250,7 @@ export class Editor {
         ? [H('left_click', s.draft.length ? 'Clic : coin opposé' : 'Clic : premier coin'), H(null, 'annuler', 'Échap')]
         : [H('left_click', 'Clic : poser un point'), H('ads_click', 'Double-clic : terminer'), H(null, 'annuler', 'Échap')];
       else if (s.tool === 'sol') parts = [H('open_with', 'Glisser un point : le déplacer'), H('add', 'Clic sur + : ajouter un point'), H(null, 'retirer', 'Suppr')];
-      else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('open_with', 'Glisser : déplacer')];
+      else if (s.tool === 'ouvertures') parts = [H('left_click', `Clic sur un mur : poser ${s.placeType === 'porte' ? 'une porte' : s.placeType === 'fenetre' ? 'une fenêtre' : 'une vitrine'}`), H('ads_click', 'Clic sur une ouverture : la régler'), H('open_with', 'Glisser : déplacer')];
       else if (s.tool === 'mobilier') parts = [H('open_with', 'Glisser un objet : le déplacer'), H('select_all', 'Glisser dans le vide : en choisir plusieurs'), H(null, 'tourner', 'R')];
       else if (s.tool === 'images') parts = [H('left_click', 'Clic sur un repère : choisir l’image'), H('ads_click', 'Clic sur un mur : y ajouter une image')];
       else parts = [H('left_click', 'Clic sur un mur ou une cloison : le choisir'), H('pan_tool_alt', 'Glisser le fond : déplacer la vue')];

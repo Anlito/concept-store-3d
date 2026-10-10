@@ -89,6 +89,7 @@ test('porte ou passage dans une cloison, suivis quand le sol change, supprimés 
   let d = await doc(page);
   const op = d.openings.find((o: any) => o.wall === 4);
   expect(op).toMatchObject({ type: 'porte', style: 'passage' });
+  await clickPlan(page, { x: 7, y: 1.5 }); // la choisir
   await expect(page.getByTestId('panel')).toContainText('Sur la cloison n° 1');
 
   // Un point ajouté au sol décale la numérotation : la porte reste sur la cloison.

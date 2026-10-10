@@ -21,7 +21,8 @@ export function selectPick(ctx: Ctx, p: Pick | null) {
   else ctx.ui.set({ sel: { kind: 'opening', id: p.id }, tool: 'ouvertures' });
 }
 
-/** Pose une ouverture du type choisi sur le mur, au plus près de la position t. */
+/** Pose une ouverture du type choisi sur le mur, au plus près de la position t. Elle n'est pas sélectionnée :
+    on reste en mode « pose » (changer de type ne transforme pas l'ouverture qu'on vient de poser). */
 export function placeOpening(ctx: Ctx, wall: number, t: number) {
   const { store, ui } = ctx;
   const type = ui.s.placeType, def = OPENING_DEFAULTS[type];
@@ -35,7 +36,7 @@ export function placeOpening(ctx: Ctx, wall: number, t: number) {
     const height = Math.min(def.height, wallHeight(d, wall) - def.sill - 0.05);
     d.openings.push({ id, wall, type, t: Math.round(at * 100) / 100, width, height, sill: def.sill, style: ui.s.placeStyles[type] });
   });
-  ui.set({ sel: { kind: 'opening', id } });
+  ui.set({ sel: null });
 }
 
 export function duplicateOpening(ctx: Ctx, id: string) {
