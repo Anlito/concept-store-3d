@@ -131,3 +131,6 @@ function b64ToBuffer(b64: string) {
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return u8.buffer;
 }
+
+/** Modèles du professeur lus ailleurs (outil professeur : dossier « Mobilier » trouvé dans le dossier de la classe). */
+export function useProfFiles(list: ProfFile[], folder?: string) { publish(list, 'dossier', folder); }
