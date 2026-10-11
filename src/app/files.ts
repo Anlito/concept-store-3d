@@ -21,20 +21,21 @@ export interface FileState {
 }
 export const emptyFileState = (): FileState => ({ handle: null, fileName: null, savedAt: 0, fromTemplate: false });
 
-type PickerWindow = Window & {
+// Types propres (pas « Window type PickerWindow = Window & { … ») : un autre outil compilé avec celui-ci peut déclarer ces fonctions autrement.
+type PickerWindow = {
   showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle>;
   showOpenFilePicker?: (o: object) => Promise<FileSystemFileHandle[]>;
 };
-const W = window as PickerWindow;
+const W = window as unknown as PickerWindow;
 const TYPES = [{ description: 'Projet Concept Store 3D', accept: { 'application/json': ['.json'] } }];
 /** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché avant d'enregistrer). */
 export const TEAM_FOLDER = '4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom-Prénom';
 /** Même identifiant pour tous les sélecteurs : Chrome rouvre le dernier dossier choisi (celui de l'équipe). */
 export const PICKER_ID = 'cs3d-equipe';
-type SaveWindow = Window & { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
+type SaveWindow = { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
 /** Enregistre un fichier en ouvrant l'explorateur (Chrome, Edge), sinon le télécharge. Renvoie le nom, ou null si annulé. */
 export async function saveBlob(name: string, blob: Blob, type: { description: string; accept: Record<string, string[]> }): Promise<string | null> {
-  const w = window as SaveWindow;
+  const w = window as unknown as SaveWindow;
   if (typeof w.showSaveFilePicker !== 'function') {
     const url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
