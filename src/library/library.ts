@@ -9,13 +9,13 @@ import { EXTERIOR_MODELS } from './exterior';
 /* Bibliothèque de mobilier. Les modèles GLB sont intégrés au fichier HTML (base64, voir scripts/build-library.mjs) :
    aucun fetch, donc compatible avec l'ouverture en file://. */
 
-export type Category = 'assises' | 'rangements' | 'comptoirs' | 'tables' | 'portants' | 'plantes' | 'luminaires' | 'decor' | 'exterieur';
+export type Category = 'assises' | 'rangements' | 'comptoirs' | 'tables' | 'portants' | 'plantes' | 'luminaires' | 'decor' | 'escaliers' | 'exterieur';
 export const CATEGORIES: { id: Category | 'tout'; label: string; icon: string }[] = [
   { id: 'tout', label: 'Tout', icon: 'apps' }, { id: 'assises', label: 'Assises', icon: 'chair' },
   { id: 'rangements', label: 'Rangements', icon: 'shelves' }, { id: 'comptoirs', label: 'Comptoirs', icon: 'countertops' },
   { id: 'tables', label: 'Tables', icon: 'table_restaurant' }, { id: 'portants', label: 'Portants', icon: 'checkroom' },
   { id: 'plantes', label: 'Plantes', icon: 'potted_plant' }, { id: 'luminaires', label: 'Luminaires', icon: 'light' },
-  { id: 'decor', label: 'Décor', icon: 'interests' }, { id: 'exterieur', label: 'Extérieur', icon: 'storefront' },
+  { id: 'decor', label: 'Décor', icon: 'interests' }, { id: 'escaliers', label: 'Escaliers', icon: 'stairs' }, { id: 'exterieur', label: 'Extérieur', icon: 'storefront' },
 ];
 export const categoryLabel = (c: string) => CATEGORIES.find(x => x.id === c)?.label ?? c;
 

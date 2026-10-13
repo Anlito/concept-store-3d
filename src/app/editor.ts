@@ -12,7 +12,8 @@ import { openPhotoDialog } from './photoDialog';
 import { helpButton, offerTour } from './guide/guide';
 import { stepsButton } from './guide/steps';
 import { copyObjects, duplicateObjects, nudgeObjects, pasteObjects, rotateObjects, selectedIds } from './objectActions';
-import { closeDraft, deleteSelection, stopPartitions } from './actions';
+import { ajouterUnEtage, changerNiveau, closeDraft, deleteSelection, stopPartitions } from './actions';
+import { NIVEAU_LABEL, aUnEtage, niveauActif } from '../model/levels';
 import { wallSegs, wallStyleOf } from '../model/project';
 import { rooms } from '../model/rooms';
 import { floorTints, wallTints } from '../view3d/materials';
@@ -68,7 +69,7 @@ export class Editor {
     this.vp = h('main', { class: 'vp' }, this.view3d.el, this.plan.el);
     const ov3d = this.overlay3d(), ov2d = this.overlay2d();
     const lib = libraryDrawer(ctx), drawer = lib.el;
-    this.vp.append(ov3d, ov2d, drawer);
+    this.vp.append(ov3d, ov2d, drawer, this.niveaux());
     let wasOpen = false;
     ui.subscribe(ch => { if (ch.includes('libraryOpen') && ui.s.libraryOpen && !wasOpen) lib.refresh(); wasOpen = ui.s.libraryOpen; });
 
@@ -176,6 +177,30 @@ export class Editor {
       case 'mobilier': return this.ctx.ui.s.sel?.kind === 'objects' ? objectPanel(this.ctx) : furniturePanel(this.ctx);
       case 'images': return this.ctx.ui.s.sel?.kind === 'image' ? imagePanel(this.ctx) : imagesPanel(this.ctx);
     }
+  }
+
+  /** Sélecteur de niveau (en haut à droite de la vue) : Étage / Rez-de-chaussée, ou « + Étage ». */
+  private niveaux() {
+    const { ui, store } = this.ctx;
+    const el = h('div', { class: 'lvl', 'data-tour': 'niveaux' });
+    const refresh = () => {
+      const d = store.doc;
+      if (!d.floor && !aUnEtage(d)) { el.replaceChildren(); el.style.display = 'none'; return; }
+      el.style.display = '';
+      if (!aUnEtage(d)) {
+        el.replaceChildren(h('button', { class: 'lvl-add', type: 'button', title: 'Ajouter un étage (plus petit ou égal au rez-de-chaussée)', onclick: () => ajouterUnEtage(this.ctx) }, icon('add'), 'Étage'));
+        return;
+      }
+      const n = niveauActif(d);
+      const b = (k: 0 | 1) => h('button', { type: 'button', class: 'lvl-b' + (n === k ? ' on' : ''), 'aria-pressed': String(n === k), 'data-niveau': k, onclick: () => changerNiveau(this.ctx, k) },
+        icon(k ? 'vertical_align_top' : 'vertical_align_bottom'), k ? 'Étage' : 'RDC');
+      const voir = ui.s.view === '3d' ? h('button', { type: 'button', class: 'lvl-voir' + (ui.s.voirAutre ? ' on' : ''), title: n ? 'Afficher le rez-de-chaussée en dessous' : 'Afficher l’étage au-dessus',
+        onclick: () => ui.set({ voirAutre: !ui.s.voirAutre }) }, icon(ui.s.voirAutre ? 'visibility' : 'visibility_off'), n ? 'Voir le RDC' : 'Voir l’étage') : null;
+      el.replaceChildren(h('div', { class: 'lvl-seg', role: 'group', 'aria-label': 'Niveau' }, b(1), b(0)), ...(voir ? [voir] : []));
+      el.title = NIVEAU_LABEL[n];
+    };
+    store.subscribe(refresh); ui.subscribe(refresh); refresh();
+    return el;
   }
 
   /** Pas d'aimantation, partout dans l'éditeur. Le sol et les autres éléments gardent chacun leur pas. */

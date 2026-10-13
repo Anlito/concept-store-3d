@@ -6,6 +6,8 @@ import { deleteObjects } from './objectActions';
 import { dist, isSimplePolygon, norm, sub, uid, v } from '../model/geometry';
 import { toast } from '../ui/components';
 import { roomAt } from '../model/rooms';
+import { ETAGE_TROP_GRAND, ajouterEtage, basculerNiveau, dansLeRdc, niveauActif } from '../model/levels';
+import { choose } from '../ui/components';
 
 /* Actions de l'éditeur partagées par la vue 3D, le plan 2D, les panneaux et les raccourcis clavier. */
 
@@ -98,6 +100,7 @@ export function closeDraft(ctx: Ctx, pts?: Vec2[]) {
   if (clean.length > 3 && dist(clean[0], clean[clean.length - 1]) < 0.005) clean.pop();
   if (clean.length < 3) { toast('Il faut au moins 3 points pour fermer la surface.', undefined, 'warning'); return false; }
   if (!isSimplePolygon(clean)) { toast('Les côtés se croisent : retire ou déplace un point.', undefined, 'warning'); return false; }
+  if (!dansLeRdc(store.doc, clean)) { toast(ETAGE_TROP_GRAND, undefined, 'warning'); return false; }
   const ext = shopExtent(clean);
   if (!ext.ok) {
     toast(`${MAX_SHOP_MSG} Ici : ${ext.w.toFixed(2).replace('.', ',')} × ${ext.h.toFixed(2).replace('.', ',')} m.`, undefined, 'warning');
@@ -107,6 +110,33 @@ export function closeDraft(ctx: Ctx, pts?: Vec2[]) {
   ui.set({ draft: [], cursor: null, sel: null });
   toast('Surface fermée : les murs sont créés.');
   return true;
+}
+
+/* ---------- Étage ---------- */
+/** Affiche l'autre niveau dans l'éditeur. L'historique « Annuler » repart de zéro à chaque changement de niveau. */
+export function changerNiveau(ctx: Ctx, n: 0 | 1) {
+  const d = ctx.store.doc;
+  if (!d.autreNiveau || niveauActif(d) === n) return;
+  ctx.store.load(basculerNiveau(d), ctx.store.dirty);
+  ctx.ui.set({ sel: null, draft: [], cursor: null, partDraw: false, libraryOpen: false, voirAutre: n === 1 });
+}
+export function ajouterUnEtage(ctx: Ctx) {
+  const d = ctx.store.doc;
+  if (!d.floor) { toast('Trace d’abord la surface du rez-de-chaussée.', undefined, 'warning'); return; }
+  if (d.autreNiveau) { changerNiveau(ctx, 1); return; }
+  ctx.store.update(x => ajouterEtage(x));
+  changerNiveau(ctx, 1);
+  ctx.ui.set({ tool: 'sol' });
+  toast('Étage ajouté, de la même surface que le rez-de-chaussée : tu peux le rétrécir (outil Surface). Pense à l’escalier : Mobilier › Escaliers.');
+}
+export async function supprimerEtage(ctx: Ctx) {
+  const ok = await choose('Supprimer l’étage ?', 'Ses cloisons, ses ouvertures, ses meubles et ses images seront effacés. Le rez-de-chaussée ne change pas.',
+    [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: 'Supprimer l’étage', value: 'oui', cls: 'btn-danger', icon: 'delete' }]);
+  if (ok !== 'oui') return;
+  changerNiveau(ctx, 0);
+  ctx.store.update(d => { delete d.autreNiveau; delete d.niveau; });
+  ctx.ui.set({ voirAutre: false, sel: null });
+  toast('Étage supprimé.', { label: 'Annuler', run: () => ctx.store.undo() });
 }
 
 export function clearFloor(ctx: Ctx) {

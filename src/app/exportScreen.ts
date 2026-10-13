@@ -6,6 +6,7 @@ import { sheetPdf, sheetSvg } from '../export/render';
 import { helpButton, offerTour } from './guide/guide';
 import { TEAM_FOLDER, saveBlob } from './files';
 import { markStep } from './guide/steps';
+import { niveaux, tremies } from '../model/levels';
 
 /* Écran « Plan A3 à imprimer » (maquette 07) : aperçu de la feuille, échelle, cartouche, téléchargement. */
 
@@ -15,7 +16,10 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   const { store } = ctx;
   const d = store.doc;
   let cotes = true;
-  let scale: Scale = d.floor ? bestScale(d, cotes) : 30;
+  const rdc0 = niveaux(d).rdc;
+  let scale: Scale = rdc0.floor ? bestScale(rdc0, cotes) : 30;
+  let pageIdx = 0; // feuille affichée (boutique à étage : 0 = rez-de-chaussée, 1 = étage)
+  const pagesNav = h('div', { class: 'ex-pages', role: 'tablist', 'aria-label': 'Niveau' });
   const team = { ...d.team };
 
   const sheetBox = h('div', { class: 'ex-sheet' });
@@ -53,7 +57,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
           h('div', { class: 'tb-status', style: { color: 'var(--text-3)' } }, d.name))),
       h('div'), h('div', { class: 'tb-r' }, helpButton())),
     h('div', { class: 'ed-body' },
-      h('main', { class: 'ex-main' }, sheetBox,
+      h('main', { class: 'ex-main' }, pagesNav, sheetBox,
         h('div', { class: 'ex-chip' }, icon('crop_landscape'), 'A3 paysage · 420 × 297 mm')),
       h('aside', { class: 'pn', style: { width: '340px' } },
         h('div', { class: 'pn-b', style: { gap: '22px' } },
@@ -64,15 +68,27 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
             field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B'), cartouche)),
         h('div', { class: 'pn-f' }, h('div', { class: 'ex-where' }, icon('folder_open'), h('span', null, 'À enregistrer dans le dossier de ton équipe : ', h('b', null, TEAM_FOLDER))), dl))));
 
+  /** Les feuilles du PDF : le rez-de-chaussée, puis l'étage s'il existe (même cadrage, contour du RDC en pointillés). */
+  function feuilles() {
+    const { rdc, etage } = niveaux(store.doc);
+    const out = [{ nom: 'Rez-de-chaussée', lay: layoutSheet({ ...rdc, team }, { scale, cotes, team, niveau: etage ? 'Rez-de-chaussée' : undefined }) }];
+    if (etage?.floor && rdc.floor) out.push({ nom: 'Étage', lay: layoutSheet({ ...etage, team }, { scale, cotes, team, niveau: 'Étage', base: rdc.floor.points, tremies: tremies(store.doc) }) });
+    return out;
+  }
+
   function render() {
     scaleSeg.refresh(); cotesTg.refresh();
-    const doc = store.doc;
+    const doc = niveaux(store.doc).rdc;
     if (!doc.floor) {
       sheetBox.replaceChildren(h('div', { class: 'vp-empty', style: { position: 'static' } }, h('div', null, h('h2', null, 'Pas encore de surface'), h('p', null, 'Trace la surface de ta boutique pour obtenir son plan.'))));
       status.replaceChildren(); dl.disabled = true; return;
     }
-    const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
-    sheetBox.innerHTML = sheetSvg(lay);
+    const fs = feuilles();
+    if (pageIdx >= fs.length) pageIdx = 0;
+    pagesNav.replaceChildren(...(fs.length > 1 ? fs.map((x, i) => h('button', { type: 'button', role: 'tab', class: 'site-tab' + (i === pageIdx ? ' on' : ''), 'aria-selected': String(i === pageIdx),
+      onclick: () => { pageIdx = i; render(); } }, `Page ${i + 1} · ${x.nom}`)) : []));
+    const lay = { ...fs[pageIdx].lay, fits: fs.every(x => x.lay.fits) };
+    sheetBox.innerHTML = sheetSvg(fs[pageIdx].lay);
     sheetBox.classList.toggle('too-big', !lay.fits);
     perM.replaceChildren('1 m dans la boutique = ', h('b', null, cm(scale) + ' cm'), ' sur la feuille (', scaleInfo(scale).ratio, ')', lay.rotated ? ' · plan tourné d’un quart de tour pour tenir sur la feuille' : '');
     const size = `${cm(lay.planW)} × ${cm(lay.planH)} cm`;
@@ -96,14 +112,14 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   }
 
   async function download() {
-    const doc = store.doc; if (!doc.floor) return;
-    const lay = layoutSheet({ ...doc, team }, { scale, cotes, team });
-    if (!lay.fits || !team.name.trim() || !team.members.trim() || !team.klass.trim()) return;
+    const doc = store.doc; if (!niveaux(doc).rdc.floor) return;
+    const fs = feuilles();
+    if (!fs.every(x => x.lay.fits) || !team.name.trim() || !team.members.trim() || !team.klass.trim()) return;
     store.update(d => { d.team = { name: team.name.trim(), members: team.members.trim(), klass: team.klass.trim() }; });
     // Nom proposé : « Plan-A3-Prenom-Prenom.pdf », comme le dossier de l'équipe.
     const who = team.members.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-zA-Z0-9]+/).filter(Boolean)
       .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('-');
-    const blob = sheetPdf(lay, `${doc.name} · plan des murs`).output('blob');
+    const blob = sheetPdf(fs.map(x => x.lay), `${doc.name} · plan des murs`).output('blob');
     try {
       const name = await saveBlob(`Plan-A3-${who || 'equipe'}.pdf`, blob, { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } });
       if (!name) return; // explorateur fermé sans enregistrer

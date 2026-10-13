@@ -20,6 +20,15 @@ const portant = (L: number, n: number): Part[] => {
     b(L - 0.04, 0, 0, 0.04, 0.4, 0.03, DK), b(L - 0.04, 0.18, 0, 0.04, 0.04, 1.6, DK)];
 };
 
+/** Escaliers (17 marches, 3 m) : remis à la hauteur des murs du rez-de-chaussée quand on les pose ; ils ouvrent le plancher de l'étage. */
+const MARCHES = 17, MONTEE = 3 / MARCHES;
+const escalierDroit = (): Part[] => Array.from({ length: MARCHES }, (_, i) => b(0, i * 0.2, 0, 0.9, 0.2, (i + 1) * MONTEE, i % 2 ? W : '#BFA073'));
+const escalierQuart = (): Part[] => [
+  ...Array.from({ length: 8 }, (_, i) => b(0, i * 0.25, 0, 0.9, 0.25, (i + 1) * MONTEE, i % 2 ? W : '#BFA073')),
+  b(0, 2, 0, 0.9, 0.9, 9 * MONTEE, '#BFA073'), // palier
+  ...Array.from({ length: 8 }, (_, j) => b(0.9 + j * 0.25, 2, 0, 0.25, 0.9, (10 + j) * MONTEE, j % 2 ? '#BFA073' : W)),
+];
+
 export interface VolumeModel { id: string; nom: string; cat: string; parts: Part[]; mural?: boolean; elev?: number; plafond?: boolean }
 
 export const VOLUME_MODELS: VolumeModel[] = [
@@ -34,5 +43,7 @@ export const VOLUME_MODELS: VolumeModel[] = [
   { id: 'v-miroir', nom: 'Miroir sur pied', cat: 'decor', parts: [b(0, 0, 0, 0.7, 0.05, 1.7, W), b(0.05, 0.05, 0.05, 0.6, 0.005, 1.6, '#DCE7EC')] },
   { id: 'v-vases', nom: 'Duo de vases', cat: 'decor', parts: [cy(0.15, 0.15, 0, 0.13, 0.32, TC), cy(0.15, 0.15, 0.32, 0.06, 0.1, TC), cy(0.45, 0.25, 0, 0.09, 0.22, '#E9E3D8')] },
   { id: 'v-plante-haute', nom: 'Plante haute', cat: 'plantes', parts: [cy(0.25, 0.25, 0, 0.22, 0.42, TC), s(0.12, 0.3, 0.72, 0.22, '#7F9C7B'), s(0.25, 0.25, 0.98, 0.36, GR)] },
+  { id: 'v-escalier-droit', nom: 'Escalier droit', cat: 'escaliers', parts: escalierDroit() },
+  { id: 'v-escalier-quart', nom: 'Escalier quart tournant', cat: 'escaliers', parts: escalierQuart() },
   { id: 'v-suspension', nom: 'Suspension', cat: 'luminaires', plafond: true, parts: [cy(0.2, 0.2, 0, 0.2, 0.3, DK), cy(0.2, 0.2, 0.3, 0.006, 0.7, DK)] },
 ];

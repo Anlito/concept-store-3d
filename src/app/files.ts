@@ -1,5 +1,6 @@
 import type { Ctx } from './state';
 import type { Project } from '../model/types';
+import { versRdc } from '../model/levels';
 import { sanitizeProject } from '../model/project';
 import { uid } from '../model/geometry';
 import { toast } from '../ui/components';
@@ -64,7 +65,8 @@ export function suggestedName(p: Project, kind: 'projet' | 'modele') {
 }
 
 function serialize(p: Project, template: boolean) {
-  const out: Project & { savedAt: string; app: string } = { ...structuredClone(p), isTemplate: template, savedAt: new Date().toISOString(), app: 'Concept Store 3D ' + __APP_VERSION__ };
+  // Le fichier a toujours le rez-de-chaussée au premier plan (l'élève peut enregistrer depuis l'étage).
+  const out: Project & { savedAt: string; app: string } = { ...structuredClone(versRdc(p)), isTemplate: template, savedAt: new Date().toISOString(), app: 'Concept Store 3D ' + __APP_VERSION__ };
   if (!template) delete out.isTemplate;
   return JSON.stringify(out);
 }

@@ -3,6 +3,7 @@ import type { PlacedObject } from '../model/types';
 import { edges, uid, snapTo } from '../model/geometry';
 import { freeSpot, normRot, snapToWall } from '../model/objects';
 import { contourCount } from '../model/project';
+import { estEscalier, niveauActif, niveaux } from '../model/levels';
 import { getItem, loadProto } from '../library/library';
 import { toast } from '../ui/components';
 import { findCreation } from './creations';
@@ -32,6 +33,13 @@ export async function addObject(ctx: Ctx, model: string) {
   const spot = freeSpot(store.doc, proto.dims);
   const o: PlacedObject = { id, model, x: spot.x, y: spot.y, z: 0, rot: 0, size: { ...proto.dims }, color: null, locked: false };
   if (item.plafond) o.z = Math.max(0, store.doc.walls.height - o.size.h);
+  // Escalier : il monte jusqu'à l'étage (hauteur des murs du rez-de-chaussée) et ouvre le plancher au-dessus.
+  if (estEscalier(model)) {
+    const k = niveaux(store.doc).rdc.walls.height / o.size.h;
+    o.size = { ...o.size, h: Math.round(o.size.h * k * 1000) / 1000 };
+    if (niveauActif(store.doc) === 1) toast('Un escalier se pose au rez-de-chaussée : c’est là qu’il ouvre le plancher de l’étage.', undefined, 'warning');
+    else if (!store.doc.autreNiveau) toast('Escalier posé. Pour le relier à un étage : bouton « + Étage », en haut à droite de la vue.');
+  }
   if (item.elev !== undefined) o.z = item.elev;
   // Décor extérieur : devant la porte d'entrée (ou la vitrine), côté rue.
   if (item.cat === 'exterieur') {

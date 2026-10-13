@@ -1,4 +1,4 @@
-import type { Floor, Opening, OpeningType, Partition, PlacedImage, Project, Vec2, WallStyle } from './types';
+import type { Floor, LevelData, Opening, OpeningType, Partition, PlacedImage, Project, Vec2, WallStyle } from './types';
 import { add, bounds, dist, edges, mul, norm, normalizeWinding, pointInPolygon, projectOnSegment, round3, sub, uid, v, type Edge } from './geometry';
 
 export const DEFAULT_WALL: WallStyle = { material: 'peinture', color: '#FCFBF9' };
@@ -209,8 +209,14 @@ export function findFreeT(p: Project, wall: number, width: number, t: number, ig
 
 /** Contrôle et répare un projet chargé depuis un fichier. */
 export function sanitizeProject(raw: unknown): Project {
-  const r = raw as Partial<Project>;
+  let r = raw as Partial<Project>;
   if (!r || r.format !== 'concept-store-3d') throw new Error('Ce fichier n’est pas un projet Concept Store 3D.');
+  // Projet enregistré avec l'étage au premier plan (copie de secours) : on remet le rez-de-chaussée devant.
+  if (r.niveau === 1 && r.autreNiveau) {
+    const devant = Object.fromEntries(NIVEAU_KEYS.map(k => [k, r[k]]));
+    r = { ...r, ...r.autreNiveau, autreNiveau: devant as unknown as LevelData, niveau: 0 };
+  }
+  const etage = r.autreNiveau ? sanitizeProject({ ...r, ...r.autreNiveau, autreNiveau: undefined, niveau: 0 }) : null;
   const p = { ...newProject(), ...r } as Project;
   p.team = { ...newProject().team, ...(r.team || {}) };
   p.walls = { ...newProject().walls, ...(r.walls || {}) };
@@ -232,8 +238,12 @@ export function sanitizeProject(raw: unknown): Project {
   p.assets = (p.assets || []).filter(a => a && typeof a.data === 'string' && a.data.startsWith('data:image/'));
   p.images = (p.images || []).filter(i => p.assets.some(a => a.id === i.asset)).map(i => ({ ...i }));
   clampAllOpenings(p);
+  delete p.autreNiveau; delete p.niveau;
+  if (etage) p.autreNiveau = Object.fromEntries(NIVEAU_KEYS.map(k => [k, etage[k]])) as unknown as LevelData;
   return p;
 }
+/** Champs propres à un niveau (même liste que model/levels.ts). */
+const NIVEAU_KEYS = ['floor', 'walls', 'partitions', 'openings', 'objects', 'images', 'rooms', 'pans'] as const;
 
 /** Plus grande boutique autorisée (surface au sol) : 10 m × 7 m, dans un sens ou dans l'autre.
     C'est ce qui permet d'imprimer le plan à 1 m = 3 cm sur une feuille A3. */

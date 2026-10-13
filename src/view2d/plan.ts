@@ -4,6 +4,7 @@ import { add, bounds, dist, dot, edges, fmtM, isSimplePolygon, mul, norm, offset
 import { MIN_PARTITION, OPENING_DEFAULTS, clampAllOpenings, contourCount, findFreeT, imageExtent, partitionEnds, insertVertex, insideFloor, moveVertex, openingStyle, rugCorners, shopExtent, wallLength, wallSegs, wallShort } from '../model/project';
 import { closeDraft, createPartition, placeOpening, selectPan, selectPick, selectRoomAt, stopPartitions } from "../app/actions";
 import { floorOfRoom, pieceAt, rooms } from "../model/rooms";
+import { autreProjet, dansLeRdc, niveauActif, tremies } from "../model/levels";
 import { floorTints } from "../view3d/materials";
 import { footprint, hitObject, normRot, snapToWall, toPlan } from "../model/objects";
 import { selectObjects, selectedIds } from "../app/objectActions";
@@ -353,7 +354,7 @@ export class Plan2D {
       if (d?.kind === 'vertex') {
         const sn = this.snap(p, { excludeVertex: d.index }); this.snapInfo = sn;
         const pts = store.doc.floor!.points.map((q, i) => i === d.index ? sn.p : q);
-        if (isSimplePolygon(pts) && shopExtent(pts).ok) store.live(doc => moveVertex(doc, d.index, sn.p));
+        if (isSimplePolygon(pts) && shopExtent(pts).ok && dansLeRdc(store.doc, pts)) store.live(doc => moveVertex(doc, d.index, sn.p));
         d.moved = true; this.schedule(); return;
       }
       if (d?.kind === "objects" || d?.kind === "rotate" || d?.kind === "band") { this.objectDrag(d, p, e.shiftKey); return; }
@@ -545,6 +546,15 @@ export class Plan2D {
     if (d.floor) {
       const pts = d.floor.points, T = d.walls.thickness, outer = offsetPolygon(pts, T), E = edges(pts);
       o.push(`<path d="${path(pts)}" style="fill:#F3EEE6"/>`);
+      // Autre niveau en pointillés gris (pour se repérer : l'étage tient dans le rez-de-chaussée)
+      const autre = autreProjet(d);
+      if (autre?.floor) o.push(`<path d="${path(autre.floor.points)}" data-autre-niveau="1" style="fill:none;stroke:#8A8782;stroke-width:2;stroke-dasharray:8 6"/>`);
+      // Étage : trémie au-dessus de chaque escalier du rez-de-chaussée
+      if (niveauActif(d) === 1) for (const t of tremies(d)) {
+        o.push(`<path d="${path(t)}" data-tremie="1" style="fill:rgba(106,104,99,.16);stroke:#6A6863;stroke-width:1.5;stroke-dasharray:4 3"/>`);
+        const cx = t.reduce((s2, q) => s2 + q.x, 0) / t.length, cy = t.reduce((s2, q) => s2 + q.y, 0) / t.length;
+        text(X(cx), Y(cy), 'Trémie (escalier)', 'font-size:12px;font-weight:800;fill:#4A4945');
+      }
       const RS = this.roomPicking ? rooms(d) : [];
       if (RS.length) {
         const sr = s.sel?.kind === 'room' ? s.sel.index : -1;

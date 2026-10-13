@@ -26,11 +26,15 @@ export function sheetSvg(l: Layout): string {
   return o.join('');
 }
 
-/** PDF A3 paysage, tracé vectoriel, à imprimer à 100 %. */
-export function sheetPdf(l: Layout, title: string): jsPDF {
+/** PDF A3 paysage, tracé vectoriel, à imprimer à 100 % : une page par feuille (boutique à étage : une par niveau). */
+export function sheetPdf(feuilles: Layout | Layout[], title: string): jsPDF {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true });
   doc.setProperties({ title, subject: 'Plan des murs à l’échelle', creator: 'Concept Store 3D' });
   doc.setLineCap('butt');
+  (Array.isArray(feuilles) ? feuilles : [feuilles]).forEach((l, i) => { if (i) doc.addPage('a3', 'landscape'); page(doc, l); });
+  return doc;
+}
+function page(doc: jsPDF, l: Layout) {
   for (const p of l.prims) {
     if (p.t === 'line') {
       doc.setLineWidth(p.w);
@@ -55,5 +59,4 @@ export function sheetPdf(l: Layout, title: string): jsPDF {
       doc.text(p.str, x, y, { baseline: 'middle', angle: p.rot ? -p.rot : 0 });
     }
   }
-  return doc;
 }

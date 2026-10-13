@@ -36,6 +36,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.vp', title: 'Le plan 2D', text: 'Ta boutique vue du dessus. **Un clic par coin**, puis clic sur le point de départ (ou [[Entrée]]) pour fermer la surface. Les murs se créent tout seuls. Maximum **10 × 7 m**.' },
       { at: '.pn', title: 'Le panneau de l’outil', text: 'Forme **libre** ou **rectangle**, dimensions exactes au clavier, puis puis les **cloisons** des pièces et la **hauteur des murs**. Les revêtements viennent après, avec **Sol** et **Murs**.' },
       { at: '.fbar', title: 'Grille, aimantation et cotes', text: 'Les coins s’accrochent sur la grille. Le **pas** du tracé est de 1 m : change-le ici si ta boutique a des demi-mètres.' },
+      { at: '[data-tour=niveaux]', title: 'Un étage ?', text: 'Bouton **+ Étage** : un deuxième niveau, plus petit ou égal au rez-de-chaussée. Les boutons **Étage** et **RDC** passent de l’un à l’autre.', optional: true },
       { at: '.hintbar', title: 'Les consignes', text: 'Cette bande rappelle ce que fait la souris avec l’outil choisi.' },
       { at: '[data-tour=view]', title: 'Plan 2D ou Vue 3D', text: 'Passe en **Vue 3D** pour voir ta boutique en volume.' },
       { at: '[data-tour=undo]', title: 'Annuler', text: 'Une erreur ? [[Ctrl+Z]] annule, [[Ctrl+Y]] rétablit.' },

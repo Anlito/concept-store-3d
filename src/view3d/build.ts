@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Opening, Project } from '../model/types';
-import { offsetPolygon, dot, sub } from '../model/geometry';
+import { centroidOf, offsetPolygon, dot, pointInPolygon, sub } from '../model/geometry';
+import type { Vec2 } from '../model/types';
 import { floorMaterial, wallMaterial } from './materials';
 import { DEFAULT_OUT, openingColor, openingStyle, partitionEnds, wallSegs, type WallSeg } from '../model/project';
 import { facePieces, floorOfRoom, rooms, wallLookOf } from '../model/rooms';
@@ -66,7 +67,8 @@ export function wallMatrix(ax: number, ay: number, ux: number, uy: number) {
   return new THREE.Matrix4().makeBasis(new THREE.Vector3(ux, 0, uy), UP, new THREE.Vector3(-uy, 0, ux)).setPosition(ax, 0, ay);
 }
 
-export function buildShop(p: Project): BuiltShop {
+/** `tremies` : ouvertures du plancher (escaliers du rez-de-chaussée, pour l'étage). */
+export function buildShop(p: Project, tremies: Vec2[][] = []): BuiltShop {
   const root = new THREE.Group(); root.name = 'boutique';
   const walls: WallInfo[] = [], pickables: THREE.Object3D[] = [];
   if (!p.floor) return { root, walls, pickables };
@@ -77,6 +79,7 @@ export function buildShop(p: Project): BuiltShop {
   rooms(p).forEach((r, ri) => {
     const shape = new THREE.Shape(r.poly.map(q => new THREE.Vector2(q.x, -q.y)));
     for (const hole of r.holes) shape.holes.push(new THREE.Path(hole.map(q => new THREE.Vector2(q.x, -q.y))));
+    for (const t of tremies) if (pointInPolygon(centroidOf(t), r.poly)) shape.holes.push(new THREE.Path(t.map(q => new THREE.Vector2(q.x, -q.y))));
     const fg = new THREE.ShapeGeometry(shape); fg.rotateX(-Math.PI / 2);
     // UV en mètres, dans le repère du plan
     const uv = fg.getAttribute('uv') as THREE.BufferAttribute, pa = fg.getAttribute('position') as THREE.BufferAttribute;
@@ -89,7 +92,9 @@ export function buildShop(p: Project): BuiltShop {
   });
 
   // Dalle sous la boutique
-  const sg = new THREE.ExtrudeGeometry(new THREE.Shape(outer.map(q => new THREE.Vector2(q.x, -q.y))), { depth: 0.12, bevelEnabled: false });
+  const dalle = new THREE.Shape(outer.map(q => new THREE.Vector2(q.x, -q.y)));
+  for (const t of tremies) dalle.holes.push(new THREE.Path(t.map(q => new THREE.Vector2(q.x, -q.y))));
+  const sg = new THREE.ExtrudeGeometry(dalle, { depth: 0.12, bevelEnabled: false });
   sg.rotateX(-Math.PI / 2); sg.translate(0, -0.121, 0);
   const slab = new THREE.Mesh(sg, M.slab); slab.receiveShadow = true;
   root.add(slab);

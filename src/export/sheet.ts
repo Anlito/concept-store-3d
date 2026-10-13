@@ -37,7 +37,14 @@ export type Prim =
   | { t: 'rect'; x: number; y: number; w: number; h: number; lw: number; fill?: string; stroke?: boolean }
   | { t: 'text'; x: number; y: number; size: number; str: string; bold?: boolean; align?: 'left' | 'center' | 'right'; rot?: number; color?: string; plan?: boolean };
 
-export interface SheetOptions { scale: Scale; cotes: boolean; team: { name: string; members: string; klass: string } }
+export interface SheetOptions {
+  scale: Scale; cotes: boolean; team: { name: string; members: string; klass: string };
+  /** Boutique à étage : nom du niveau (« Rez-de-chaussée », « Étage »), écrit sous le titre. */
+  niveau?: string;
+  /** Page de l'étage : contour du rez-de-chaussée (même cadrage, dessiné en pointillés) et trémies des escaliers. */
+  base?: Vec2[];
+  tremies?: Vec2[][];
+}
 
 export interface Layout {
   prims: Prim[];
@@ -54,21 +61,22 @@ const fmtLen = (m: number) => m.toFixed(2).replace('.', ',') + ' m';
 export const ZONE_SIZE = { w: ZONE.x1 - ZONE.x0, h: ZONE.y1 - ZONE.y0 };
 
 /** Une boutique plus profonde que large est tournée d'un quart de tour (les murs et ouvertures restent identiques). */
-function oriented(p: Project): { p: Project; rotated: boolean } {
-  const b = bounds(p.floor!.points);
-  if (b.h <= b.w + 1e-9) return { p, rotated: false };
+function oriented(p: Project, base?: Vec2[], tremies: Vec2[][] = []): { p: Project; rotated: boolean; base?: Vec2[]; tremies: Vec2[][] } {
+  const b = bounds(base ?? p.floor!.points); // l'étage suit l'orientation du rez-de-chaussée
+  if (b.h <= b.w + 1e-9) return { p, rotated: false, base, tremies };
   const r = (q: Vec2) => ({ x: -q.y, y: q.x });
-  return { p: { ...p, floor: { ...p.floor!, points: p.floor!.points.map(r) }, partitions: p.partitions.map(c => ({ ...c, a: r(c.a), b: r(c.b) })) }, rotated: true };
+  return { p: { ...p, floor: { ...p.floor!, points: p.floor!.points.map(r) }, partitions: p.partitions.map(c => ({ ...c, a: r(c.a), b: r(c.b) })) }, rotated: true,
+    base: base?.map(r), tremies: tremies.map(t => t.map(r)) };
 }
 
 /** Taille du plan (murs compris) pour une échelle donnée, et si elle tient dans la zone. */
-export function planSize(p0: Project, k: Scale, cotes: boolean) {
-  const { p, rotated } = oriented(p0);
-  const outer = offsetPolygon(p.floor!.points, p.walls.thickness);
+export function planSize(p0: Project, k: Scale, cotes: boolean, base?: Vec2[], tremies?: Vec2[][]) {
+  const { p, rotated, base: bo, tremies: tr } = oriented(p0, base, tremies);
+  const outer = offsetPolygon(bo ?? p.floor!.points, p.walls.thickness); // page de l'étage : cadrage du rez-de-chaussée
   const b = bounds(outer);
   const m = cotes ? 2 * COTE_MARGIN : 0;
   const w = b.w * k + m, h = b.h * k + m;
-  return { w, h, fits: w <= ZONE_SIZE.w + 1e-6 && h <= ZONE_SIZE.h + 1e-6, b, p, rotated };
+  return { w, h, fits: w <= ZONE_SIZE.w + 1e-6 && h <= ZONE_SIZE.h + 1e-6, b, p, rotated, base: bo, tremies: tr };
 }
 /** La plus grande échelle (plan le plus grand) qui fait tenir la boutique sur la feuille. */
 export function bestScale(p: Project, cotes: boolean): Scale {
@@ -92,7 +100,7 @@ export function layoutSheet(p0: Project, o: SheetOptions): Layout {
   const T = (x: number, y: number, size: number, str: string, extra: Partial<Extract<Prim, { t: 'text' }>> = {}) => prims.push({ t: 'text', x, y, size, str, ...extra });
   const k = o.scale, sc = scaleInfo(k);
 
-  const { w: planW, h: planH, fits, b, p, rotated } = planSize(p0, k, o.cotes);
+  const { w: planW, h: planH, fits, b, p, rotated, base, tremies } = planSize(p0, k, o.cotes, o.base, o.tremies);
   // Centre du plan dans la zone
   const cx = (ZONE.x0 + ZONE.x1) / 2, cy = (ZONE.y0 + ZONE.y1) / 2;
   const ox = cx - ((b.x0 + b.x1) / 2) * k, oy = cy - ((b.y0 + b.y1) / 2) * k;
@@ -165,6 +173,18 @@ export function layoutSheet(p0: Project, o: SheetOptions): Layout {
     }
   }
 
+  // ---- Page de l'étage : contour du rez-de-chaussée et trémies des escaliers, en pointillés fins
+  if (base) {
+    edges(base).forEach(e => seg(e.a, e.b, THIN_W, DASH.fenetre));
+    const top = base.reduce((m, q) => (q.y < m.y ? q : m)), A = P(top);
+    T(A.x, A.y - 2.5, 2.6, 'Rez-de-chaussée (dessous)', { plan: true, color: '#555555' });
+  }
+  for (const t of tremies ?? []) {
+    edges(t).forEach(e => seg(e.a, e.b, THIN_W, DASH.porte));
+    const c = P({ x: t.reduce((s, q) => s + q.x, 0) / t.length, y: t.reduce((s, q) => s + q.y, 0) / t.length });
+    T(c.x, c.y, 2.6, 'Trémie', { align: 'center', plan: true, bold: true });
+  }
+
   // ---- Cadre et séparations
   prims.push({ t: 'rect', x: 10, y: 10, w: 400, h: 277, lw: 0.35, stroke: true });
   L(351, 10, 351, 287, THIN_W);
@@ -173,7 +193,8 @@ export function layoutSheet(p0: Project, o: SheetOptions): Layout {
   // ---- Colonne de droite : titre, cartouche, légende
   let y = 18;
   for (const line of wrap(p0.name || 'Ma boutique', 18)) { T(COL.x0, y, 4.6, line, { bold: true }); y += 5.6; }
-  T(COL.x0, y, 3.4, 'Plan des murs', { color: '#444444' }); y += 9;
+  T(COL.x0, y, 3.4, 'Plan des murs', { color: '#444444' }); y += o.niveau ? 5 : 9;
+  if (o.niveau) { T(COL.x0, y, 3.6, o.niveau, { bold: true, color: '#BF4E36' }); y += 7; }
 
   L(COL.x0, y, COL.x1, y, THIN_W); y += 6;
   T(COL.x0, y, 3, 'ÉQUIPE', { bold: true, color: '#444444' }); y += 5.2;

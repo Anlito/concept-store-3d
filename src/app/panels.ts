@@ -6,7 +6,8 @@ import { add, area, dist, edges, fmtArea, fmtM, isSimplePolygon, mul, norm, peri
 import { DEFAULT_OUT, MAX_SHOP_MSG, MIN_PARTITION, OPENING_DEFAULTS, OPENING_STYLES, openingStyle, WALL_LIMITS, clampAllOpenings, clampT, contourCount, findFreeT, insideFloor, isPartition, moveVertex, shopExtent, wallHeight, wallLength, wallName, wallSegs } from '../model/project';
 import { FLOOR_LABELS, WALL_LABELS, floorTints, thumbCss, wallTints } from '../view3d/materials';
 import { type FloorLook, type WallLook, clearRoomStyles, floorOfRoom, panStyleOf, pieceAt, rooms, roomStyles, setPanStyle, setRoomStyle, wallLookOf } from '../model/rooms';
-import { clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByLength, startPartitions, stopPartitions } from './actions';
+import { ajouterUnEtage, clearFloor, closeDraft, deleteSelection, duplicateOpening, partitionByLength, startPartitions, stopPartitions, supprimerEtage } from './actions';
+import { ETAGE_TROP_GRAND, aUnEtage, dansLeRdc, etageSansEscalier, niveauActif } from '../model/levels';
 import type { Plan2D } from '../view2d/plan';
 import { getItem, categoryLabel, SOURCE_LABEL } from '../library/library';
 import { thumbnail } from '../library/thumbs';
@@ -96,6 +97,7 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
     const pts = f().points.map((p, i) => i === sel ? q : p);
     if (!isSimplePolygon(pts)) { toast('Impossible : les côtés se croiseraient.', undefined, 'warning'); return; }
     if (!shopExtent(pts).ok) { toast(MAX_SHOP_MSG, undefined, 'warning'); return; }
+    if (!dansLeRdc(store.doc, pts)) { toast(ETAGE_TROP_GRAND, undefined, 'warning'); return; }
     store.update(d => moveVertex(d, sel, q));
   }
   const p = shell('grid_on', 'Surface', () => `${f().points.length} côtés · ${fmtArea(area(f().points))}`, [
@@ -105,6 +107,7 @@ export function floorPanel(ctx: Ctx, plan: Plan2D): Panel {
       b(extentRow(() => f().points))),
     vertexBlock ?? h('p', { class: 'p-help' }, h('b', null, 'Glisse un point'), ' pour le déplacer, clique sur un ', h('b', null, '+'), ' pour ajouter un point, puis ', h('b', null, 'Suppr'), ' pour retirer le point choisi.'),
     partitionsCard(ctx),
+    etageBloc(ctx),
     section('Murs', h('div', { class: 'g2' },
       b(numberField({ label: 'Hauteur', unit: 'cm', min: WALL_LIMITS.height[0] * 100, max: WALL_LIMITS.height[1] * 100, get: () => store.doc.walls.height * 100,
         set: v => store.update(d => { d.walls.height = v / 100; clampAllOpenings(d); }) })),
@@ -238,6 +241,21 @@ export function coveringPanel(ctx: Ctx): Panel {
     const l = look(); store.update(d => { Object.assign(d.floor!, l); clearRoomStyles(d, 'floor'); }); ui.set({ sel: null }); toast('Sol appliqué à toutes les pièces.');
   })) : undefined);
   return finish(p, binds);
+}
+
+/* ---------- Étage ---------- */
+/** Panneau Surface : ajouter l'étage (au rez-de-chaussée), ou rappels et suppression (à l'étage). */
+function etageBloc(ctx: Ctx) {
+  const d = ctx.store.doc;
+  if (niveauActif(d) === 0) return section('Étage',
+    h('p', { class: 'p-help' }, aUnEtage(d) ? 'La boutique a un étage : choisis « Étage » en haut à droite de la vue pour y travailler.' : 'Une boutique sur deux niveaux ? L’étage peut être plus petit que le rez-de-chaussée, pas plus grand.'),
+    aUnEtage(d) ? null : button('Ajouter un étage', 'add', 'btn-secondary', () => ajouterUnEtage(ctx)));
+  const pts = d.floor?.points ?? [];
+  return section('Étage',
+    pts.length && !dansLeRdc(d, pts) ? alert('warning', 'L’étage dépasse', ETAGE_TROP_GRAND + ' Rapproche ses coins (en pointillés : le rez-de-chaussée).') : null,
+    etageSansEscalier(d) ? alert('info', 'Pense à l’escalier', 'Au rez-de-chaussée : Mobilier › Escaliers. Il ouvre le plancher de l’étage au-dessus de lui.') : null,
+    h('p', { class: 'p-help' }, 'Glisse les coins pour rétrécir l’étage (en pointillés : le rez-de-chaussée en dessous).'),
+    button('Supprimer l’étage', 'delete', 'btn-danger', () => void supprimerEtage(ctx)));
 }
 
 /* ---------- Cloisons ---------- */

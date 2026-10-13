@@ -19,7 +19,7 @@ export const PROJECT_STEPS: ProjectStep[] = [
     text: 'Avec ton équipe : le nom du magasin, ce qu’il vend, à qui, son ambiance. Fais **valider ce concept par ton professeur** avant de commencer la boutique.',
     actions: [] },
   { id: 'surface', icon: 'grid_on', title: 'Tracer la surface commerciale, les pièces et les ouvertures',
-    text: 'Trace la **surface** (10 × 7 m au plus), puis les **cloisons** des pièces : toilettes ? réserve ? salle du personnel ? atelier ? cabines ? Place ensuite les **portes, fenêtres et vitrines**.',
+    text: 'Trace la **surface** (10 × 7 m au plus), puis les **cloisons** des pièces : toilettes ? réserve ? salle du personnel ? atelier ? cabines ? Place ensuite les **portes, fenêtres et vitrines**. Un **étage** ? Bouton **+ Étage** en haut à droite de la vue, et un **escalier** au rez-de-chaussée.',
     actions: [
       { label: 'Surface', icon: 'grid_on', run: tool('sol', { view: '2d' }) },
       { label: 'Cloisons', icon: 'border_outer', run: ctx => { tool('sol', { view: '2d' })(ctx); startPartitions(ctx); } },

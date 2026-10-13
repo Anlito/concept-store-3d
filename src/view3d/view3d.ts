@@ -5,6 +5,8 @@ import type { Project } from '../model/types';
 import { bounds, edges } from '../model/geometry';
 import { OPENING_DEFAULTS, findFreeT, imageExtent, insideFloor, rugCorners, wallHeight, wallLength, wallSegs } from '../model/project';
 import { pieceAt } from '../model/rooms';
+import { autreProjet, decalageAutre, niveauActif, tremies } from '../model/levels';
+import { instantiate, loadProto } from '../library/library';
 import { buildShop, wallMatrix, fixture, type BuiltShop, type Pick } from './build';
 import { placeOpening, selectPan, selectPick, selectRoomAt } from "../app/actions";
 import { ObjectLayer } from "./objects3d";
@@ -24,6 +26,10 @@ export class View3D {
   private sun = new THREE.DirectionalLight(0xffffff, 1.7);
   private shop: BuiltShop | null = null;
   private shopKey = '';
+  /** L'autre niveau (lecture seule : pas de sélection), décalé en hauteur. */
+  private autre = new THREE.Group();
+  private autreKey = '';
+  private ground!: THREE.Mesh;
   private overlay = new THREE.Group();
   private ghost: THREE.Group | null = null;
   private needsRender = true;
@@ -55,7 +61,9 @@ export class View3D {
     this.scene.add(this.sun, this.sun.target);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.1 }));
     ground.rotation.x = -Math.PI / 2; ground.position.y = -0.122; ground.receiveShadow = true;
-    this.scene.add(ground, this.overlay);
+    this.ground = ground;
+    this.autre.name = 'autre-niveau';
+    this.scene.add(ground, this.overlay, this.autre);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
@@ -84,6 +92,7 @@ export class View3D {
       if (ch.includes("sel") || ch.includes("tool")) { this.drawSelection(); this.objects.drawSelection(); }
       if (ch.includes("view")) this.objects.updateHandles();
       if (ch.includes('cutaway')) this.updateCutaway(true);
+      if (ch.includes('voirAutre')) this.syncAutre(this.ctx.store.doc);
       this.needsRender = true;
     });
     this.applyShadows();
@@ -150,6 +159,9 @@ export class View3D {
     const size = this.renderer.getSize(new THREE.Vector2()), ratio = this.renderer.getPixelRatio(), bg = (this.scene.background as THREE.Color).clone();
     const hidden = [this.overlay, this.objects.selectionGroup, this.ghost].filter(Boolean) as THREE.Object3D[];
     hidden.forEach(x => { x.visible = false; });
+    // Photo de la boutique entière : les deux niveaux (sauf la vue « intérieur »).
+    const autreAvant = this.autre.visible;
+    this.autre.visible = this.autre.children.length > 0 && o.view !== 'interieur';
     if (o.best) this.applyShadows('high');
     this.scene.background = new THREE.Color(o.background);
     this.renderer.setPixelRatio(1);
@@ -162,6 +174,7 @@ export class View3D {
     const url = this.renderer.domElement.toDataURL(o.mime, 0.92);
     // Remise en état
     hidden.forEach(x => { x.visible = true; });
+    this.autre.visible = autreAvant;
     this.cutOverride = null;
     this.scene.background = bg;
     this.camera.position.copy(cam); this.controls.target.copy(target); this.controls.update();
@@ -265,11 +278,13 @@ export class View3D {
   /** Reconstruit la boutique si le sol, les murs ou les ouvertures ont changé. */
   private sync() {
     const d = this.ctx.store.doc;
-    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.rooms, d.pans, d.openings]);
+    // Étage au premier plan : son plancher est ouvert au-dessus des escaliers du rez-de-chaussée.
+    const tr = niveauActif(d) === 1 ? tremies(d) : [];
+    const key = JSON.stringify([d.floor, d.walls, d.partitions, d.rooms, d.pans, d.openings, tr]);
     if (key !== this.shopKey) {
       this.shopKey = key;
       if (this.shop) { this.scene.remove(this.shop.root); disposeTree(this.shop.root); }
-      this.shop = buildShop(d);
+      this.shop = buildShop(d, tr);
       this.scene.add(this.shop.root);
       this.fitSun(d);
       this.lowered.clear();
@@ -277,9 +292,35 @@ export class View3D {
       if (d.floor && !this.framedOnce && this.active) this.frame();
     }
     this.syncImages(d);
+    this.syncAutre(d);
     this.objects.sync();
     this.drawSelection();
     this.needsRender = true;
+  }
+
+  /** L'autre niveau : murs, sol (avec trémies pour l'étage), meubles et images, décalé en hauteur. Lecture seule. */
+  private syncAutre(d: Project) {
+    const a = autreProjet(d), dy = decalageAutre(d);
+    // Le sol (ombres) reste sous le rez-de-chaussée.
+    this.ground.position.y = (niveauActif(d) === 1 ? dy : 0) - 0.122;
+    this.autre.visible = !!a && this.ctx.ui.s.voirAutre;
+    const key = a ? JSON.stringify([d.autreNiveau, dy, niveauActif(d) === 0 ? tremies(d) : [], d.assets.map(x => x.id)]) : '';
+    if (key === this.autreKey) return;
+    this.autreKey = key;
+    this.autre.children.forEach(c => disposeTree(c)); this.autre.clear();
+    if (!a) return;
+    this.autre.position.y = dy;
+    this.autre.add(buildShop(a, niveauActif(d) === 0 ? tremies(d) : []).root);
+    this.autre.add(buildImages(a, () => { this.autreKey = ''; this.sync(); }).root);
+    for (const o of a.objects) {
+      const g = new THREE.Group(); this.autre.add(g);
+      loadProto(o.model).then(proto => {
+        const inst = instantiate(proto, o.color);
+        inst.scale.set(o.size.w / proto.dims.w, o.size.h / proto.dims.h, o.size.d / proto.dims.d);
+        g.add(inst); g.position.set(o.x, o.z, o.y); g.rotation.y = -(o.rot * Math.PI) / 180;
+        this.needsRender = true;
+      }).catch(() => { /* modèle introuvable : on l'ignore ici */ });
+    }
   }
 
   /** Images posées : reconstruites seulement si elles, ou les murs, changent. */

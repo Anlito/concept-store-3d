@@ -91,11 +91,18 @@ export interface Project {
   /** Images importées et images posées. */
   assets: ImageAsset[];
   images: PlacedImage[];
+  /** L'autre niveau (étage ou rez-de-chaussée), quand la boutique a un étage (voir model/levels.ts). */
+  autreNiveau?: LevelData;
+  /** Niveau au premier plan : 0 = rez-de-chaussée (toujours dans les fichiers enregistrés), 1 = étage. */
+  niveau?: 0 | 1;
   /** Étapes du projet cochées par l'équipe (identifiants, voir app/guide/steps.ts). */
   steps?: string[];
   /** Projet modèle fourni par l'enseignant : ne jamais l'écraser. */
   isTemplate?: boolean;
 }
+
+/** Ce qui appartient à un niveau (le reste du projet est commun aux deux niveaux). */
+export type LevelData = Pick<Project, 'floor' | 'walls' | 'partitions' | 'openings' | 'objects' | 'images' | 'rooms' | 'pans'>;
 
 /** Objet posé dans la boutique (meuble, plante, décor…). */
 export interface PlacedObject {

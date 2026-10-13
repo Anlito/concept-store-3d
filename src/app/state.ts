@@ -50,6 +50,8 @@ export interface UIState {
   libraryTab: 'base' | 'moi' | 'prof';
   /** Face des murs en cours de décoration : intérieur ou façade. */
   wallFace: 'int' | 'ext';
+  /** Vue 3D : afficher l'autre niveau (l'étage au-dessus, ou le rez-de-chaussée en dessous). */
+  voirAutre: boolean;
   /** Tracé de cloisons en cours (outil Murs, plan 2D). */
   partDraw: boolean;
   /** Style choisi pour les prochaines ouvertures posées, par type. */
@@ -77,7 +79,7 @@ export function defaultUI(): UIState {
   try { shadows = (localStorage.getItem('cs3d-shadows') ?? localStorage.getItem('cs3d-shadows-reco') ?? 'low') as ShadowQuality; } catch { /* stockage indisponible */ }
   return {
     view: '2d', tool: 'sol', sel: null, draft: [], cursor: null, floorShape: 'libre',
-    grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', partDraw: false, placeStyles: {},
+    grid: true, snap: true, dims: true, step: 1, stepSol: 1, stepOther: 0.1, placeType: 'porte', shadows, cutaway: true, saveStatus: 'saved', libraryOpen: false, keepRatio: true, libraryTab: 'base', wallFace: 'int', partDraw: false, voirAutre: false, placeStyles: {},
   };
 }
 
