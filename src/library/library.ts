@@ -179,7 +179,7 @@ function buildParts(parts: Part[]): THREE.Group {
   const mat = (c: string) => { let m = mats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }); m.name = c; mats.set(c, m); } return m; };
   for (const p of parts) {
     let mesh: THREE.Mesh;
-    if (p.t === 'b') { mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), mat(p.c)); mesh.position.set(p.x + p.w / 2, p.z + p.h / 2, p.y + p.d / 2); }
+    if (p.t === 'b') { mesh = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), mat(p.c)); mesh.position.set(p.x + p.w / 2, p.z + p.h / 2, p.y + p.d / 2); if (p.r) mesh.rotation.y = -p.r; }
     else if (p.t === 'c') { mesh = new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r, p.h, Math.max(12, Math.round(p.r * 120))), mat(p.c)); mesh.position.set(p.cx, p.z + p.h / 2, p.cy); }
     else { mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 20, 14), mat(p.c)); mesh.position.set(p.cx, p.z, p.cy); }
     g.add(mesh);

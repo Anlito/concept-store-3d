@@ -26,7 +26,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
   ],
   sol: [
     { q: 'Comment faire une boutique sur deux niveaux ?', a: 'Bouton **+ Étage**, en haut à droite de la vue. L’étage part de la même surface : glisse ses coins pour le rétrécir (il peut être plus petit que le rez-de-chaussée, pas plus grand). Les boutons **Étage** et **RDC** passent d’un niveau à l’autre.' },
-    { q: 'Comment monter à l’étage ?', a: 'Au rez-de-chaussée : **Mobilier** › **Escaliers** (droit ou quart tournant). L’escalier ouvre le plancher de l’étage au-dessus de lui (la « trémie »).' },
+    { q: 'Comment monter à l’étage ?', a: 'Au rez-de-chaussée : **Mobilier** › **Escaliers** : droit, avec palier, quart tournant, demi-tournant (en U), hélicoïdal (colimaçon) ou échelle de meunier (la plus petite). L’escalier ouvre le plancher de l’étage au-dessus de lui (la « trémie »).' },
     { q: 'Comment voir les deux niveaux en 3D ?', a: 'En **Vue 3D**, bouton **Voir l’étage** (ou **Voir le RDC**) sous le choix du niveau. Les photos montrent toujours la boutique entière.' },
     { q: 'Comment tracer la surface de la boutique ?', a: 'Outil **Surface**, en **Plan 2D** : un clic par coin, puis clic sur le point de départ, double-clic ou [[Entrée]] pour fermer. Les murs se créent tout seuls.' },
     { q: 'Comment faire un rectangle aux bonnes dimensions ?', a: 'Dans le panneau, choisis **Rectangle**, tape la largeur et la profondeur, puis **Créer ce rectangle**.' },

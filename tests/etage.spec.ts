@@ -104,3 +104,21 @@ test('fichier : le rez-de-chaussée devant, même enregistré depuis l’étage 
   const bytes = readFileSync(await (await pdf).path(), 'latin1');
   expect(bytes.match(/\/Type \/Page[^s]/g)?.length).toBe(2);
 });
+
+test('six sortes d’escaliers : chacun monte à l’étage et ouvre son plancher', async ({ page }) => {
+  const ids = ['v-escalier-droit', 'v-escalier-quart', 'v-escalier-palier', 'v-escalier-demi', 'v-escalier-helice', 'v-escalier-meunier'];
+  for (const id of ids.slice(2)) {
+    await page.locator('[data-tool=mobilier]').click();
+    await page.locator('.lib-cat', { hasText: 'Escaliers' }).click();
+    await page.locator('.fc[data-item=' + id + ']').dblclick();
+    await expect.poll(async () => (await doc(page)).objects.some((o: any) => o.model === id)).toBe(true);
+  }
+  await expect.poll(async () => (await doc(page)).objects.filter((o: any) => ids.includes(o.model)).length).toBe(4);
+  const esc = (await doc(page)).objects.filter((o: any) => ids.includes(o.model));
+  for (const o of esc) expect(o.size.h).toBeCloseTo(3, 1);
+  const helice = esc.find((o: any) => o.model === 'v-escalier-helice');
+  expect(helice.size.w).toBeGreaterThan(1.4); expect(helice.size.w).toBeLessThan(1.7);
+  await page.locator('.lvl-add').click();
+  await page.getByRole('button', { name: 'Plan 2D' }).click();
+  await expect(page.locator('[data-tremie]')).toHaveCount(4);
+});

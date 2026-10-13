@@ -1,9 +1,9 @@
 /* Meubles « volumes simples » propres à l'outil (repris des maquettes, catalogue CAT de CS-IsoScene).
    Ils complètent les packs CC0 pour les besoins d'une boutique : comptoirs, portants, podiums, mannequin…
-   Repère : x et y au sol (m), z vers le haut ; b = boîte, c = cylindre, s = sphère. */
+   Repère : x et y au sol (m), z vers le haut ; b = boîte (r : pivot autour de son centre, en radians), c = cylindre, s = sphère. */
 
 export type Part =
-  | { t: 'b'; x: number; y: number; z: number; w: number; d: number; h: number; c: string }
+  | { t: 'b'; x: number; y: number; z: number; w: number; d: number; h: number; c: string; r?: number }
   | { t: 'c'; cx: number; cy: number; z: number; r: number; h: number; c: string }
   | { t: 's'; cx: number; cy: number; z: number; r: number; c: string };
 
@@ -28,6 +28,37 @@ const escalierQuart = (): Part[] => [
   b(0, 2, 0, 0.9, 0.9, 9 * MONTEE, '#BFA073'), // palier
   ...Array.from({ length: 8 }, (_, j) => b(0.9 + j * 0.25, 2, 0, 0.25, 0.9, (10 + j) * MONTEE, j % 2 ? '#BFA073' : W)),
 ];
+const teinte = (i: number) => (i % 2 ? W : '#BFA073');
+/** Droit, avec un palier à mi-hauteur pour souffler. */
+const escalierPalier = (): Part[] => [
+  ...Array.from({ length: 8 }, (_, i) => b(0, i * 0.22, 0, 0.9, 0.22, (i + 1) * MONTEE, teinte(i))),
+  b(0, 1.76, 0, 0.9, 0.9, 9 * MONTEE, '#BFA073'), // palier
+  ...Array.from({ length: 8 }, (_, j) => b(0, 2.66 + j * 0.22, 0, 0.9, 0.22, (10 + j) * MONTEE, teinte(j + 1))),
+];
+/** Demi-tournant (en U) : on monte, palier, on repart dans l'autre sens. Peu de place au sol. */
+const escalierDemi = (): Part[] => [
+  ...Array.from({ length: 8 }, (_, i) => b(0, i * 0.25, 0, 0.9, 0.25, (i + 1) * MONTEE, teinte(i))),
+  b(0, 2, 0, 1.9, 0.9, 9 * MONTEE, '#BFA073'), // palier sur toute la largeur
+  ...Array.from({ length: 8 }, (_, j) => b(1, 1.75 - j * 0.25, 0, 0.9, 0.25, (10 + j) * MONTEE, teinte(j + 1))),
+  b(0.9, 0, 0, 0.1, 2, 9 * MONTEE, DK), // mur d'échiffre entre les deux volées
+];
+/** Échelle de meunier : très raide et étroite, pour une petite mezzanine ou une réserve. */
+const escalierMeunier = (): Part[] => [
+  ...Array.from({ length: MARCHES }, (_, i) => b(0.04, i * 0.1, (i + 1) * MONTEE - 0.04, 0.52, 0.16, 0.04, W)), // marches en planches
+  ...[0, 0.56].flatMap(x => Array.from({ length: MARCHES }, (_, i) => b(x, i * 0.1, i * MONTEE, 0.04, 0.16, MONTEE + 0.04, DK))), // limons
+];
+/** Hélicoïdal (colimaçon) : marches en éventail autour d'un fût, 1,6 m de diamètre. */
+const escalierHelice = (): Part[] => {
+  const R = 0.8, pas = (20 * Math.PI) / 180, L = 0.74, larg = 0.3;
+  return [
+    cy(R, R, 0, 0.07, MARCHES * MONTEE, DK), // fût central
+    ...Array.from({ length: MARCHES }, (_, i) => {
+      const a = i * pas, m = 0.06 + L / 2; // centre de la marche, à mi-longueur
+      const cx = R + Math.cos(a) * m, cy_ = R + Math.sin(a) * m;
+      return { ...b(cx - L / 2, cy_ - larg / 2, (i + 1) * MONTEE - 0.05, L, larg, 0.05, teinte(i)), r: a };
+    }),
+  ];
+};
 
 export interface VolumeModel { id: string; nom: string; cat: string; parts: Part[]; mural?: boolean; elev?: number; plafond?: boolean }
 
@@ -45,5 +76,9 @@ export const VOLUME_MODELS: VolumeModel[] = [
   { id: 'v-plante-haute', nom: 'Plante haute', cat: 'plantes', parts: [cy(0.25, 0.25, 0, 0.22, 0.42, TC), s(0.12, 0.3, 0.72, 0.22, '#7F9C7B'), s(0.25, 0.25, 0.98, 0.36, GR)] },
   { id: 'v-escalier-droit', nom: 'Escalier droit', cat: 'escaliers', parts: escalierDroit() },
   { id: 'v-escalier-quart', nom: 'Escalier quart tournant', cat: 'escaliers', parts: escalierQuart() },
+  { id: 'v-escalier-palier', nom: 'Escalier droit avec palier', cat: 'escaliers', parts: escalierPalier() },
+  { id: 'v-escalier-demi', nom: 'Escalier demi-tournant (en U)', cat: 'escaliers', parts: escalierDemi() },
+  { id: 'v-escalier-helice', nom: 'Escalier hélicoïdal (colimaçon)', cat: 'escaliers', parts: escalierHelice() },
+  { id: 'v-escalier-meunier', nom: 'Échelle de meunier', cat: 'escaliers', parts: escalierMeunier() },
   { id: 'v-suspension', nom: 'Suspension', cat: 'luminaires', plafond: true, parts: [cy(0.2, 0.2, 0, 0.2, 0.3, DK), cy(0.2, 0.2, 0.3, 0.006, 0.7, DK)] },
 ];
