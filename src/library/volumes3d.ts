@@ -2,12 +2,14 @@ import * as THREE from 'three';
 import type { Volume, VolumeType } from '../model/types';
 import { uid } from '../model/geometry';
 import { meshParts } from './objImport';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 /* Volumes de l'atelier : valeurs par défaut, encombrement, et construction en 3D.
    Repère du meuble : x et y au sol (y = profondeur), z vers le haut ; en 3D : (x, z, y). */
 
 export const VOLUME_LABEL: Record<VolumeType, string> = {
-  boite: 'Boîte', cylindre: 'Cylindre', plan: 'Plan', arche: 'Arche', boule: 'Boule', cone: 'Cône', tube: 'Tube', demirond: 'Demi-rond', prisme: 'Prisme',
+  boite: 'Boîte', arrondie: 'Boîte arrondie', cylindre: 'Cylindre', plan: 'Plan', arche: 'Arche', boule: 'Boule', demiboule: 'Demi-boule',
+  cone: 'Cône', pyramide: 'Pyramide', tube: 'Tube', demirond: 'Demi-rond', prisme: 'Prisme',
   modele: 'Modèle importé',
 };
 /** Formes proposées dans l'atelier (le « modèle importé » vient d'un fichier Tinkercad). */
@@ -21,6 +23,9 @@ export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volum
     case 'plan': return { ...base, w: 1, d: 0.5, h: 0.03, t: 0.03 };
     case 'arche': return { ...base, w: 1, d: 0.3, h: 1.4, t: 0.12 };
     case 'boule': return { ...base, w: 0.4, d: 0.4, h: 0.4 };
+    case 'demiboule': return { ...base, w: 0.5, d: 0.5, h: 0.25 };
+    case 'arrondie': return { ...base, w: 0.8, d: 0.5, h: 0.4, t: 0.06 };
+    case 'pyramide': return { ...base, w: 0.5, d: 0.5, h: 0.6 };
     case 'cone': return { ...base, w: 0.4, d: 0, h: 0.6 };
     case 'tube': return { ...base, w: 0.4, d: 0.4, h: 0.6, t: 0.03 };
     case 'demirond': return { ...base, w: 0.8, d: 0.4, h: 1 };
@@ -32,9 +37,10 @@ export function newVolume(type: VolumeType, n: number, color = '#C9A97E'): Volum
 /** Encombrement du volume avant rotation : largeur (x), profondeur (y), hauteur (z). */
 export function volumeBox(v: Volume): { bw: number; bd: number; bh: number } {
   switch (v.type) {
-    case 'boite': case 'arche': case 'prisme': case 'modele': return { bw: v.w, bd: v.d, bh: v.h };
+    case 'boite': case 'arrondie': case 'pyramide': case 'arche': case 'prisme': case 'modele': return { bw: v.w, bd: v.d, bh: v.h };
     case 'cylindre': case 'tube': return v.turned ? { bw: v.h, bd: v.w, bh: v.w } : { bw: v.w, bd: v.w, bh: v.h };
     case 'boule': return { bw: v.w, bd: v.w, bh: v.w };
+    case 'demiboule': return { bw: v.w, bd: v.w, bh: v.w / 2 };
     case 'cone': { const m = Math.max(v.w, v.d); return { bw: m, bd: m, bh: v.h }; }
     case 'demirond': return v.turned ? { bw: v.h, bd: v.w, bh: v.w / 2 } : { bw: v.w, bd: v.w / 2, bh: v.h };
     case 'plan': return v.turned ? { bw: v.w, bd: v.t, bh: v.d } : { bw: v.w, bd: v.d, bh: v.t };
@@ -84,6 +90,9 @@ export function volumeMesh(v: Volume): THREE.Object3D {
     case 'plan': g = new THREE.BoxGeometry(bw, bh, bd); break;
     case 'arche': g = archGeometry(v.w, v.h, v.d, Math.min(v.t, v.w / 2 - 0.005)); break;
     case 'boule': g = new THREE.SphereGeometry(v.w / 2, 32, 20); break;
+    case 'demiboule': g = domeGeometry(v.w / 2); if (v.turned) g.rotateX(Math.PI); break;
+    case 'arrondie': g = new RoundedBoxGeometry(v.w, v.h, v.d, 4, Math.max(0.001, Math.min(v.t, v.w / 2, v.d / 2, v.h / 2) - 0.0005)); break;
+    case 'pyramide': g = pyramidGeometry(v.w, v.d, v.h); break;
     case 'cone': g = new THREE.CylinderGeometry(Math.max(v.d, 0) / 2, v.w / 2, v.h, seg(Math.max(v.w, v.d))); break;
     case 'tube': g = tubeGeometry(v.w / 2, Math.min(v.t, v.w / 2 - 0.003), v.h); if (v.turned) g.rotateZ(Math.PI / 2); break;
     case 'demirond': g = halfRoundGeometry(v.w / 2, v.h, v.turned); break;
@@ -120,6 +129,19 @@ function centerGeometry(g: THREE.BufferGeometry) {
   g.computeBoundingBox();
   const c = g.boundingBox!.getCenter(new THREE.Vector3());
   g.translate(-c.x, -c.y, -c.z);
+}
+/** Demi-boule pleine, côté plat en bas (profil tourné ; le bord reste net). */
+function domeGeometry(r: number) {
+  const n = 16, pts = [new THREE.Vector2(0, 0), new THREE.Vector2(r, 0), new THREE.Vector2(r, 0)];
+  for (let i = 1; i <= n; i++) { const a = (i / n) * (Math.PI / 2); pts.push(new THREE.Vector2(r * Math.cos(a), r * Math.sin(a))); }
+  return new THREE.LatheGeometry(pts, seg(2 * r));
+}
+/** Pyramide à base rectangulaire (faces planes). */
+function pyramidGeometry(w: number, d: number, h: number) {
+  const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1).toNonIndexed();
+  g.rotateY(Math.PI / 4); g.scale(w, h, d);
+  g.computeVertexNormals();
+  return g;
 }
 /** Cylindre creux, debout. */
 function tubeGeometry(r: number, t: number, h: number) {

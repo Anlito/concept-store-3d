@@ -46,7 +46,7 @@ test('créer un meuble par assemblage, l’ajouter à Mes créations et le place
   await buildTable(page);
   // Annuler / rétablir dans l'atelier
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Ajouter : Boîte' }).click();
+  await page.getByRole('button', { name: 'Ajouter : Boîte', exact: true }).click();
   await expect(page.getByTestId('volumes')).toContainText('Boîte 1');
   await page.keyboard.press('Control+z');
   await expect(page.getByTestId('volumes')).not.toContainText('Boîte 1');
@@ -145,7 +145,7 @@ test('placer un volume par rapport à un autre, et les nouvelles formes', async 
   await page.getByTestId('library').getByRole('button', { name: 'Créer un meuble' }).click();
   const panel = page.getByTestId('atelier-panel');
   // Un socle de 80 × 80 × 10 cm, puis une colonne (tube) de Ø40 × 70 cm
-  await page.getByRole('button', { name: 'Ajouter : Boîte' }).click();
+  await page.getByRole('button', { name: 'Ajouter : Boîte', exact: true }).click();
   await setField(page, 'Longueur', 80); await setField(page, 'Profondeur', 80); await setField(page, 'Hauteur', 10);
   await page.getByRole('button', { name: 'Ajouter : Tube' }).click();
   await setField(page, 'Diamètre', 40); await setField(page, 'Hauteur', 70);
@@ -164,18 +164,18 @@ test('placer un volume par rapport à un autre, et les nouvelles formes', async 
   await expect(panel.getByLabel('Z (hauteur)', { exact: true })).toHaveValue('0');
   await expect(page.locator('.at-total')).toHaveText('Total : 120 × 80 × 70 cm');
   // Les nouvelles formes
-  for (const s of ['Boule', 'Cône', 'Demi-rond', 'Prisme']) await page.getByRole('button', { name: 'Ajouter : ' + s }).click();
+  for (const s of ['Boule', 'Cône', 'Demi-rond', 'Demi-boule', 'Boîte arrondie', 'Pyramide', 'Prisme']) await page.getByRole('button', { name: 'Ajouter : ' + s, exact: true }).click();
   await setField(page, 'Hauteur', 50); // prisme sélectionné
   await panel.getByRole('button', { name: 'En coin (triangle droit)' }).click();
   const types = await page.evaluate(() => {
     const vols = Array.from(document.querySelectorAll('.at-row .at-name')).map(e => e.textContent);
     return vols;
   });
-  expect(types).toEqual(['Boîte 1', 'Tube 1', 'Boule 1', 'Cône 1', 'Demi-rond 1', 'Prisme 1']);
+  expect(types).toEqual(['Boîte 1', 'Tube 1', 'Boule 1', 'Cône 1', 'Demi-rond 1', 'Demi-boule 1', 'Boîte arrondie 1', 'Pyramide 1', 'Prisme 1']);
   await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
   const d = await doc(page);
-  expect(d.creations[0].volumes.map((v: any) => v.type)).toEqual(['boite', 'tube', 'boule', 'cone', 'demirond', 'prisme']);
-  expect(d.creations[0].volumes[5].turned).toBe(true);
+  expect(d.creations[0].volumes.map((v: any) => v.type)).toEqual(['boite', 'tube', 'boule', 'cone', 'demirond', 'demiboule', 'arrondie', 'pyramide', 'prisme']);
+  expect(d.creations[0].volumes[8].turned).toBe(true);
 });
 
 test('tourner et pencher un volume à n’importe quel angle ; angle exact d’un meuble', async ({ page }) => {

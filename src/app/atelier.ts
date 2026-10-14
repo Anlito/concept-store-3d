@@ -27,6 +27,9 @@ const PICTO: Record<VolumeType, string> = {
   plan: '<path d="M5 26 24 17l19 9-19 9z M5 26v3l19 9 19-9v-3"/>',
   arche: '<path d="M10 42V22a14 14 0 0 1 28 0v20h-7V22a7 7 0 0 0-14 0v20z"/>',
   boule: '<circle cx="24" cy="24" r="15"/><path d="M9 24c0 4 7 7 15 7s15-3 15-7"/>',
+  demiboule: '<path d="M8 31a16 16 0 0 1 32 0"/><ellipse cx="24" cy="31" rx="16" ry="5"/>',
+  arrondie: '<rect x="7" y="12" width="34" height="26" rx="8"/><path d="M13 19h22"/>',
+  pyramide: '<path d="M24 7 7 33l17 8 17-8z"/><path d="M24 7v34"/>',
   cone: '<path d="M24 7 11 36c0 3 6 5 13 5s13-2 13-5z"/><path d="M11 36c0-3 6-5 13-5s13 2 13 5"/>',
   tube: '<ellipse cx="24" cy="12" rx="12" ry="5"/><ellipse cx="24" cy="12" rx="6" ry="2.5"/><path d="M12 12v22c0 3 5 5 12 5s12-2 12-5V12"/>',
   demirond: '<path d="M8 14h32c0 7-7 11-16 11S8 21 8 14z"/><path d="M8 14v20c0 7 7 9 16 9s16-2 16-9V14"/>',
@@ -102,6 +105,9 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         plan: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Largeur', 'd'), nf('Épaisseur', 't', 1, 50)),
         arche: () => h('div', { class: 'g2' }, nf('Largeur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h'), nf('Épaisseur', 't', 1, 100)),
         boule: () => h('div', { class: 'g2' }, nf('Diamètre', 'w')),
+        demiboule: () => h('div', { class: 'g2' }, nf('Diamètre', 'w')),
+        arrondie: () => h('div', { class: 'g2' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h'), nf('Arrondi', 't', 1, 100)),
+        pyramide: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')),
         cone: () => h('div', { class: 'g3' }, nf('Diamètre bas', 'w'), nf('Diamètre haut', 'd', 0), nf('Hauteur', 'h')),
         tube: () => h('div', { class: 'g3' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h'), nf('Épaisseur', 't', 1, 100)),
         demirond: () => h('div', { class: 'g2' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h')),
@@ -113,7 +119,8 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
       nameIn.addEventListener('change', () => edit(x => { x.name = nameIn.value.trim() || x.name; }));
       const turn = v.type === 'cylindre' || v.type === 'tube' || v.type === 'demirond' ? toggle('Couché', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
         : v.type === 'plan' ? toggle('Debout', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
-        : v.type === 'prisme' ? toggle('En coin (triangle droit)', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
+        : v.type === 'prisme' ? toggle('En coin (triangle droit)', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'demiboule' ? toggle('À l’envers (côté plat en haut)', 'swap_vert', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
       body = [
         h('label', { class: 'tf' }, 'Nom du volume', nameIn),
         section('Dimensions', dims[v.type]()),

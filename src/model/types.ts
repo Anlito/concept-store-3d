@@ -124,7 +124,7 @@ export interface PlacedObject {
 }
 
 /* ---------- Atelier de création (niveau B) ---------- */
-export type VolumeType = 'boite' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'cone' | 'tube' | 'demirond' | 'prisme' | 'modele';
+export type VolumeType = 'boite' | 'arrondie' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'demiboule' | 'cone' | 'pyramide' | 'tube' | 'demirond' | 'prisme' | 'modele';
 
 /** Volume simple d'une création. Longueurs en mètres, repère du meuble : x et y au sol, z vers le haut. */
 export interface Volume {
@@ -134,12 +134,12 @@ export interface Volume {
   /** Coin du volume (avant rotation), depuis le coin du meuble. */
   x: number; y: number; z: number;
   /** Boîte, arche, prisme : longueur, profondeur, hauteur. Cylindre, tube, demi-rond : w = diamètre, h = hauteur.
-      Boule : w = diamètre. Cône : w = diamètre du bas, d = diamètre du haut (0 = pointe), h = hauteur.
+      Boule, demi-boule : w = diamètre. Boîte arrondie : comme la boîte, t = rayon de l'arrondi. Pyramide : base w × d, hauteur h. Cône : w = diamètre du bas, d = diamètre du haut (0 = pointe), h = hauteur.
       Plan : w = longueur, d = largeur (h inutilisé). */
   w: number; d: number; h: number;
   /** Épaisseur du plan, de l'arche ou du tube. */
   t: number;
-  /** Cylindre, tube ou demi-rond couché ; plan debout ; prisme en coin (triangle rectangle). */
+  /** Cylindre, tube ou demi-rond couché ; plan debout ; prisme en coin (triangle rectangle) ; demi-boule à l'envers (côté plat en haut). */
   turned: boolean;
   /** Rotation autour de la verticale, vue de dessus (degrés, sens horaire). */
   rot: number;

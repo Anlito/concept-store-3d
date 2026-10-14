@@ -82,7 +82,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.vp-zoom', title: 'Zoom et recentrer', text: 'Le bouton du milieu remet toute la boutique dans l’écran.' },
     ];
     case 'atelier': return [
-      { at: '.at-left', title: 'Ajouter des volumes', text: 'Boîte, cylindre, arche, cône… Clique sur une forme pour l’ajouter à ton meuble.' },
+      { at: '.at-left', title: 'Ajouter des volumes', text: 'Boîte, cylindre, demi-boule, pyramide, arche, cône… Clique sur une forme pour l’ajouter à ton meuble.' },
       { at: '.at-import', title: 'Importer de Tinkercad', text: 'Ton modèle Tinkercad exporté en **OBJ** (ou le .zip téléchargé) devient un meuble.' },
       { at: '.vp', title: 'Assembler', text: '**Glisse** un volume pour le déplacer ([[Maj]] : au centimètre). Glisse le fond pour tourner la vue.' },
       { at: '[data-testid=atelier-panel]', title: 'Régler le volume choisi', text: 'Dimensions, position, rotation et inclinaison, couleur. **Placer par rapport à…** centre ou aligne deux volumes.' },
