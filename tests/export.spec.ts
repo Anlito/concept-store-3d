@@ -61,7 +61,7 @@ test('le PDF est un A3 paysage, à l’échelle exacte, avec le cartouche', asyn
   await fillCartouche(page);
   await expect(page.getByTestId('sheet')).toContainText('ÉQUIPELes Bâtisseurs');
   const file = info.outputPath('plan.pdf');
-  expect(await download(page, file)).toBe('Plan-A3-Lea-Malik.pdf');
+  expect(await download(page, file)).toBe('Plan-A3-Lea_Malik.pdf');
   const pdf = readPdf(file);
   expect(pdf.header).toBe('%PDF-');
   expect(pdf.w).toBeCloseTo(420, 1);
@@ -155,7 +155,7 @@ test('cartouche obligatoire, puis l’explorateur s’ouvre dans le dossier de l
   await expect(save).toBeDisabled();
   await expect(page.getByText('Cartouche à compléter')).toBeVisible();
   await expect(page.getByLabel('Classe')).toHaveClass(/missing/);
-  await expect(page.getByText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom-Prénom')).toBeVisible();
+  await expect(page.getByText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom_Prénom')).toBeVisible();
   await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await page.getByLabel('Prénoms').fill('Léa, Malik');
   await expect(save).toBeDisabled(); // la classe manque encore
@@ -163,9 +163,9 @@ test('cartouche obligatoire, puis l’explorateur s’ouvre dans le dossier de l
   await expect(save).toBeEnabled();
   await expect(page.getByText('Cartouche à compléter')).toBeHidden();
   await save.click();
-  await expect(page.locator('.toast')).toContainText('Plan enregistré : « Plan-A3-Lea-Malik.pdf »');
+  await expect(page.locator('.toast')).toContainText('Plan enregistré : « Plan-A3-Lea_Malik.pdf »');
   const saved = await page.evaluate(() => (window as any).__saved);
-  expect(saved.opts).toMatchObject({ id: 'cs3d-equipe', suggestedName: 'Plan-A3-Lea-Malik.pdf' });
+  expect(saved.opts).toMatchObject({ id: 'cs3d-equipe', suggestedName: 'Plan-A3-Lea_Malik.pdf' });
   expect(saved.opts.types[0].accept).toEqual({ 'application/pdf': ['.pdf'] });
   expect(saved.head).toBe('%PDF-');
   // L'étape « Plan A3 » est cochée, le cartouche gardé dans le projet.

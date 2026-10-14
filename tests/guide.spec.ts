@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { distUrl } from './util';
+import { distUrl, nouveauProjet } from './util';
 
 /* Aide : visite guidée proposée à la première ouverture d'une partie, panneau de questions fréquentes, icône d'onglet. */
 
@@ -17,7 +17,7 @@ test('la visite est proposée une fois par partie, peut être refusée ou suivie
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   // Nouveau projet : les étapes du projet d'abord ; la visite attend qu'elles soient fermées.
   const steps = page.getByRole('dialog', { name: 'Étapes du projet' });
   await expect(steps).toBeVisible();
@@ -147,7 +147,7 @@ test('chaque étape de chaque visite éclaire une zone visible', async ({ page }
 test('étapes du projet : ouvertes au nouveau projet, cochées et gardées dans le fichier', async ({ page }) => {
   await page.goto(distUrl('index.html'));
   await page.evaluate(() => localStorage.setItem('cs3d-visites-off', '1'));
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   const steps = page.getByRole('dialog', { name: 'Étapes du projet' });
   await expect(steps).toBeVisible();
   await expect(steps).toContainText('Maquette 3D = maquette en carton');

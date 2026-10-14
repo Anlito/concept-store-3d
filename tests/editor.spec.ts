@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { distUrl } from './util';
+import { distUrl, nouveauProjet } from './util';
 
 /* Étape 2 : tracé du sol, murs, ouvertures, annuler / rétablir, vues 2D et 3D — en file://. */
 
@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(distUrl('index.html'));
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   await expect(page.getByTestId('panel')).toContainText('Tracer la surface');
 });
 test.afterEach(() => expect(errors).toEqual([]));

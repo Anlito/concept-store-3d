@@ -4,7 +4,7 @@ import { alert, segmented, toast, toggle } from '../ui/components';
 import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
 import { helpButton, offerTour } from './guide/guide';
-import { TEAM_FOLDER, saveBlob } from './files';
+import { TEAM_FOLDER, dossierEquipe, saveBlob } from './files';
 import { markStep } from './guide/steps';
 import { niveaux, tremies } from '../model/levels';
 
@@ -116,9 +116,8 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const fs = feuilles();
     if (!fs.every(x => x.lay.fits) || !team.name.trim() || !team.members.trim() || !team.klass.trim()) return;
     store.update(d => { d.team = { name: team.name.trim(), members: team.members.trim(), klass: team.klass.trim() }; });
-    // Nom proposé : « Plan-A3-Prenom-Prenom.pdf », comme le dossier de l'équipe.
-    const who = team.members.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-zA-Z0-9]+/).filter(Boolean)
-      .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('-');
+    // Nom proposé : « Plan-A3-Prenom_Prenom.pdf », comme le dossier de l'équipe.
+    const who = dossierEquipe(team.members);
     const blob = sheetPdf(fs.map(x => x.lay), `${doc.name} · plan des murs`).output('blob');
     try {
       const name = await saveBlob(`Plan-A3-${who || 'equipe'}.pdf`, blob, { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } });

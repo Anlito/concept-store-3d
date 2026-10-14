@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { distUrl } from './util';
+import { distUrl, nouveauProjet } from './util';
 
 /* Étape 5 : enregistrer, ouvrir, projet modèle protégé, copie de secours — en file://. */
 
@@ -80,7 +80,7 @@ test('le projet modèle du professeur n’est jamais écrasé', async ({ page })
   await fakeDisk(page);
   await page.goto(distUrl('index.html'));
   // Le professeur prépare un modèle (sol de 8 × 6 m) et l'enregistre comme modèle
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
   const fields = page.getByTestId('panel').locator('input');
   await fields.nth(0).fill('8'); await fields.nth(0).press('Enter');
@@ -119,7 +119,7 @@ test('le projet modèle du professeur n’est jamais écrasé', async ({ page })
   await page.locator('[data-tool="sol"]').click();
   const hgt = page.getByTestId('panel').getByLabel('Hauteur');
   await hgt.fill('250'); await hgt.press('Enter');
-  await expect(status(page)).toHaveText('Non enregistré');
+  await expect(status(page)).toHaveText('Enregistrement auto');
   await page.keyboard.press('Control+s');
   await expect(status(page)).toHaveText('Enregistré');
   const fs2 = await fsState();
@@ -129,7 +129,7 @@ test('le projet modèle du professeur n’est jamais écrasé', async ({ page })
 
 test('copie de secours : un travail non enregistré se retrouve dans « Projets récents »', async ({ page }) => {
   await page.goto(distUrl('index.html'));
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
   await page.getByRole('button', { name: 'Créer ce rectangle' }).click();
   await page.locator('.tb-name').fill('Le Comptoir Vert'); await page.locator('.tb-name').press('Enter');
@@ -165,4 +165,47 @@ test('revenir à l’accueil sans enregistrer demande confirmation', async ({ pa
   await page.locator('.tb-logo').click();
   await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click();
   await expect(page.getByTestId('new-project')).toBeVisible();
+});
+
+test('nouveau projet : l’équipe, son dossier, puis enregistrement automatique', async ({ page }) => {
+  await fakeDisk(page);
+  await page.goto(distUrl('index.html'));
+  await page.getByTestId('new-project').click();
+  const dlg = page.getByRole('dialog', { name: 'Nouveau projet' });
+  await dlg.getByLabel('Prénoms de l’équipe').fill('Léa, Malik');
+  await expect(dlg).toContainText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik');
+  await dlg.getByLabel('Classe').fill('4e B');
+  await dlg.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
+  await dlg.getByLabel('Nom de la boutique').fill('Le Comptoir Vert');
+  await dlg.getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
+  // Le dossier est demandé tout de suite ; le projet y est enregistré
+  await expect(status(page)).toHaveText('Enregistré');
+  const fsState = () => page.evaluate(() => (window as any).__fs);
+  expect((await fsState()).saveCalls).toEqual(['le-comptoir-vert-les-batisseurs.json']);
+  let d = await doc(page);
+  expect(d.team).toEqual({ name: 'Les Bâtisseurs', members: 'Léa, Malik', klass: '4e B' });
+  expect(d.name).toBe('Le Comptoir Vert');
+  // Une modification : enregistrée toute seule quelques secondes plus tard, sans fenêtre
+  await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
+  await page.getByRole('button', { name: 'Créer ce rectangle' }).click();
+  await expect(status(page)).toHaveText('Enregistrement auto');
+  await expect(status(page)).toHaveText('Enregistré', { timeout: 15_000 });
+  const fs = await fsState();
+  expect(fs.saveCalls).toHaveLength(1);
+  expect(JSON.parse(fs.files['le-comptoir-vert-les-batisseurs.json']).floor.points).toHaveLength(4);
+  // Le cartouche du plan A3 est déjà rempli
+  await page.getByRole('button', { name: 'Plan A3' }).click();
+  await expect(page.getByLabel('Prénoms')).toHaveValue('Léa, Malik');
+  await expect(page.getByLabel('Classe')).toHaveValue('4e B');
+});
+
+test('nouveau projet : les champs sont facultatifs, et le dossier peut être choisi plus tard', async ({ page }) => {
+  await fakeDisk(page);
+  await page.goto(distUrl('index.html'));
+  await page.evaluate(() => { (window as any).showSaveFilePicker = async () => { throw new DOMException('Annulé', 'AbortError'); }; });
+  await page.getByTestId('new-project').click();
+  await page.getByRole('dialog', { name: 'Nouveau projet' }).getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
+  await expect(page.getByText('Pas de dossier choisi')).toBeVisible();
+  await expect(status(page)).toHaveText('Pas encore enregistré');
+  expect((await doc(page)).team).toEqual({ name: '', members: '', klass: '' });
 });

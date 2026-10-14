@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { distUrl } from './util';
+import { distUrl, nouveauProjet } from './util';
 
 /* Critère de validation : « un élève trace une boutique, place des objets et exporte son PDF A3
    en moins d'une séance, sans aide extérieure ». Parcours complet, au clavier et à la souris. */
@@ -15,7 +15,7 @@ test('parcours complet d’une équipe, de l’accueil au PDF A3 et à la photo'
   const t0 = Date.now();
   await page.goto(distUrl('index.html'));
   // 1. Nouveau projet, sol de 9 × 6 m tracé point par point (pas de 1 m)
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   await page.locator('.tb-name').fill('Le Comptoir Vert'); await page.locator('.tb-name').press('Enter');
   for (const p of [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 6 }, { x: 0, y: 6 }]) await clickPlan(page, p);
   await clickPlan(page, { x: 0, y: 0 });

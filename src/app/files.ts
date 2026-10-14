@@ -19,8 +19,10 @@ export interface FileState {
   savedAt: number;
   /** Projet ouvert depuis un modèle : « Enregistrer » devient « Enregistrer sous ». */
   fromTemplate: boolean;
+  /** Le fichier peut être réécrit sans rien demander : enregistrement automatique. */
+  auto: boolean;
 }
-export const emptyFileState = (): FileState => ({ handle: null, fileName: null, savedAt: 0, fromTemplate: false });
+export const emptyFileState = (): FileState => ({ handle: null, fileName: null, savedAt: 0, fromTemplate: false, auto: false });
 
 // Types propres (pas « Window type PickerWindow = Window & { … ») : un autre outil compilé avec celui-ci peut déclarer ces fonctions autrement.
 type PickerWindow = {
@@ -30,7 +32,11 @@ type PickerWindow = {
 const W = window as unknown as PickerWindow;
 const TYPES = [{ description: 'Projet Concept Store 3D', accept: { 'application/json': ['.json'] } }];
 /** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché avant d'enregistrer). */
-export const TEAM_FOLDER = '4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom-Prénom';
+export const CONCEPT_FOLDER = '4X › COMMUN › TECHNOLOGIE › CONCEPT STORE';
+export const TEAM_FOLDER = CONCEPT_FOLDER + ' › Prénom_Prénom';
+/** Nom du dossier d'une équipe : « Léa, Malik » → « Lea_Malik ». */
+export const dossierEquipe = (members: string) => members.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-zA-Z0-9]+/).filter(Boolean)
+  .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('_');
 /** Même identifiant pour tous les sélecteurs : Chrome rouvre le dernier dossier choisi (celui de l'équipe). */
 export const PICKER_ID = 'cs3d-equipe';
 type SaveWindow = { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
@@ -97,12 +103,13 @@ function downloadText(name: string, text: string) {
  * Enregistre le projet. `save` réécrit le fichier déjà choisi (sauf modèle) ; `saveAs` propose un nouveau
  * nom ; `template` (professeur) enregistre un projet modèle. Renvoie vrai si l'enregistrement a eu lieu.
  */
-export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'): Promise<boolean> {
+export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template' | 'auto'): Promise<boolean> {
   const { store, ui, file } = ctx;
   const doc = store.doc;
+  if (mode === 'auto') return autoSave(ctx);
   if (mode === 'save' && (!file.handle || file.fromTemplate)) mode = 'saveAs';
   const template = mode === 'template';
-  const text = serialize(doc, template);
+  const text = serialize(doc, template), count = store.dirty;
   const prevStatus = ui.s.saveStatus;
   try {
     let handle = mode === 'save' ? file.handle : null;
@@ -112,7 +119,7 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
       if (!hasPickers()) {
         downloadText(name, text);
         fileName = name;
-        if (!template) finish(ctx, null, fileName);
+        if (!template) finish(ctx, null, fileName, count);
         toast(`Projet téléchargé : « ${name} ». Range-le dans le dossier de ton équipe.`);
         return true;
       }
@@ -126,8 +133,9 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
     ui.set({ saveStatus: 'saving' });
     await writeHandle(handle, text);
     if (template) { ui.set({ saveStatus: prevStatus }); toast(`Modèle enregistré : « ${handle.name} ». Les élèves l’ouvrent avec « Projet modèle ».`); return true; }
-    finish(ctx, handle, fileName);
-    toast(`Enregistré dans « ${fileName} »`);
+    const wasAuto = file.auto;
+    finish(ctx, handle, fileName, count);
+    toast(ctx.file.auto && !wasAuto ? `Enregistré dans « ${fileName} ». Ensuite, ton projet s’enregistre tout seul.` : `Enregistré dans « ${fileName} »`);
     return true;
   } catch (e) {
     ui.set({ saveStatus: prevStatus });
@@ -137,12 +145,36 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
   }
 }
 
-function finish(ctx: Ctx, handle: FileSystemFileHandle | null, fileName: string | null) {
-  Object.assign(ctx.file, { handle, fileName, savedAt: Date.now(), fromTemplate: false });
-  ctx.store.markSaved();
-  ctx.ui.set({ saveStatus: 'saved' });
+/** Enregistrement automatique : réécrit le fichier de l'équipe, sans fenêtre ni message (sauf en cas d'échec). */
+async function autoSave(ctx: Ctx): Promise<boolean> {
+  const { store, ui, file } = ctx;
+  if (!file.handle || !file.auto || file.fromTemplate || !store.dirty) return false;
+  if (!(await canWrite(file.handle))) { file.auto = false; ui.set({}); return false; }
+  const handle = file.handle, count = store.dirty, prevStatus = ui.s.saveStatus;
+  try {
+    ui.set({ saveStatus: 'saving' });
+    await writeHandle(handle, serialize(store.doc, false));
+    finish(ctx, handle, file.fileName, count);
+    return true;
+  } catch {
+    ui.set({ saveStatus: prevStatus });
+    file.auto = false;
+    toast('L’enregistrement automatique n’a pas pu écrire le fichier : enregistre avec Ctrl+S.', undefined, 'warning');
+    return false;
+  }
+}
+/** Vrai si le fichier peut être réécrit sans demander l'autorisation. */
+export async function canWrite(h: FileSystemFileHandle) {
+  const p = h as FileSystemFileHandle & { queryPermission?(o: object): Promise<string> };
+  try { return ((await p.queryPermission?.({ mode: 'readwrite' })) ?? 'granted') === 'granted'; } catch { return false; }
+}
+
+function finish(ctx: Ctx, handle: FileSystemFileHandle | null, fileName: string | null, count: number) {
+  Object.assign(ctx.file, { handle, fileName, savedAt: Date.now(), fromTemplate: false, auto: !!handle });
+  ctx.store.markSaved(count);
+  ctx.ui.set({ saveStatus: ctx.store.dirty ? 'unsaved' : 'saved' });
   const d = ctx.store.doc;
-  void putBackup({ id: d.id, name: d.name, team: d.team.name, updated: Date.now(), saved: ctx.file.savedAt, dirty: false, doc: structuredClone(d), handle: handle ?? undefined, fileName: fileName ?? undefined });
+  void putBackup({ id: d.id, name: d.name, team: d.team.name, updated: Date.now(), saved: ctx.file.savedAt, dirty: ctx.store.dirty > 0, doc: structuredClone(d), handle: handle ?? undefined, fileName: fileName ?? undefined });
 }
 
 export interface OpenedFile { doc: Project; handle: FileSystemFileHandle | null; fileName: string; template: boolean; savedAt: number }
@@ -163,6 +195,8 @@ export async function pickProjectFile(): Promise<OpenedFile | null> {
   try {
     if (typeof W.showOpenFilePicker === 'function') {
       const [h] = await W.showOpenFilePicker({ id: PICKER_ID, types: TYPES, multiple: false });
+      // Autorisation d'écrire demandée tout de suite : le projet pourra s'enregistrer automatiquement.
+      try { await (h as FileSystemFileHandle & { requestPermission?(o: object): Promise<string> }).requestPermission?.({ mode: 'readwrite' }); } catch { /* demandé au premier Ctrl+S */ }
       return await readProjectFile(await h.getFile(), h);
     }
     const f = await new Promise<File | null>(resolve => {

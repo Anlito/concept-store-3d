@@ -65,5 +65,6 @@ export class Store<T = Project> {
   load(doc: T, dirty = 0) {
     this.doc = doc; this.past = []; this.future = []; this.gesture = null; this.dirty = dirty; this.emit('load');
   }
-  markSaved() { this.dirty = 0; }
+  /** Enregistré : `count` = modifications comptées au moment où le fichier a été écrit (les suivantes restent à enregistrer). */
+  markSaved(count = this.dirty) { this.dirty = Math.max(0, this.dirty - count); }
 }

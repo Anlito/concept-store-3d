@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { distUrl } from './util';
+import { distUrl, nouveauProjet } from './util';
 
 /* Étape 6 : atelier de création, « Mes créations », réutilisation — en file://. */
 
@@ -105,7 +105,7 @@ test('une création est réutilisable dans un autre projet du même poste, et en
   // Nouveau projet : la création du poste est proposée
   await page.locator('.tb-logo').click();
   await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click();
-  await page.getByTestId('new-project').click();
+  await nouveauProjet(page);
   await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
   await page.getByRole('button', { name: 'Créer ce rectangle' }).click();
   await page.locator('[data-tool="mobilier"]').click();

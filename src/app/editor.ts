@@ -87,9 +87,11 @@ export class Editor {
       if (document.activeElement !== name) name.value = store.doc.name;
       const st = store.dirty && s.saveStatus !== 'saving' ? 'unsaved' : s.saveStatus;
       status.className = 'tb-status ' + (st === 'new' ? 'unsaved' : st);
-      status.title = ctx.file.fileName ? 'Fichier : ' + ctx.file.fileName : '';
+      const auto = ctx.file.auto;
+      status.classList.toggle('auto', auto);
+      status.title = ctx.file.fileName ? 'Fichier : ' + ctx.file.fileName + (auto ? ' · enregistrement automatique' : '') : '';
       status.replaceChildren(...(st === 'saved' ? [icon('check_circle', true), 'Enregistré'] : st === 'saving' ? [icon('progress_activity'), 'Enregistrement…']
-        : st === 'new' ? ['Pas encore enregistré'] : ['Non enregistré']));
+        : st === 'new' ? ['Pas encore enregistré'] : auto ? [icon('schedule'), 'Enregistrement auto'] : ['Non enregistré']));
       this.vp.classList.toggle('v2d', s.view === '2d');
       this.vp.classList.toggle('lib-open', s.libraryOpen);
       drawer.style.display = s.libraryOpen ? '' : 'none';

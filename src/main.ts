@@ -11,7 +11,8 @@ import { Editor } from './app/editor';
 import { homeScreen } from './app/home';
 import { exportScreen } from './app/exportScreen';
 import { choose, toast } from './ui/components';
-import { emptyFileState, pickProjectFile, reopenHandle, saveProject, type OpenedFile } from './app/files';
+import { canWrite, emptyFileState, hasPickers, pickProjectFile, reopenHandle, saveProject, type OpenedFile } from './app/files';
+import { newProjectDialog } from './app/newProject';
 import { deleteBackup, putBackup, type Backup } from './storage/backup';
 import { atelierScreen } from './app/atelier';
 import { findCreation, refreshCreations } from './app/creations';
@@ -49,7 +50,7 @@ function showHome() {
   inEditor = false;
   leaveScreen();
   app.replaceChildren(homeScreen({
-    newProject: () => { start(newProject(), { view: '2d' }); showStepsAtStart(ctx); },
+    newProject: () => void createProject(),
     openProject: async () => { const f = await pickProjectFile(); if (f) openFile(f); },
     template: () => void chooseTemplate(),
     openRecent: b => void openRecent(b),
@@ -74,9 +75,29 @@ function start(p: Project, o: StartOpts) {
   else requestAnimationFrame(() => editor!.plan.fit());
 }
 
+/** Nouveau projet : l'équipe se présente, choisit son dossier, et le projet y est enregistré (puis automatiquement). */
+async function createProject() {
+  const info = await newProjectDialog();
+  if (!info) return;
+  const p = newProject(info.name || undefined);
+  p.team = info.team;
+  start(p, { view: '2d' });
+  if (hasPickers() && !(await saveProject(ctx, 'saveAs')))
+    toast('Pas de dossier choisi : enregistre ton projet avec Ctrl+S, dans le dossier de ton équipe.', undefined, 'warning');
+  showStepsAtStart(ctx);
+}
+
 function openFile(f: OpenedFile) {
   start(f.doc, { view: f.doc.floor ? '3d' : '2d', file: f.template ? { fromTemplate: true } : { handle: f.handle, fileName: f.fileName, savedAt: f.savedAt || Date.now() } });
   if (f.template) toast('Projet modèle ouvert : à la première sauvegarde, choisis un nouveau nom dans le dossier de ton équipe.');
+  else void checkAutoSave();
+}
+/** Fichier rouvert : l'enregistrement automatique marche si le navigateur permet déjà d'y écrire (sinon, après un premier Ctrl+S). */
+async function checkAutoSave() {
+  const h = ctx.file.handle;
+  ctx.file.auto = !!h && !ctx.file.fromTemplate && (await canWrite(h));
+  ui.set({});
+  if (store.dirty) scheduleAutoSave();
 }
 
 async function chooseTemplate() {
@@ -102,6 +123,7 @@ async function openRecent(b: Backup) {
     view: b.doc.floor ? '3d' : '2d', dirty: b.dirty ? 1 : 0,
     file: { handle: f?.handle ?? b.handle ?? null, fileName: b.fileName ?? null, savedAt: b.saved },
   });
+  void checkAutoSave();
   if (b.dirty) toast(b.saved ? 'Copie de secours reprise : elle contient des modifications plus récentes que le fichier. Pense à enregistrer.' : 'Copie de secours reprise. Pense à enregistrer ton projet.');
 }
 
@@ -132,18 +154,36 @@ async function backupNow() {
     doc: structuredClone(d), handle: ctx.file.handle ?? undefined, fileName: ctx.file.fileName ?? undefined,
   });
 }
-store.subscribe(r => { if (r !== 'load') { clearTimeout(backupTimer); backupTimer = window.setTimeout(() => void backupNow(), 1500); } });
+store.subscribe(r => { if (r !== 'load') { clearTimeout(backupTimer); backupTimer = window.setTimeout(() => void backupNow(), 1500); scheduleAutoSave(); } });
+
+/* ---------- Enregistrement automatique dans le fichier de l'équipe ----------
+   10 s après la dernière modification (au plus 1 min après la première), et quand on quitte la fenêtre. */
+const AUTO_DELAY = 10_000, AUTO_MAX = 60_000;
+let autoTimer = 0, autoFirst = 0;
+function scheduleAutoSave() {
+  if (!inEditor || !ctx.file.auto) return;
+  const now = Date.now();
+  if (!autoFirst) autoFirst = now;
+  clearTimeout(autoTimer);
+  autoTimer = window.setTimeout(() => void autoSaveNow(), Math.max(0, Math.min(AUTO_DELAY, autoFirst + AUTO_MAX - now)));
+}
+async function autoSaveNow() {
+  clearTimeout(autoTimer); autoFirst = 0;
+  if (!inEditor || !store.dirty || ui.s.saveStatus === 'saving') return;
+  await saveProject(ctx, 'auto');
+  if (store.dirty) scheduleAutoSave(); // modifié pendant l'écriture
+}
 // « Mes créations » suit le projet (ajout, modification, annuler…)
 let creationsKey = '';
 store.subscribe(() => { const k = store.doc.creations.map(c => c.id + ':' + c.updated).join(); if (k !== creationsKey) { creationsKey = k; void refreshCreations(ctx); } });
-document.addEventListener('visibilitychange', () => { if (document.hidden) void backupNow(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { void backupNow(); void autoSaveNow(); } });
 window.addEventListener('beforeunload', e => {
   if (inEditor && store.dirty > 0) { void backupNow(); e.preventDefault(); e.returnValue = ''; }
 });
 
 // Accès pour les tests automatisés et le débogage.
 (window as unknown as { cs3d: unknown }).cs3d = {
-  store, ui, ctx, get editor() { return editor; }, backupNow, startTour, rooms: () => rooms(store.doc).map(r => ({ area: Math.round(r.area * 100) / 100, holes: r.holes.length })), openStepsPanel: () => openStepsPanel(ctx),
+  store, ui, ctx, get editor() { return editor; }, backupNow, autoSaveNow, startTour, rooms: () => rooms(store.doc).map(r => ({ area: Math.round(r.area * 100) / 100, holes: r.holes.length })), openStepsPanel: () => openStepsPanel(ctx),
   start: (which: 'new' | 'sample') => start(which === 'new' ? newProject() : sampleProject(), { view: which === 'new' ? '2d' : '3d' }),
 };
 
