@@ -64,8 +64,10 @@ export function setCreations(inProject: Creation[], onComputer: Creation[]) {
   const next = new Map<string, LibItem>();
   for (const c of onComputer) next.set(c.id, creationItem(c, 'poste'));
   for (const c of inProject) next.set(c.id, creationItem(c, 'projet'));
-  for (const [id, it] of next) { const old = creations.get(id); if (!old || JSON.stringify(old.volumes) !== JSON.stringify(it.volumes)) forgetProto(id); }
+  const changed = [...next].filter(([id, it]) => { const old = creations.get(id); return !old || JSON.stringify(old.volumes) !== JSON.stringify(it.volumes); }).map(([id]) => id);
+  // La liste d'abord : les vues reconstruites par forgetProto doivent trouver le meuble (sinon boîte grise).
   creations.clear(); for (const [id, it] of next) creations.set(id, it);
+  changed.forEach(forgetProto);
 }
 
 export const libraryItems = () => [...items, ...profItems.values(), ...[...creations.values()].sort((a, b) => (a.where === b.where ? 0 : a.where === 'projet' ? -1 : 1))];

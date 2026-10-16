@@ -200,3 +200,35 @@ test('tourner et pencher un volume à n’importe quel angle ; angle exact d’u
   const d = await doc(page);
   expect(d.objects[0].rot).toBe(37);
 });
+
+/** Nombre de boîtes grises « modèle introuvable » dans la vue 3D. */
+const fantomes = (page: Page) => page.evaluate(() => {
+  let n = 0;
+  (window as any).cs3d.editor.view3d.scene.getObjectByName('objets').traverse((c: any) => { if (c.isMesh && c.material?.transparent && c.material.opacity === 0.7) n++; });
+  return n;
+});
+
+for (const autrePoste of [false, true]) test('un meuble de l’atelier posé dans la boutique est toujours là à la réouverture' + (autrePoste ? ' (autre poste)' : ''), async ({ page, browser }, info) => {
+  await page.evaluate(() => { delete (window as any).showSaveFilePicker; delete (window as any).showOpenFilePicker; });
+  await openSample(page);
+  await buildTable(page, 'Présentoir');
+  await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
+  await page.locator('.fc', { hasText: 'Présentoir' }).dblclick();
+  await expect.poll(async () => (await doc(page)).objects.filter((o: any) => o.model.startsWith('c-')).length).toBe(1);
+  const dl = page.waitForEvent('download');
+  await page.keyboard.press('Control+s');
+  const file = info.outputPath('p.json'); await (await dl).saveAs(file);
+  // Réouverture plus tard : nouvelle page (même poste) ou autre navigateur (autre poste)
+  const p2 = autrePoste ? await (await browser.newContext()).newPage() : await page.context().newPage();
+  await p2.addInitScript(() => { delete (window as any).showSaveFilePicker; delete (window as any).showOpenFilePicker; });
+  await p2.goto(distUrl('index.html'));
+  const chooser = p2.waitForEvent('filechooser');
+  await p2.getByTestId('open-project').click();
+  await (await chooser).setFiles(file);
+  p2.on('pageerror', e => errors.push(e.message));
+  await expect(p2.locator('.tb-name')).toBeVisible();
+  await p2.waitForTimeout(1500);
+  expect(await fantomes(p2)).toBe(0);
+  const o = (await doc(p2)).objects.find((x: any) => x.model.startsWith('c-'));
+  expect(o).toBeTruthy();
+});
