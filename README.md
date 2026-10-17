@@ -39,6 +39,7 @@ Les projets des élèves sont des fichiers `.json`, rangés dans le dossier de l
 écrit ses prénoms et choisit sa classe dans la liste des réglages du collège (communs à tous les outils, modifiés dans
 l'accueil de Labo Blocs, « Réglages du collège » ; classes de 4e et de 3e, ou toutes s'il n'y en a aucune). Elle choisit ensuite
 le dossier `CONCEPT STORE` de sa classe : **l'outil y crée toujours lui-même le dossier de l'équipe** (`Lea_Malik`).
+Un groupe (`3D1`) range son dossier dans celui de sa classe : `Bureau › Classe › 3D › COMMUN › TECHNOLOGIE › 3D1 › CONCEPT STORE`.
 Choisir directement le dossier de l'équipe est refusé ; un autre dossier → « Créer … dedans » ou en choisir un autre.
 Une sauvegarde déjà présente n'est jamais écrasée. L'outil lit `college.js`, puis la version en ligne si internet
 répond (simple lecture : rien n'est envoyé) ; sans internet, la copie de secours suffit.
