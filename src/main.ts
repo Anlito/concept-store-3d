@@ -17,6 +17,7 @@ import { deleteBackup, putBackup, type Backup } from './storage/backup';
 import { atelierScreen } from './app/atelier';
 import { findCreation, refreshCreations } from './app/creations';
 import { loadProfScript, restoreProfFolder } from './library/profFolder';
+import { chargerCollege } from './app/college';
 
 /* Point d'entrée : accueil puis éditeur. Un seul fichier HTML, aucun accès réseau. */
 
@@ -82,7 +83,7 @@ async function createProject() {
   const p = newProject(info.name || undefined);
   p.team = info.team;
   start(p, { view: '2d' });
-  if (hasPickers() && !(await saveProject(ctx, 'saveAs')))
+  if (hasPickers() && !(await saveProject(ctx, 'save')))
     toast('Pas de dossier choisi : enregistre ton projet avec Ctrl+S, dans le dossier de ton équipe.', undefined, 'warning');
   showStepsAtStart(ctx);
 }
@@ -187,6 +188,7 @@ window.addEventListener('beforeunload', e => {
   start: (which: 'new' | 'sample') => start(which === 'new' ? newProject() : sampleProject(), { view: which === 'new' ? '2d' : '3d' }),
 };
 
+chargerCollege();
 (async () => {
   try { await Promise.all([600, 700, 800].map(w => document.fonts.load(`${w} 16px Nunito`))); } catch { /* police de secours */ }
   showHome();

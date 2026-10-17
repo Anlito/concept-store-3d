@@ -155,7 +155,7 @@ test('cartouche obligatoire, puis l’explorateur s’ouvre dans le dossier de l
   await expect(save).toBeDisabled();
   await expect(page.getByText('Cartouche à compléter')).toBeVisible();
   await expect(page.getByLabel('Classe')).toHaveClass(/missing/);
-  await expect(page.getByText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom_Prénom')).toBeVisible();
+  await expect(page.getByText('Bureau › Classe › 4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom_Prénom')).toBeVisible();
   await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await page.getByLabel('Prénoms').fill('Léa, Malik');
   await expect(save).toBeDisabled(); // la classe manque encore

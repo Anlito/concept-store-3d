@@ -13,13 +13,26 @@ async function fakeDisk(page: Page) {
     const fs: any = { files: {} as Record<string, string>, saveQueue: [] as string[], openQueue: [] as string[], saveCalls: [] as string[] };
     (window as any).__fs = fs;
     const mk = (name: string) => ({
-      kind: 'file', name,
+      kind: 'file', name: name.split('/').pop(),
       async getFile() { return new File([fs.files[name] ?? ''], name, { type: 'application/json' }); },
       async createWritable() { let buf = ''; return { async write(t: string) { buf += t; }, async close() { fs.files[name] = buf; } }; },
       async isSameEntry(o: any) { return o?.name === name; },
       async queryPermission() { return 'granted'; }, async requestPermission() { return 'granted'; },
     });
     (window as any).showSaveFilePicker = async (o: any) => { fs.saveCalls.push(o.suggestedName); return mk(fs.saveQueue.shift() ?? o.suggestedName); };
+    // Dossiers : fs.files est indexé par chemin (« Lea_Malik/projet.json ») ; fs.dirQueue = dossiers choisis.
+    fs.dirQueue = [] as string[]; fs.dirCalls = 0;
+    const dir = (path: string): any => ({
+      kind: 'directory', name: path.split('/').pop(),
+      async getDirectoryHandle(n: string) { return dir(path + '/' + n); },
+      async getFileHandle(n: string, o?: { create?: boolean }) {
+        const key = path.split('/').slice(2).concat(n).join('/');
+        if (!(key in fs.files) && !o?.create) throw new DOMException('Absent', 'NotFoundError');
+        if (!(key in fs.files)) fs.files[key] = '';
+        return mk(key);
+      },
+    });
+    (window as any).showDirectoryPicker = async () => { fs.dirCalls++; return dir('/' + (fs.dirQueue.shift() ?? 'CONCEPT STORE')); };
     (window as any).showOpenFilePicker = async () => [mk(fs.openQueue.shift())];
   });
 }
@@ -167,23 +180,32 @@ test('revenir à l’accueil sans enregistrer demande confirmation', async ({ pa
   await expect(page.getByTestId('new-project')).toBeVisible();
 });
 
-test('nouveau projet : l’équipe, son dossier, puis enregistrement automatique', async ({ page }) => {
+/** Réglages du collège « en ligne » de test (lus après la copie de secours du site). */
+async function collegeEnLigne(page: Page) {
+  await page.route('https://anlito.github.io/labo-blocs/site/college.js*', r => r.fulfill({ contentType: 'text/javascript',
+    body: 'definirCollege({ classes: ["5A", "4A", "4B"], cheminClasse: ["Bureau", "Classe", "{classe}", "COMMUN", "TECHNOLOGIE"] });' }));
+}
+
+test('nouveau projet : l’équipe, le dossier CONCEPT STORE (l’outil crée celui de l’équipe), puis enregistrement automatique', async ({ page }) => {
   await fakeDisk(page);
+  await collegeEnLigne(page);
   await page.goto(distUrl('index.html'));
   await page.getByTestId('new-project').click();
   const dlg = page.getByRole('dialog', { name: 'Nouveau projet' });
   await dlg.getByLabel('Prénoms de l’équipe').fill('Léa, Malik');
-  await expect(dlg).toContainText('4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik');
-  await dlg.getByLabel('Classe').fill('4e B');
+  // Classes de 4e des réglages du collège
+  await expect(dlg.getByLabel('Classe').locator('option')).toHaveText(['Choisis ta classe', '4A', '4B']);
+  await dlg.getByLabel('Classe').selectOption('4B');
+  await expect(dlg).toContainText('Bureau › Classe › 4B › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik');
   await dlg.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await dlg.getByLabel('Nom de la boutique').fill('Le Comptoir Vert');
   await dlg.getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
-  // Le dossier est demandé tout de suite ; le projet y est enregistré
+  // Le dossier est demandé tout de suite ; le projet est enregistré dans le dossier de l'équipe, créé par l'outil
   await expect(status(page)).toHaveText('Enregistré');
   const fsState = () => page.evaluate(() => (window as any).__fs);
-  expect((await fsState()).saveCalls).toEqual(['le-comptoir-vert-les-batisseurs.json']);
+  expect((await fsState()).saveCalls).toEqual([]);
   let d = await doc(page);
-  expect(d.team).toEqual({ name: 'Les Bâtisseurs', members: 'Léa, Malik', klass: '4e B' });
+  expect(d.team).toEqual({ name: 'Les Bâtisseurs', members: 'Léa, Malik', klass: '4B' });
   expect(d.name).toBe('Le Comptoir Vert');
   // Une modification : enregistrée toute seule quelques secondes plus tard, sans fenêtre
   await page.getByRole('button', { name: 'Rectangle', exact: true }).click();
@@ -191,21 +213,56 @@ test('nouveau projet : l’équipe, son dossier, puis enregistrement automatique
   await expect(status(page)).toHaveText('Enregistrement auto');
   await expect(status(page)).toHaveText('Enregistré', { timeout: 15_000 });
   const fs = await fsState();
-  expect(fs.saveCalls).toHaveLength(1);
-  expect(JSON.parse(fs.files['le-comptoir-vert-les-batisseurs.json']).floor.points).toHaveLength(4);
+  expect(fs.dirCalls).toBe(1);
+  expect(JSON.parse(fs.files['Lea_Malik/le-comptoir-vert-les-batisseurs.json']).floor.points).toHaveLength(4);
   // Le cartouche du plan A3 est déjà rempli
   await page.getByRole('button', { name: 'Plan A3' }).click();
   await expect(page.getByLabel('Prénoms')).toHaveValue('Léa, Malik');
-  await expect(page.getByLabel('Classe')).toHaveValue('4e B');
+  await expect(page.getByLabel('Classe')).toHaveValue('4B');
+  await expect(page.getByText('Bureau › Classe › 4B › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik')).toBeVisible();
 });
 
-test('nouveau projet : les champs sont facultatifs, et le dossier peut être choisi plus tard', async ({ page }) => {
+test('nouveau projet : le dossier de l’équipe choisi lui-même est refusé, un autre dossier demande confirmation', async ({ page }) => {
   await fakeDisk(page);
   await page.goto(distUrl('index.html'));
-  await page.evaluate(() => { (window as any).showSaveFilePicker = async () => { throw new DOMException('Annulé', 'AbortError'); }; });
+  await page.evaluate(() => { (window as any).__fs.dirQueue.push('Lea_Malik', 'TECHNOLOGIE'); });
+  await nouveauProjet(page, { 'Prénoms de l’équipe': 'Léa, Malik', 'Nom de la boutique': 'Le Comptoir Vert' });
+  const refus = page.getByRole('dialog', { name: 'C’est le dossier de ton équipe' });
+  await expect(refus).toContainText('choisis le dossier qui le contient, « CONCEPT STORE »');
+  await refus.getByRole('button', { name: 'Choisir un autre dossier' }).click();
+  const autre = page.getByRole('dialog', { name: 'Ce n’est pas le dossier attendu' });
+  await expect(autre).toContainText('« TECHNOLOGIE »');
+  await autre.getByRole('button', { name: 'Créer « Lea_Malik » dedans' }).click();
+  await expect(status(page)).toHaveText('Enregistré');
+  const fs = await page.evaluate(() => (window as any).__fs);
+  expect(Object.keys(fs.files)).toEqual(['Lea_Malik/le-comptoir-vert.json']);
+});
+
+test('nouveau projet : une sauvegarde déjà présente dans le dossier de l’équipe n’est jamais écrasée', async ({ page }) => {
+  await fakeDisk(page);
+  await page.goto(distUrl('index.html'));
+  await page.evaluate(() => { (window as any).__fs.files['Lea_Malik/le-comptoir-vert.json'] = '{"ancien":true}'; });
+  await nouveauProjet(page, { 'Prénoms de l’équipe': 'Léa, Malik', 'Nom de la boutique': 'Le Comptoir Vert' });
+  const deja = page.getByRole('dialog', { name: 'Ce projet existe déjà' });
+  await expect(deja).toContainText('contient déjà « le-comptoir-vert.json »');
+  await deja.getByRole('button', { name: 'Fermer' }).click();
+  await expect(status(page)).toHaveText('Pas encore enregistré');
+  expect((await page.evaluate(() => (window as any).__fs)).files['Lea_Malik/le-comptoir-vert.json']).toBe('{"ancien":true}');
+});
+
+test('nouveau projet : prénoms et classe obligatoires, le dossier peut être choisi plus tard', async ({ page }) => {
+  await fakeDisk(page);
+  await page.goto(distUrl('index.html'));
+  await page.evaluate(() => { (window as any).showDirectoryPicker = async () => { throw new DOMException('Annulé', 'AbortError'); }; });
   await page.getByTestId('new-project').click();
-  await page.getByRole('dialog', { name: 'Nouveau projet' }).getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Nouveau projet' });
+  await dlg.getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
+  await expect(dlg.getByText('Écris vos prénoms et choisis ta classe')).toBeVisible();
+  await expect(dlg.getByLabel('Classe')).toHaveClass(/missing/);
+  await dlg.getByLabel('Prénoms de l’équipe').fill('Léa');
+  await dlg.getByLabel('Classe').selectOption({ index: 1 });
+  await dlg.getByRole('button', { name: 'Choisir le dossier et commencer' }).click();
   await expect(page.getByText('Pas de dossier choisi')).toBeVisible();
   await expect(status(page)).toHaveText('Pas encore enregistré');
-  expect((await doc(page)).team).toEqual({ name: '', members: '', klass: '' });
+  expect((await doc(page)).team).toMatchObject({ name: '', members: 'Léa' });
 });

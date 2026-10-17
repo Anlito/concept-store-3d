@@ -102,6 +102,9 @@
 .nf-pre { font-size: 13px; font-weight: 800; color: var(--text-3); margin-right: 4px; }
 .tf { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; color: var(--text-3); }
 .tf input { height: 44px; padding: 0 12px; border: 1.5px solid var(--field-border); border-radius: 10px; font-size: 15px; font-weight: 700; color: var(--ink); outline: none; }
+.tf select { height: 44px; padding: 0 8px; border: 1.5px solid var(--field-border); border-radius: 10px; font: 700 15px var(--font); color: var(--ink); background: #fff; outline: none; }
+.tf select:focus { border: 2px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tf select.missing { border-color: var(--warn); background: var(--warn-bg); }
 .tf input:focus { border: 2px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); padding: 0 11.5px; }
 
 /* Segmented */
