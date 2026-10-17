@@ -8,7 +8,7 @@ export interface Faq { q: string; a: string }
 export const FAQ: Record<FaqGroup, Faq[]> = {
   general: [
     { q: 'Par quoi commencer ?', a: 'Bouton orange **Étape**, en haut à gauche de l’éditeur : les 7 étapes du projet, dans l’ordre, du concept validé par ton professeur à l’installation des meubles. Coche chaque étape quand elle est finie.' },
-    { q: 'Où est enregistré mon projet ?', a: 'Dans un fichier **.json**, dans le dossier de ton équipe (4X › COMMUN › TECHNOLOGIE › CONCEPT STORE › Prénom_Prénom), choisi au **Nouveau projet** ou au premier [[Ctrl+S]]. Ensuite il s’**enregistre tout seul** quelques secondes après chaque modification. [[Ctrl+S]] reste possible à tout moment.' },
+    { q: 'Où est enregistré mon projet ?', a: 'Dans un fichier **.json**, dans le dossier de ton équipe (… › CONCEPT STORE › Prénom_Prénom). Au **Nouveau projet** (ou au premier [[Ctrl+S]]), tu choisis le dossier **CONCEPT STORE** de ta classe : l’outil y crée lui-même le dossier de ton équipe. Ensuite il s’**enregistre tout seul** quelques secondes après chaque modification. [[Ctrl+S]] reste possible à tout moment.' },
     { q: 'Que veut dire « Enregistrement auto » ?', a: 'Tu viens de modifier ta boutique : elle sera enregistrée dans ton fichier dans quelques secondes (« Enregistré » s’affiche ensuite). Rien à faire.' },
     { q: 'J’ai fermé sans enregistrer : tout est perdu ?', a: 'Non. Rouvre l’outil **sur le même poste** : ton projet est dans **Projets récents**, sur l’accueil. Enregistre-le tout de suite.' },
     { q: 'Comment continuer mon projet sur un autre PC ?', a: 'Accueil › **Ouvrir un projet**, puis choisis le fichier .json de ton équipe. Les meubles de l’Atelier et les images sont dans le fichier.' },
@@ -21,7 +21,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Quels sont les raccourcis clavier ?', a: '[[Ctrl+S]] enregistrer · [[Ctrl+Z]] / [[Ctrl+Y]] annuler / rétablir · [[Suppr]] supprimer · [[Échap]] désélectionner · [[Ctrl+C]] / [[Ctrl+V]] copier / coller · [[Ctrl+D]] dupliquer · [[R]] tourner de 15° · **flèches** déplacer · **molette** zoomer.' },
   ],
   accueil: [
-    { q: 'Nouveau projet ou projet modèle ?', a: '**Nouveau projet** : une boutique vide ; tu donnes les prénoms de l’équipe et ta classe, puis tu choisis le dossier de ton équipe. **Projet modèle** : une boutique de départ (l’exemple de l’outil ou le modèle de ton professeur), que tu enregistres ensuite sous un nouveau nom.' },
+    { q: 'Nouveau projet ou projet modèle ?', a: '**Nouveau projet** : une boutique vide ; tu écris les prénoms de l’équipe et tu choisis ta classe dans la liste, puis tu choisis le dossier CONCEPT STORE : l’outil y crée le dossier de ton équipe. **Projet modèle** : une boutique de départ (l’exemple de l’outil ou le modèle de ton professeur), que tu enregistres ensuite sous un nouveau nom.' },
     { q: 'Mon projet n’est pas dans Projets récents.', a: 'Cette liste est propre à **ce poste**. Utilise **Ouvrir un projet** et choisis ton fichier dans le dossier de ton équipe.' },
     { q: 'La croix d’un projet récent efface-t-elle mon fichier ?', a: 'Non, elle le retire seulement de la liste. Le fichier .json reste dans ton dossier.' },
   ],

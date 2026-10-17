@@ -4,7 +4,7 @@ import { alert, segmented, toast, toggle } from '../ui/components';
 import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
 import { helpButton, offerTour } from './guide/guide';
-import { TEAM_FOLDER, dossierEquipe, saveBlob } from './files';
+import { dossierEquipe, dossierEquipeComplet, saveBlob } from './files';
 import { markStep } from './guide/steps';
 import { niveaux, tremies } from '../model/levels';
 
@@ -15,6 +15,7 @@ const cm = (mm: number) => (mm / 10).toFixed(1).replace('.', ',').replace(/,0$/,
 export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
   const { store } = ctx;
   const d = store.doc;
+  const where = h('b');
   let cotes = true;
   const rdc0 = niveaux(d).rdc;
   let scale: Scale = rdc0.floor ? bestScale(rdc0, cotes) : 30;
@@ -66,7 +67,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
           h('div', { class: 'p-sec' }, h('div', { class: 'p-sec-t' }, 'Sur la feuille'), legend, cotesTg.el),
           h('div', { class: 'p-sec', 'data-tour': 'ex-team' }, h('div', { class: 'p-sec-t' }, 'Équipe (cartouche)'),
             field('Nom de l’équipe', 'name', 'Les Bâtisseurs'), field('Prénoms', 'members', 'Léa, Malik, Inès, Tom'), field('Classe', 'klass', '4e B'), cartouche)),
-        h('div', { class: 'pn-f' }, h('div', { class: 'ex-where' }, icon('folder_open'), h('span', null, 'À enregistrer dans le dossier de ton équipe : ', h('b', null, TEAM_FOLDER))), dl))));
+        h('div', { class: 'pn-f' }, h('div', { class: 'ex-where' }, icon('folder_open'), h('span', null, 'À enregistrer dans le dossier de ton équipe : ', where)), dl))));
 
   /** Les feuilles du PDF : le rez-de-chaussée, puis l'étage s'il existe (même cadrage, contour du RDC en pointillés). */
   function feuilles() {
@@ -103,6 +104,7 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
       if (!next && !fitsWithoutCotes) box.appendChild(h('span', null, 'La boutique ne tient pas sur la feuille : réduis la surface au sol.'));
       status.replaceChildren(a);
     }
+    where.textContent = dossierEquipeComplet(team.klass, team.members);
     // Cartouche obligatoire : nom de l'équipe, prénoms, classe.
     const missing = (['name', 'members', 'klass'] as const).filter(k => !team[k].trim());
     for (const [k, input] of inputs) input.classList.toggle('missing', missing.includes(k as typeof missing[number]));

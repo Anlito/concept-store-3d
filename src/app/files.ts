@@ -3,11 +3,14 @@ import type { Project } from '../model/types';
 import { versRdc } from '../model/levels';
 import { sanitizeProject } from '../model/project';
 import { uid } from '../model/geometry';
-import { toast } from '../ui/components';
+import { choose, toast } from '../ui/components';
 import { putBackup } from '../storage/backup';
+import { cheminProjet, DOSSIER_PROJET } from './college';
 
 /* Enregistrer / ouvrir un projet (fichier .json unique).
-   - Chrome / Edge : l'élève choisit le dossier de son équipe (showSaveFilePicker / showOpenFilePicker).
+   - Chrome / Edge : le premier enregistrement fait choisir le dossier CONCEPT STORE de la classe ; l'outil y
+     crée toujours lui-même le dossier de l'équipe (Lea_Malik), comme les autres outils de la classe.
+     « Enregistrer sous » et l'ouverture passent par showSaveFilePicker / showOpenFilePicker.
    - Ailleurs : le projet est téléchargé, et ouvert avec un sélecteur de fichier classique.
    Règle : un fichier modèle (isTemplate) n'est jamais écrasé. Un projet ouvert depuis un modèle
    est toujours enregistré sous un nouveau nom. */
@@ -28,12 +31,10 @@ export const emptyFileState = (): FileState => ({ handle: null, fileName: null, 
 type PickerWindow = {
   showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle>;
   showOpenFilePicker?: (o: object) => Promise<FileSystemFileHandle[]>;
+  showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle>;
 };
 const W = window as unknown as PickerWindow;
 const TYPES = [{ description: 'Projet Concept Store 3D', accept: { 'application/json': ['.json'] } }];
-/** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché avant d'enregistrer). */
-export const CONCEPT_FOLDER = '4X › COMMUN › TECHNOLOGIE › CONCEPT STORE';
-export const TEAM_FOLDER = CONCEPT_FOLDER + ' › Prénom_Prénom';
 /** Nom du dossier d'une équipe : « Léa, Malik » → « Lea_Malik ». */
 export const dossierEquipe = (members: string) => members.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-zA-Z0-9]+/).filter(Boolean)
   .map(w => w[0].toUpperCase() + w.slice(1).toLowerCase()).join('_');
@@ -57,6 +58,49 @@ export async function saveBlob(name: string, blob: Blob, type: { description: st
   } catch (e) {
     if ((e as DOMException)?.name === 'AbortError') return null;
     throw e;
+  }
+}
+
+/** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché) : chemin des réglages du collège. */
+export const dossierEquipeComplet = (klass: string, members: string) => cheminProjet(klass) + ' › ' + (dossierEquipe(members) || 'Prénom_Prénom');
+
+const simple = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toLowerCase();
+/** Dossier choisi : « projet » (CONCEPT STORE), « equipe » (le dossier de l'équipe lui-même) ou « autre ». */
+export function sorteDeDossier(nom: string, members: string): 'projet' | 'equipe' | 'autre' {
+  if (simple(nom) === simple(dossierEquipe(members))) return 'equipe';
+  if (simple(nom) === simple(DOSSIER_PROJET)) return 'projet';
+  return 'autre';
+}
+
+/** Le dossier de l'équipe est toujours créé par l'outil : l'élève choisit le dossier CONCEPT STORE de sa classe.
+    Renvoie le fichier du projet dans le dossier de l'équipe, ou null (annulé, ou projet déjà présent : jamais écrasé). */
+async function fichierDansDossierEquipe(p: Project): Promise<FileSystemFileHandle | null> {
+  const equipe = dossierEquipe(p.team.members), chemin = cheminProjet(p.team.klass);
+  for (;;) {
+    const dir = await W.showDirectoryPicker!({ id: PICKER_ID, mode: 'readwrite' });
+    const sorte = sorteDeDossier(dir.name, p.team.members);
+    if (sorte === 'equipe') {
+      const c = await choose('C’est le dossier de ton équipe', `Tu as choisi « ${dir.name} ». L’outil crée lui-même le dossier de ton équipe : choisis le dossier qui le contient, « ${DOSSIER_PROJET} » (${chemin}).`,
+        [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
+      if (c === 'autre') continue;
+      return null;
+    }
+    if (sorte === 'autre') {
+      const c = await choose('Ce n’est pas le dossier attendu', `Le dossier choisi s’appelle « ${dir.name} ». Le dossier attendu est « ${DOSSIER_PROJET} » (${chemin}) : l’outil y crée le dossier « ${equipe} ».`,
+        [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: `Créer « ${equipe} » dedans`, value: 'creer' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
+      if (c === 'autre') continue;
+      if (c !== 'creer') return null;
+    }
+    const dossier = await dir.getDirectoryHandle(equipe, { create: true });
+    const nom = suggestedName(p, 'projet');
+    const existant = await dossier.getFileHandle(nom).catch(() => null);
+    if (existant && (await existant.getFile()).size) {
+      const c = await choose('Ce projet existe déjà', `Le dossier « ${equipe} » contient déjà « ${nom} » : il n’a pas été touché. Pour continuer ce projet, ouvre-le avec « Ouvrir un projet ».`,
+        [{ label: 'Fermer', value: 'non', cls: 'btn-ghost' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
+      if (c === 'autre') continue;
+      return null;
+    }
+    return dossier.getFileHandle(nom, { create: true });
   }
 }
 
@@ -107,6 +151,9 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
   const { store, ui, file } = ctx;
   const doc = store.doc;
   if (mode === 'auto') return autoSave(ctx);
+  // Premier enregistrement d'un projet d'équipe : dans le dossier de l'équipe, créé par l'outil.
+  // (Un projet ouvert depuis un modèle garde « Enregistrer sous » : les prénoms du modèle ne sont pas ceux de l'équipe.)
+  const parDossierEquipe = mode === 'save' && !file.handle && !file.fromTemplate && typeof W.showDirectoryPicker === 'function' && !!dossierEquipe(doc.team.members);
   if (mode === 'save' && (!file.handle || file.fromTemplate)) mode = 'saveAs';
   const template = mode === 'template';
   const text = serialize(doc, template), count = store.dirty;
@@ -123,7 +170,9 @@ export async function saveProject(ctx: Ctx, mode: 'save' | 'saveAs' | 'template'
         toast(`Projet téléchargé : « ${name} ». Range-le dans le dossier de ton équipe.`);
         return true;
       }
-      handle = await W.showSaveFilePicker!({ id: PICKER_ID, suggestedName: name, types: TYPES });
+      const choisi = parDossierEquipe ? await fichierDansDossierEquipe(doc) : await W.showSaveFilePicker!({ id: PICKER_ID, suggestedName: name, types: TYPES });
+      if (!choisi) return false;
+      handle = choisi;
       if (await isTemplateFile(handle)) {
         toast('C’est un fichier modèle : choisis un autre nom pour ne pas l’écraser.', undefined, 'warning');
         return false;

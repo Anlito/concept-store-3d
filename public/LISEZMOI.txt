@@ -3,7 +3,7 @@ CONCEPT STORE 3D - INSTALLATION AU COLLÈGE
 
 Aucune installation, aucun droit administrateur, aucun accès Internet.
 
-1. Copier ce dossier entier (7 fichiers, environ 1 Mo) sur le serveur de chaque classe,
+1. Copier ce dossier entier (8 fichiers, environ 1 Mo) sur le serveur de chaque classe,
    par exemple avec une clé USB. Pour une mise à jour, le recoller par-dessus (« Remplacer ») :
    les projets des élèves, rangés dans leurs dossiers d'équipe, ne sont pas touchés.
    Ne pas copier le dossier du code source de l'outil (des dizaines de milliers de fichiers).
@@ -20,10 +20,14 @@ CONTENU
                       Elle peut aussi être distribuée dans le dossier de la classe.
 - Mobilier/         : modèles 3D ajoutés par le professeur (voir Mobilier/LISEZMOI.txt).
                       À mettre en lecture seule pour les élèves.
+- college.js        : réglages du collège (liste des classes, chemin des dossiers de classe), copie
+                      de secours. Ils se modifient dans l'accueil de Labo Blocs (« Réglages du collège ») ;
+                      l'outil lit aussi la version en ligne quand internet répond.
 
 PROJETS DES ÉLÈVES
 ------------------
-- Chaque équipe enregistre son projet (fichier .json) dans son dossier, avec Ctrl+S.
+- À « Nouveau projet », l'équipe choisit le dossier CONCEPT STORE de sa classe : l'outil y crée
+  lui-même le dossier de l'équipe (Prenom_Prenom) et y enregistre le projet (fichier .json).
   Le projet contient tout : sol, murs, meubles, créations de l'atelier, images.
 - Pour un « projet modèle » : préparer une boutique, puis Enregistrer ▾ › « Enregistrer comme
   modèle (professeur) ». Les élèves l'ouvrent avec « Projet modèle » ; il n'est jamais écrasé.
