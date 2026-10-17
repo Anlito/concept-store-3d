@@ -183,7 +183,7 @@ test('revenir à l’accueil sans enregistrer demande confirmation', async ({ pa
 /** Réglages du collège « en ligne » de test (lus après la copie de secours du site). */
 async function collegeEnLigne(page: Page) {
   await page.route('https://anlito.github.io/labo-blocs/site/college.js*', r => r.fulfill({ contentType: 'text/javascript',
-    body: 'definirCollege({ classes: ["5A", "4A", "4B"], cheminClasse: ["Bureau", "Classe", "{classe}", "COMMUN", "TECHNOLOGIE"] });' }));
+    body: 'definirCollege({ classes: ["5A", "4A", "4B", "3C"], cheminClasse: ["Bureau", "Classe", "{classe}", "COMMUN", "TECHNOLOGIE"] });' }));
 }
 
 test('nouveau projet : l’équipe, le dossier CONCEPT STORE (l’outil crée celui de l’équipe), puis enregistrement automatique', async ({ page }) => {
@@ -193,8 +193,8 @@ test('nouveau projet : l’équipe, le dossier CONCEPT STORE (l’outil crée ce
   await page.getByTestId('new-project').click();
   const dlg = page.getByRole('dialog', { name: 'Nouveau projet' });
   await dlg.getByLabel('Prénoms de l’équipe').fill('Léa, Malik');
-  // Classes de 4e des réglages du collège
-  await expect(dlg.getByLabel('Classe').locator('option')).toHaveText(['Choisis ta classe', '4A', '4B']);
+  // Classes de 4e et de 3e des réglages du collège
+  await expect(dlg.getByLabel('Classe').locator('option')).toHaveText(['Choisis ta classe', '4A', '4B', '3C']);
   await dlg.getByLabel('Classe').selectOption('4B');
   await expect(dlg).toContainText('Bureau › Classe › 4B › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik');
   await dlg.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
