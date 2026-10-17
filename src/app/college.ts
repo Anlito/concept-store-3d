@@ -7,8 +7,8 @@
 export interface College { classes: string[]; cheminClasse?: string[] }
 
 export const ADRESSE_COLLEGE = 'https://anlito.github.io/labo-blocs/site/college.js';
-/** Concept Store 3D est un projet de 4e : seules les classes de 4e sont proposées. */
-export const NIVEAUX = ['4'];
+/** Concept Store 3D est un projet de 4e et de 3e : seules les classes de ces niveaux sont proposées. */
+export const NIVEAUX = ['4', '3'];
 /** Dossier du projet dans le dossier de la classe : les élèves le choisissent, l'outil y crée le dossier de l'équipe. */
 export const DOSSIER_PROJET = 'CONCEPT STORE';
 const CHEMIN_CLASSE_DEFAUT = ['{classe}', 'COMMUN', 'TECHNOLOGIE'];
@@ -36,7 +36,7 @@ export function chargerCollege() {
 export function surCollege(f: () => void) { abonnes.add(f); return () => { abonnes.delete(f); }; }
 
 const niveauDe = (classe: string) => (classe.match(/\d/) ?? [''])[0];
-/** Classes proposées : celles de 4e (toutes les classes si les réglages n'en ont aucune de 4e). */
+/** Classes proposées : celles de 4e et de 3e (toutes les classes si les réglages n'en ont aucune). */
 export function classesProposees(): string[] {
   const toutes = college?.classes ?? [];
   const duNiveau = toutes.filter(c => NIVEAUX.includes(niveauDe(c)));
