@@ -124,6 +124,7 @@ test('le plan A3 dessine les cloisons ; le fichier projet les garde, avec leurs 
   const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('open-project').click();
   await (await chooser).setFiles(file);
+  await expect(page.locator('.tb-name')).toHaveValue('Boutique exemple'); // projet chargé
   const d = await doc(page);
   expect(d.partitions).toEqual(saved.partitions);
   expect(d.openings.filter((o: any) => o.wall === 5)).toHaveLength(1);
