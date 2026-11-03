@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projet Concept Store</title>
+<meta name="description" content="Présentation du projet Concept Store (technologie, cycle 4) : la mission, les contraintes, les étapes, les outils et l’évaluation.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%23BF4E36'/%3E%3Cpath d='M12 20h24l-2-7H14zM14 20v15h20V20M21 35v-8h6v8' fill='none' stroke='%23fff' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Présentation de lancement du projet Concept Store, à projeter en classe.
+   Diapositives de 1280 × 720 mises à l'échelle de l'écran. Flèches, espace, clic ou balayage pour avancer ;
+   F : plein écran. Imprimable (une diapositive par page). Fonctionne aussi sans Internet (police de secours). */
+:root {
+  --ink: #2E2D2B; --ink-2: #5C5A55; --ink-3: #8A8780;
+  --bg: #E9E5DE; --paper: #FFFFFF; --cream: #F6F4F0; --line: #E2DDD4;
+  --accent: #BF4E36; --accent-soft: #F7E3DC; --sage: #6E8B6B; --sage-soft: #E4ECE2;
+  --oak: #C9A97E; --oak-soft: #F3EADC; --slate: #5B6B7A; --slate-soft: #E3E8EC;
+  --font: Nunito, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+/* ---------- Scène ---------- */
+.stage { position: fixed; inset: 0 0 56px 0; display: flex; align-items: center; justify-content: center; }
+.deck { width: 1280px; height: 720px; position: relative; flex: none; transform-origin: center center; }
+.slide { position: absolute; inset: 0; background: var(--paper); border-radius: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.14); overflow: hidden;
+  padding: 64px 80px; display: none; flex-direction: column; }
+.slide.on { display: flex; animation: entre .28s ease-out; }
+@keyframes entre { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .slide.on { animation: none; } }
+
+/* ---------- Barre du bas ---------- */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.bar button { height: 40px; min-width: 40px; padding: 0 12px; border: none; border-radius: 10px; background: var(--paper); color: var(--ink);
+  font: 800 15px var(--font); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.08); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.bar button:hover { background: var(--cream); }
+.bar button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.bar svg { width: 20px; height: 20px; }
+.prog { flex: 1; height: 6px; border-radius: 3px; background: rgba(46,45,43,.12); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .25s ease-out; }
+.count { font-weight: 800; font-size: 15px; color: var(--ink-2); min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.hint { font-size: 13px; color: var(--ink-3); font-weight: 700; }
+@media (max-width: 700px) { .hint, .bar .lbl { display: none; } }
+
+/* ---------- Éléments communs ---------- */
+.kicker { font-size: 18px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 10px; }
+h1 { font-size: 76px; line-height: 1.02; margin: 0; font-weight: 900; letter-spacing: -.01em; }
+h2 { font-size: 50px; line-height: 1.08; margin: 0 0 28px; font-weight: 900; letter-spacing: -.01em; }
+h3 { font-size: 26px; margin: 0 0 8px; font-weight: 800; }
+p { margin: 0; }
+.lead { font-size: 28px; line-height: 1.4; color: var(--ink-2); font-weight: 700; }
+.big { font-size: 26px; line-height: 1.45; font-weight: 700; }
+b, strong { font-weight: 900; color: var(--ink); }
+.acc { color: var(--accent); }
+.foot { margin-top: auto; font-size: 18px; color: var(--ink-3); font-weight: 700; }
+.num { position: absolute; right: 36px; bottom: 26px; font-size: 16px; color: var(--ink-3); font-weight: 800; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.card { border-radius: 18px; padding: 26px 26px 24px; background: var(--cream); }
+.card p { font-size: 21px; line-height: 1.4; color: var(--ink-2); font-weight: 700; }
+.ic { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.ic svg { width: 34px; height: 34px; }
+.t-acc { background: var(--accent-soft); color: var(--accent); }
+.t-sage { background: var(--sage-soft); color: var(--sage); }
+.t-oak { background: var(--oak-soft); color: #8A5A3B; }
+.t-slate { background: var(--slate-soft); color: var(--slate); }
+ul.pts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 16px; }
+ul.pts li { font-size: 27px; line-height: 1.35; font-weight: 700; color: var(--ink-2); padding-left: 38px; position: relative; }
+ul.pts li::before { content: ""; position: absolute; left: 4px; top: 12px; width: 16px; height: 16px; border-radius: 5px; background: var(--accent); }
+.path { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 22px; font-weight: 800; }
+.path span { background: var(--cream); border-radius: 10px; padding: 6px 12px; }
+.path span:last-child { background: var(--accent); color: #fff; }
+.path i { color: var(--ink-3); font-style: normal; }
+
+/* ---------- Diapositives particulières ---------- */
+.s-titre { background: var(--ink); color: #fff; padding: 0; flex-direction: row; }
+.s-titre .txt { flex: 1; padding: 80px 0 72px 88px; display: flex; flex-direction: column; justify-content: center; }
+.s-titre .kicker { color: #F0A58F; }
+.s-titre h1 { color: #fff; font-size: 104px; }
+.s-titre .lead { color: #D9D5CE; margin-top: 22px; font-size: 32px; }
+.s-titre .meta { margin-top: auto; display: flex; gap: 12px; flex-wrap: wrap; }
+.s-titre .meta span { border: 2px solid rgba(255,255,255,.25); border-radius: 99px; padding: 8px 18px; font-size: 19px; font-weight: 800; color: #F4F1EC; }
+.s-titre .art { width: 520px; display: flex; align-items: center; justify-content: center; background: #3A3936; }
+.s-titre .art svg { width: 470px; }
+
+.etapes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-top: 8px; }
+.etape { background: var(--cream); border-radius: 16px; padding: 18px 14px 18px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.etape .n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 900; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.etape b { font-size: 19px; line-height: 1.22; }
+.etape span { font-size: 15.5px; line-height: 1.35; color: var(--ink-2); font-weight: 700; }
+.etape.valide { background: var(--accent-soft); }
+.legende-etapes { display: flex; gap: 26px; margin-top: 22px; font-size: 19px; font-weight: 800; color: var(--ink-2); }
+.legende-etapes i { display: inline-block; width: 16px; height: 16px; border-radius: 5px; vertical-align: -2px; margin-right: 8px; }
+
+.livrable { border-radius: 18px; padding: 24px 22px; display: flex; flex-direction: column; gap: 8px; }
+.livrable h3 { font-size: 25px; }
+.livrable p { font-size: 19px; line-height: 1.4; font-weight: 700; color: var(--ink-2); }
+.livrable .outil { margin-top: auto; padding-top: 10px; font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+
+.contrainte { display: flex; gap: 22px; align-items: flex-start; }
+.contrainte .ic { flex: none; margin: 0; }
+.contrainte h3 { font-size: 25px; margin-bottom: 4px; }
+.contrainte p { font-size: 20px; line-height: 1.4; color: var(--ink-2); font-weight: 700; }
+
+.plan { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: center; flex: 1; }
+.plan svg { width: 100%; }
+
+.eval { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.eval .card { padding: 20px 20px 18px; }
+.eval h3 { font-size: 22px; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.eval h3 small { font-size: 17px; color: var(--accent); font-weight: 900; }
+.eval ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.eval li { font-size: 15.5px; line-height: 1.3; font-weight: 700; color: var(--ink-2); display: flex; justify-content: space-between; gap: 10px; }
+.eval li em { font-style: normal; font-weight: 900; color: var(--ink); white-space: nowrap; }
+.formule { margin-top: 22px; display: flex; gap: 14px; align-items: center; font-size: 22px; font-weight: 800; color: var(--ink-2); flex-wrap: wrap; }
+.formule .pill { background: var(--ink); color: #fff; border-radius: 12px; padding: 8px 14px; }
+.formule .pill.acc { background: var(--accent); }
+
+.questions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px 28px; }
+.q { display: flex; gap: 16px; align-items: flex-start; }
+.q .n { flex: none; width: 46px; height: 46px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); font-weight: 900; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.q b { display: block; font-size: 25px; margin-bottom: 2px; }
+.q span { font-size: 19px; line-height: 1.4; font-weight: 700; color: var(--ink-2); }
+
+.exemples { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.exemples span { background: var(--oak-soft); color: #6B4A2E; border-radius: 99px; padding: 8px 18px; font-size: 19px; font-weight: 800; }
+
+.liens { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.lien { display: flex; flex-direction: column; gap: 10px; border-radius: 18px; padding: 28px; background: var(--cream); text-decoration: none; color: inherit; }
+.lien h3 { font-size: 30px; }
+.lien p { font-size: 20px; line-height: 1.4; color: var(--ink-2); font-weight: 700; }
+.lien .url { margin-top: auto; font-size: 18px; font-weight: 900; color: var(--accent); }
+
+.s-fin { background: var(--accent); color: #fff; justify-content: center; }
+.s-fin .kicker { color: #FFD9CC; }
+.s-fin h2 { color: #fff; font-size: 84px; margin-bottom: 30px; }
+.s-fin ol { margin: 0; padding: 0; list-style: none; counter-reset: k; display: flex; flex-direction: column; gap: 16px; }
+.s-fin li { counter-increment: k; font-size: 32px; font-weight: 800; display: flex; gap: 18px; align-items: center; }
+.s-fin li::before { content: counter(k); width: 50px; height: 50px; flex: none; border-radius: 50%; background: #fff; color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 900; }
+.s-fin .num { color: #FFD9CC; }
+
+.comp .card { padding: 18px 22px; } .comp .ic { width: 46px; height: 46px; margin-bottom: 8px; } .comp .ic svg { width: 26px; height: 26px; } .comp h3 { font-size: 23px; margin-bottom: 4px; } .comp .card p { font-size: 18px; }
+
+/* ---------- Petits écrans (téléphone en portrait) : les diapositives les unes sous les autres ---------- */
+body.liste { overflow: auto; }
+body.liste .stage { position: static; display: block; padding: 16px 16px 72px; }
+body.liste .deck { transform: none !important; width: auto; height: auto; }
+body.liste .slide { display: flex; position: relative; inset: auto; margin-bottom: 16px; animation: none; transform-origin: top left; }
+body.liste .bar { display: none; }
+
+/* ---------- Impression : une diapositive par page ---------- */
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  body { background: #fff; overflow: visible; }
+  .bar { display: none; }
+  .stage { position: static; display: block; }
+  .deck { transform: none !important; width: 1280px; height: auto; }
+  .slide { display: flex !important; position: relative; width: 1280px; height: 720px; border-radius: 0; box-shadow: none; break-after: page; animation: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+<main class="deck" id="deck" aria-live="polite">
+
+<!-- 1. Titre -->
+<section class="slide s-titre" aria-label="Titre">
+  <div class="txt">
+    <p class="kicker">Technologie · cycle 4</p>
+    <h1>Concept Store</h1>
+    <p class="lead">Imagine ta boutique, conçois-la en 3D,<br>construis sa maquette et présente-la.</p>
+    <div class="meta"><span>Projet en équipe</span><span>Modélisation 3D</span><span>Maquette carton</span><span>Site internet</span><span>Oral</span></div>
+  </div>
+  <div class="art" aria-hidden="true">
+    <svg viewBox="-120 -70 240 150">
+      <path d="M0 -10 L100 40 L0 90 L-100 40Z" fill="#EFE9DF" stroke="rgba(30,30,28,.16)"/>
+      <path d="M-100 40 L0 -10 L0 -60 L-100 -10Z" fill="#FCFBF9" stroke="rgba(30,30,28,.16)"/>
+      <path d="M0 -10 L100 40 L100 -10 L0 -60Z" fill="#F1EEE9" stroke="rgba(30,30,28,.16)"/>
+      <path d="M30 0 L70 20 L70 -10 L30 -30Z" fill="#DCE7EC" stroke="#9FB2BA"/>
+      <path d="M-70 10 L-55 3 L-55 -27 L-70 -20Z" fill="#E4DCCF" stroke="#B8AD9C"/>
+      <path d="M-20 40 L10 55 L30 45 L0 30Z" fill="#2E2D2B"/><path d="M-20 40 L-20 25 L0 15 L30 30 L30 45 L0 30Z" fill="#3A3936"/>
+      <path d="M-20 25 L0 15 L30 30 L10 40Z" fill="#C9A97E"/>
+      <ellipse cx="60" cy="50" rx="12" ry="6" fill="#BF4E36"/><circle cx="60" cy="32" r="16" fill="#6E8B6B"/>
+    </svg>
+  </div>
+</section>
+
+<!-- 2. La mission -->
+<section class="slide" aria-label="La mission">
+  <p class="kicker">La mission</p>
+  <h2>Votre équipe ouvre une boutique.<br>À vous de la <span class="acc">concevoir</span>.</h2>
+  <div class="grid2" style="gap:44px; align-items:start">
+    <div><p class="big">Un <b>concept store</b> est un magasin construit autour d’une <b>idée</b> : un thème, un univers, une ambiance. Tout y raconte la même histoire : les produits, les couleurs, le mobilier, la vitrine.</p>
+      <div class="exemples" style="margin-top:18px" aria-label="Exemples de concepts">
+    <span>Boutique zéro déchet</span><span>Librairie-café</span><span>Magasin de sport outdoor</span><span>Atelier de vélos</span><span>Friperie vintage</span><span>Jeux et mangas</span>
+  </div>
+      <p class="foot" style="margin-top:12px">Quelques idées pour démarrer : le vôtre doit être original.</p></div>
+    <ul class="pts">
+      <li>Vous inventez le <b>concept</b> de votre magasin.</li>
+      <li>Vous concevez l’<b>espace de vente</b> : pièces, circulation, mobilier, décoration.</li>
+      <li>Vous le <b>modélisez</b> en 3D, puis vous le <b>construisez</b> en carton.</li>
+      <li>Vous le <b>présentez</b> : site internet et oral.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 3. Ce que vous allez produire -->
+<section class="slide" aria-label="Ce que vous allez produire">
+  <p class="kicker">Ce que vous allez produire</p>
+  <h2>Quatre réalisations, une seule boutique</h2>
+  <div class="grid4" style="flex:1">
+    <div class="livrable" style="background:var(--accent-soft)">
+      <div class="ic t-acc" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></div>
+      <h3>La modélisation 3D</h3>
+      <p>La boutique dessinée, meublée et décorée sur l’ordinateur. Elle donne aussi le <b>plan A3</b> à l’échelle.</p>
+      <p class="outil acc">Concept Store 3D</p>
+    </div>
+    <div class="livrable" style="background:var(--oak-soft)">
+      <div class="ic t-oak" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 9 12 4l9 5-9 5z"/><path d="M3 9v7l9 5 9-5V9"/><path d="M12 14v7"/></svg></div>
+      <h3>La maquette carton</h3>
+      <p>Les murs en carton collés sur le plan A3 imprimé, avec les pièces, les ouvertures et le mobilier.</p>
+      <p class="outil" style="color:#8A5A3B">Plan A3 · carton · colle</p>
+    </div>
+    <div class="livrable" style="background:var(--slate-soft)">
+      <div class="ic t-slate" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg></div>
+      <h3>Le site internet</h3>
+      <p>Le site vitrine du magasin : logo, couleurs, pages, catalogue de produits, et votre travail 3D.</p>
+      <p class="outil" style="color:var(--slate)">Vitrine</p>
+    </div>
+    <div class="livrable" style="background:var(--sage-soft)">
+      <div class="ic t-sage" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+      <h3>L’oral</h3>
+      <p>L’équipe présente son concept et explique ses choix, puis répond aux questions.</p>
+      <p class="outil" style="color:var(--sage)">En équipe</p>
+    </div>
+  </div>
+  <span class="num">3</span>
+</section>
+
+<!-- 4. Les contraintes -->
+<section class="slide" aria-label="Les contraintes">
+  <p class="kicker">Le cahier des charges</p>
+  <h2>Les règles à respecter</h2>
+  <div class="grid2" style="gap:30px 48px">
+    <div class="contrainte"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 21h18M3 19.5v3M21 19.5v3"/></svg></div>
+      <div><h3>10 × 7 m au plus</h3><p>La surface de vente tient dans un rectangle de 10 m sur 7 m (70 m²), pour que le plan tienne sur une feuille A3.</p></div></div>
+    <div class="contrainte"><div class="ic t-oak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 3h7v18H3zM10 3h11v8H10zM10 11h11v10H10z"/></svg></div>
+      <div><h3>Des pièces utiles</h3><p>Pensez au fonctionnement du magasin : réserve, caisse, toilettes, salle du personnel, cabines… selon votre concept.</p></div></div>
+    <div class="contrainte"><div class="ic t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M6 20V9l6-5 6 5v11"/><path d="M10 20v-6h4v6"/></svg></div>
+      <div><h3>Une entrée, une vitrine</h3><p>Une porte d’entrée côté rue, des vitrines pour attirer les clients, des fenêtres. Une circulation simple et accessible.</p></div></div>
+    <div class="contrainte"><div class="ic t-sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 20h4v-4h4v-4h4V8h4"/></svg></div>
+      <div><h3>Un étage ? Possible</h3><p>Un seul étage, plus petit ou égal au rez-de-chaussée, jamais plus grand. Il faut alors un escalier.</p></div></div>
+  </div>
+  <p class="foot">Tout doit rester cohérent : la 3D, le plan, la maquette et le site montrent la même boutique.</p>
+  <span class="num">4</span>
+</section>
+
+<!-- 5. Les étapes -->
+<section class="slide" aria-label="Les étapes">
+  <p class="kicker">La démarche</p>
+  <h2>Les 7 étapes du projet</h2>
+  <div class="etapes">
+    <div class="etape valide"><span class="n">1</span><b>Valider le concept</b><span>Nom, produits, clients, ambiance. Validé par le professeur.</span></div>
+    <div class="etape"><span class="n">2</span><b>Tracer la surface</b><span>Les murs, les cloisons des pièces, les portes, fenêtres et vitrines.</span></div>
+    <div class="etape valide"><span class="n">3</span><b>Générer le plan A3</b><span>Cartouche rempli, PDF dans le dossier de l’équipe. Le professeur l’imprime.</span></div>
+    <div class="etape"><span class="n">4</span><b>Penser l’aménagement</b><span>Caisse, présentoirs, parcours des clients : un croquis sur le plan imprimé.</span></div>
+    <div class="etape"><span class="n">5</span><b>Créer le mobilier</b><span>Dans l’Atelier, avec des volumes, ou importé de Tinkercad.</span></div>
+    <div class="etape"><span class="n">6</span><b>Décorer</b><span>Murs, sol, façade, vitrine, images : logo, affiches…</span></div>
+    <div class="etape"><span class="n">7</span><b>Installer le mobilier</b><span>Comme sur le croquis. Photos du rendu 3D pour la présentation.</span></div>
+  </div>
+  <div class="legende-etapes"><span><i style="background:var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent)"></i>Point de contrôle avec le professeur</span><span>En parallèle : la maquette carton, puis le site internet et l’oral.</span></div>
+  <p class="foot">Dans l’outil, le bouton orange <b>Étape</b> rappelle à tout moment où vous en êtes.</p>
+  <span class="num">5</span>
+</section>
+
+<!-- 6. Le concept à valider -->
+<section class="slide" aria-label="Le concept à valider">
+  <p class="kicker">Étape 1 · avant de toucher à l’ordinateur</p>
+  <h2>Votre concept, en 6 questions</h2>
+  <div class="questions">
+    <div class="q"><span class="n">1</span><div><b>Quel nom ?</b><span>Court, facile à retenir, qui dit ce que vous vendez.</span></div></div>
+    <div class="q"><span class="n">2</span><div><b>Que vendez-vous ?</b><span>Les familles de produits, et peut-être un service (atelier, café, réparation…).</span></div></div>
+    <div class="q"><span class="n">3</span><div><b>Pour qui ?</b><span>Vos clients : âge, goûts, besoins. Ce qu’ils viennent chercher chez vous.</span></div></div>
+    <div class="q"><span class="n">4</span><div><b>Quelle ambiance ?</b><span>Des couleurs, des matières, une lumière, un style.</span></div></div>
+    <div class="q"><span class="n">5</span><div><b>Qu’est-ce qui vous rend unique ?</b><span>L’idée qui donne envie d’entrer plutôt que chez le voisin.</span></div></div>
+    <div class="q"><span class="n">6</span><div><b>Quel logo, quel slogan ?</b><span>Ils serviront sur la vitrine, la façade et le site.</span></div></div>
+  </div>
+  <p class="foot">Faites <b>valider votre concept par le professeur</b> avant de commencer la boutique.</p>
+  <span class="num">6</span>
+</section>
+
+<!-- 7. Du plan à la maquette -->
+<section class="slide" aria-label="Du plan à la maquette">
+  <p class="kicker">Étape 3 · le lien entre l’écran et le carton</p>
+  <h2>Le plan A3 : le gabarit de la maquette</h2>
+  <div class="plan">
+    <svg viewBox="0 0 420 297" role="img" aria-label="Exemple de plan A3 à l’échelle">
+      <rect x="1" y="1" width="418" height="295" rx="4" fill="#fff" stroke="#2E2D2B" stroke-width="1.2"/>
+      <path d="M351 1v295M1 268h350" stroke="#2E2D2B" stroke-width=".6"/>
+      <g fill="none" stroke="#2E2D2B" stroke-width="1.6">
+        <rect x="32" y="34" width="290" height="212"/><rect x="38" y="40" width="278" height="200"/>
+        <path d="M200 40v120M206 40v120"/>
+      </g>
+      <g stroke="#fff" stroke-width="5"><path d="M120 241.5h50M240 241.5h50M316 90v40"/></g>
+      <g fill="none" stroke="#2E2D2B" stroke-width="1.4"><path d="M120 240h50M120 246h50" stroke-dasharray="8 4"/><path d="M240 240h50M240 246h50M316 90v40M322 90v40" stroke-dasharray="1.5 1.5"/></g>
+      <g stroke="#5C5A55" stroke-width=".7" fill="none"><path d="M38 22h278M38 18v8M316 18v8"/></g>
+      <text x="177" y="16" font-size="10" font-weight="800" text-anchor="middle" fill="#2E2D2B" font-family="Nunito, sans-serif">10,00 m</text>
+      <text x="110" y="110" font-size="11" font-weight="800" fill="#8A8780" font-family="Nunito, sans-serif">Vente</text>
+      <text x="230" y="110" font-size="11" font-weight="800" fill="#8A8780" font-family="Nunito, sans-serif">Réserve</text>
+      <rect x="20" y="276" width="90" height="6" fill="#2E2D2B"/><rect x="50" y="276" width="30" height="6" fill="#fff" stroke="#2E2D2B" stroke-width=".6"/>
+      <text x="120" y="282" font-size="9" font-weight="800" fill="#2E2D2B" font-family="Nunito, sans-serif">Échelle : 1 m = 3 cm</text>
+      <g font-family="Nunito, sans-serif" fill="#2E2D2B"><text x="360" y="22" font-size="10" font-weight="900">Ma boutique</text><text x="360" y="34" font-size="7" fill="#5C5A55">Plan des murs</text>
+        <text x="360" y="58" font-size="6.5" font-weight="900" fill="#5C5A55">ÉQUIPE</text><text x="360" y="68" font-size="8" font-weight="800">Les Bâtisseurs</text>
+        <text x="360" y="84" font-size="6.5" font-weight="900" fill="#5C5A55">ÉLÈVES</text><text x="360" y="94" font-size="8" font-weight="800">Léa, Malik</text></g>
+    </svg>
+    <ul class="pts">
+      <li>Échelle <b>1 m = 3 cm</b> : la boutique de 10 m mesure 30 cm sur la feuille.</li>
+      <li>Les murs sont dessinés en <b>deux traits</b> : 10 cm de mur = 3 mm de carton.</li>
+      <li>Portes en <b>tirets</b>, fenêtres et vitrines en <b>pointillés</b>.</li>
+      <li>Le professeur l’<b>imprime en taille réelle</b> : la barre d’échelle mesure 9 cm.</li>
+      <li>Vous <b>collez vos murs en carton</b> directement sur les traits.</li>
+    </ul>
+  </div>
+  <span class="num">7</span>
+</section>
+
+<!-- 8. Les outils -->
+<section class="slide" aria-label="Les outils">
+  <p class="kicker">Les outils</p>
+  <h2>Deux outils, dans le navigateur</h2>
+  <div class="liens" style="flex:1">
+    <a class="lien" href="https://anlito.github.io/concept-store-3d/" target="_blank" rel="noopener">
+      <div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></div>
+      <h3>Concept Store 3D</h3>
+      <p>Tracer la surface et les cloisons, placer portes et vitrines, meubler (bibliothèque et Atelier), décorer, ajouter un étage, voir en 3D, générer le plan A3.</p>
+      <p class="url">Sur le réseau du collège : index.html · en ligne : anlito.github.io/concept-store-3d</p>
+    </a>
+    <a class="lien" href="https://anlito.github.io/creation-site-vitrine/" target="_blank" rel="noopener">
+      <div class="ic t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg></div>
+      <h3>Vitrine</h3>
+      <p>Créer le site du magasin : charte graphique, logo, pages, catalogue de produits, captures de la 3D et photos de la maquette.</p>
+      <p class="url">En ligne : anlito.github.io/creation-site-vitrine</p>
+    </a>
+  </div>
+  <p class="foot">Chrome ou Edge conseillés. Bouton <b>Aide</b> dans chaque outil : questions fréquentes et visites guidées.</p>
+  <span class="num">8</span>
+</section>
+
+<!-- 9. Organisation et sauvegarde -->
+<section class="slide" aria-label="Organisation et sauvegarde">
+  <p class="kicker">S’organiser</p>
+  <h2>Un dossier par équipe, et tout dedans</h2>
+  <div class="path" aria-label="Chemin du dossier de l’équipe"><span>Ta classe</span><i>›</i><span>COMMUN</span><i>›</i><span>TECHNOLOGIE</span><i>›</i><span>CONCEPT STORE</span><i>›</i><span>Prénom_Prénom</span></div>
+  <div class="grid3" style="margin-top:34px">
+    <div class="card"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg></div>
+      <h3>Enregistrement automatique</h3><p>À la création du projet, choisissez le dossier CONCEPT STORE : l’outil crée celui de l’équipe. Ensuite, le projet s’enregistre tout seul.</p></div>
+    <div class="card"><div class="ic t-oak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 3h10v5H7zM5 8h14v9H5zM8 14h8v7H8z"/></svg></div>
+      <h3>Le plan A3 et le site</h3><p>Le PDF du plan et le fichier du site vont dans le même dossier : c’est là que le professeur les trouve.</p></div>
+    <div class="card"><div class="ic t-sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 2 6 5.5"/></svg></div>
+      <h3>Travailler en équipe</h3><p>Un seul ordinateur à la fois sur le projet. Répartissez-vous les rôles : 3D, maquette, site, préparation de l’oral.</p></div>
+  </div>
+  <p class="foot">Images : vos propres visuels ou des images libres de droits.</p>
+  <span class="num">9</span>
+</section>
+
+<!-- 10. L'évaluation -->
+<section class="slide" aria-label="L’évaluation">
+  <p class="kicker">L’évaluation</p>
+  <h2>Quatre parties notées sur 20</h2>
+  <div class="eval">
+    <div class="card" style="background:var(--accent-soft)"><h3>Modélisation 3D <small>/20</small></h3><ul>
+      <li>Surface conforme, 10 × 7 m <em>3</em></li><li>Pièces et circulation <em>3</em></li><li>Ouvertures <em>2</em></li><li>Aménagement adapté au concept <em>4</em></li><li>Mobilier créé dans l’Atelier <em>3</em></li><li>Décoration cohérente <em>3</em></li><li>Cohérence avec la maquette <em>2</em></li></ul></div>
+    <div class="card" style="background:var(--oak-soft)"><h3>Maquette carton <small>/20</small></h3><ul>
+      <li>Respect du plan A3 et de l’échelle <em>5</em></li><li>Qualité de fabrication <em>5</em></li><li>Cloisons et ouvertures <em>3</em></li><li>Aménagement et mobilier <em>4</em></li><li>Cohérence avec la 3D <em>3</em></li></ul></div>
+    <div class="card" style="background:var(--slate-soft)"><h3>Site internet <small>/20</small></h3><ul>
+      <li>Charte graphique cohérente <em>3</em></li><li>Logo présent et lisible <em>2</em></li><li>3 pages au moins <em>2</em></li><li>Menu clair, liens <em>2</em></li><li>Textes rédigés et relus <em>3</em></li><li>Travail 3D présenté <em>3</em></li><li>Catalogue complet <em>3</em></li><li>Images décrites <em>2</em></li></ul></div>
+    <div class="card" style="background:var(--sage-soft)"><h3>Oral <small>/20</small></h3><ul>
+      <li>Présentation du concept <em>4</em></li><li>Explication des choix <em>5</em></li><li>Vocabulaire technique <em>3</em></li><li>Expression : clarté, voix <em>4</em></li><li>Réponses aux questions <em>4</em></li></ul></div>
+  </div>
+  <div class="formule"><span class="pill">Note du projet</span><span>moyenne des quatre parties, la même pour toute l’équipe</span></div>
+  <div class="formule" style="margin-top:12px"><span class="pill acc">+ / −</span><span>bonus ou malus individuel, en points (investissement, comportement)</span></div>
+  <span class="num">10</span>
+</section>
+
+<!-- 11. Les compétences -->
+<section class="slide" aria-label="Les compétences">
+  <p class="kicker">Ce que vous allez apprendre</p>
+  <h2>Les compétences travaillées</h2>
+  <div class="grid3 comp" style="gap:18px">
+    <div class="card"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></div><h3>Imaginer</h3><p>Imaginer une solution qui répond à un besoin : le concept, l’organisation de l’espace.</p></div>
+    <div class="card"><div class="ic t-oak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 21 21 3M14 3h7v7M3 14v7h7"/></svg></div><h3>Représenter</h3><p>Croquis, plan à l’échelle, modèle numérique en 3D : passer d’une représentation à l’autre.</p></div>
+    <div class="card"><div class="ic t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></div><h3>Modéliser</h3><p>Utiliser un outil de conception assistée par ordinateur, respecter des dimensions et des contraintes.</p></div>
+    <div class="card"><div class="ic t-oak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.6-.4-.4-2.6z"/></svg></div><h3>Réaliser</h3><p>Fabriquer une maquette à partir d’un plan : mesurer, découper, assembler avec soin.</p></div>
+    <div class="card"><div class="ic t-sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Communiquer</h3><p>Présenter un projet : site internet, oral, vocabulaire technique, justifier ses choix.</p></div>
+    <div class="card"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 2 6 5.5"/></svg></div><h3>Coopérer</h3><p>S’organiser en équipe, se répartir le travail, respecter les délais et les idées des autres.</p></div>
+  </div>
+  <span class="num">11</span>
+</section>
+
+<!-- 12. C'est parti -->
+<section class="slide s-fin" aria-label="C’est parti">
+  <p class="kicker">Aujourd’hui</p>
+  <h2>C’est parti !</h2>
+  <ol>
+    <li>Formez votre équipe.</li>
+    <li>Cherchez votre concept : répondez aux 6 questions.</li>
+    <li>Faites-le valider par le professeur.</li>
+    <li>Ouvrez Concept Store 3D : Nouveau projet, vos prénoms, votre classe.</li>
+  </ol>
+  <span class="num">12</span>
+</section>
+
+</main>
+</div>
+
+<nav class="bar" aria-label="Navigation">
+  <button type="button" id="prec" title="Diapositive précédente (←)" aria-label="Diapositive précédente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+  <span class="count" id="compte" aria-live="polite">1 / 12</span>
+  <button type="button" id="suiv" title="Diapositive suivante (→ ou espace)" aria-label="Diapositive suivante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  <div class="prog" aria-hidden="true"><i id="barre"></i></div>
+  <span class="hint">← → pour avancer · F plein écran</span>
+  <button type="button" id="plein" title="Plein écran (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="lbl">Plein écran</span></button>
+</nav>
+
+<script>
+(function () {
+  'use strict';
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var deck = document.getElementById('deck');
+  var n = slides.length, i = 0;
+  // Numéro de page sur chaque diapositive (sauf le titre)
+  slides.forEach(function (s, k) { var num = s.querySelector('.num'); if (num) num.textContent = (k + 1) + ' / ' + n; });
+
+  function lireAncre() { var m = /^#(\d+)$/.exec(location.hash); return m ? Math.min(n, Math.max(1, +m[1])) - 1 : 0; }
+  function aller(k) {
+    i = Math.min(n - 1, Math.max(0, k));
+    slides.forEach(function (s, j) { s.classList.toggle('on', j === i); s.setAttribute('aria-hidden', String(j !== i)); });
+    document.getElementById('compte').textContent = (i + 1) + ' / ' + n;
+    document.getElementById('barre').style.width = ((i + 1) / n * 100) + '%';
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  // Mise à l'échelle : une diapositive entière à l'écran ; téléphone en portrait : diapositives en liste.
+  function ajuster() {
+    var liste = innerWidth < 760 && innerHeight > innerWidth;
+    document.body.classList.toggle('liste', liste);
+    if (liste) {
+      var k = (innerWidth - 32) / 1280;
+      slides.forEach(function (s) {
+        s.style.transform = 'scale(' + k + ')'; s.style.width = '1280px'; s.style.height = '720px';
+        s.style.marginBottom = (16 - 720 * (1 - k)) + 'px';
+        s.style.marginRight = (-1280 * (1 - k)) + 'px';
+      });
+      deck.style.transform = '';
+      return;
+    }
+    slides.forEach(function (s) { s.style.transform = ''; s.style.width = ''; s.style.height = ''; s.style.marginBottom = ''; s.style.marginRight = ''; });
+    var sc = Math.min((innerWidth - 32) / 1280, (innerHeight - 56 - 24) / 720);
+    deck.style.transform = 'scale(' + Math.max(0.1, sc) + ')';
+  }
+  function pleinEcran() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
+  }
+
+  document.getElementById('prec').addEventListener('click', function () { aller(i - 1); });
+  document.getElementById('suiv').addEventListener('click', function () { aller(i + 1); });
+  document.getElementById('plein').addEventListener('click', pleinEcran);
+  addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); aller(i + 1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); aller(i - 1); }
+    else if (k === 'Home') aller(0);
+    else if (k === 'End') aller(n - 1);
+    else if (k === 'f' || k === 'F') pleinEcran();
+  });
+  // Clic sur la diapositive : moitié droite = suivante, moitié gauche = précédente (sauf sur un lien).
+  document.getElementById('stage').addEventListener('click', function (e) {
+    if (document.body.classList.contains('liste') || e.target.closest('a')) return;
+    aller(e.clientX > innerWidth / 2 ? i + 1 : i - 1);
+  });
+  // Balayage sur écran tactile
+  var x0 = null;
+  addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', function (e) {
+    if (x0 === null || document.body.classList.contains('liste')) return;
+    var dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) aller(dx < 0 ? i + 1 : i - 1);
+  });
+  addEventListener('hashchange', function () { aller(lireAncre()); });
+  addEventListener('resize', ajuster);
+  ajuster(); aller(lireAncre());
+})();
+</script>
+</body>
+</html>
