@@ -93,7 +93,7 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.ex-sheet', title: 'L’aperçu de la feuille', text: 'Le plan A3 : murs, portes, fenêtres et cotes. C’est le **gabarit de ta maquette**.' },
       { at: '[data-tour=ex-scale]', title: 'L’échelle', text: '**1 m = 3 cm** pour la maquette. Si le plan ne tient pas, l’outil te le dit.' },
       { at: '[data-tour=ex-team]', title: 'Le cartouche', text: 'Nom de l’équipe, prénoms et classe, imprimés en bas de la feuille.' },
-      { at: '.ex .pn-f', title: 'Enregistrer le plan', text: 'Le cartouche rempli, **Enregistrer le PDF** ouvre l’explorateur : choisis le **dossier de ton équipe**. Ton professeur l’imprimera.' },
+      { at: '.ex .pn-f', title: 'Enregistrer le plan', text: 'Le cartouche rempli, **Enregistrer le PDF** ouvre l’explorateur : choisis le **dossier de ton équipe**. Boutique à étage : **un PDF par niveau** (rez-de-chaussée, puis étage). Ton professeur les imprimera.' },
     ];
   }
 }

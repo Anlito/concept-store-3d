@@ -1,6 +1,6 @@
 import type { Ctx } from './state';
 import { h, icon } from '../ui/dom';
-import { alert, segmented, toast, toggle } from '../ui/components';
+import { alert, choose, segmented, toast, toggle } from '../ui/components';
 import { SCALES, ZONE_SIZE, bestScale, layoutSheet, planSize, scaleInfo, type Scale } from '../export/sheet';
 import { sheetPdf, sheetSvg } from '../export/render';
 import { helpButton, offerTour } from './guide/guide';
@@ -109,6 +109,9 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const missing = (['name', 'members', 'klass'] as const).filter(k => !team[k].trim());
     for (const [k, input] of inputs) input.classList.toggle('missing', missing.includes(k as typeof missing[number]));
     cartouche.replaceChildren(...(missing.length ? [alert('warning', 'Cartouche à compléter', 'Le nom de l’équipe, les prénoms et la classe sont obligatoires pour enregistrer le plan.')] : []));
+    // Boutique à étage : deux fichiers, un par niveau (le professeur imprime les deux).
+    const libelle = fs.length > 1 ? 'Enregistrer les 2 PDF' : 'Enregistrer le PDF';
+    if (dl.textContent !== libelle) dl.replaceChildren(icon('download'), libelle);
     dl.disabled = !lay.fits || missing.length > 0;
     dl.title = !lay.fits ? 'Choisis une échelle qui fait tenir le plan sur la feuille' : missing.length ? 'Remplis d’abord le cartouche' : '';
   }
@@ -118,14 +121,30 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const fs = feuilles();
     if (!fs.every(x => x.lay.fits) || !team.name.trim() || !team.members.trim() || !team.klass.trim()) return;
     store.update(d => { d.team = { name: team.name.trim(), members: team.members.trim(), klass: team.klass.trim() }; });
-    // Nom proposé : « Plan-A3-Prenom_Prenom.pdf », comme le dossier de l'équipe.
-    const who = dossierEquipe(team.members);
-    const blob = sheetPdf(fs.map(x => x.lay), `${doc.name} · plan des murs`).output('blob');
+    // Nom proposé : « Plan-A3-Prenom_Prenom.pdf », comme le dossier de l'équipe ; boutique à étage :
+    // « …-RDC.pdf » puis « …-Etage.pdf » (deux fichiers, un clic chacun : le navigateur ouvre un explorateur par clic).
+    const who = dossierEquipe(team.members) || 'equipe';
+    const type = { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } };
+    const pdf = (x: typeof fs) => sheetPdf(x.map(y => y.lay), `${doc.name} · plan des murs${x.length === 1 && fs.length > 1 ? ' · ' + x[0].nom : ''}`).output('blob');
     try {
-      const name = await saveBlob(`Plan-A3-${who || 'equipe'}.pdf`, blob, { description: 'Plan A3 (PDF)', accept: { 'application/pdf': ['.pdf'] } });
-      if (!name) return; // explorateur fermé sans enregistrer
+      if (fs.length === 1) {
+        const name = await saveBlob(`Plan-A3-${who}.pdf`, pdf(fs), type);
+        if (!name) return; // explorateur fermé sans enregistrer
+        markStep(ctx, 'plan');
+        toast(`Plan enregistré : « ${name} ». Ton professeur l’imprimera.`);
+        return;
+      }
+      const rdc = await saveBlob(`Plan-A3-${who}-RDC.pdf`, pdf([fs[0]]), type);
+      if (!rdc) return;
+      const c = await choose('Plan du rez-de-chaussée enregistré', `« ${rdc} » est enregistré. Enregistre maintenant le plan de l’étage, dans le même dossier : ton professeur imprimera les deux.`, [
+        { label: 'Plus tard', value: 'non', cls: 'btn-ghost' },
+        { label: 'Enregistrer le plan de l’étage', value: 'oui', cls: 'btn-primary', icon: 'download' },
+      ]);
+      if (c !== 'oui') { toast('Le plan de l’étage n’est pas encore enregistré : « Enregistrer les 2 PDF » quand tu veux.', undefined, 'warning'); return; }
+      const etage = await saveBlob(`Plan-A3-${who}-Etage.pdf`, pdf([fs[1]]), type);
+      if (!etage) return;
       markStep(ctx, 'plan');
-      toast(`Plan enregistré : « ${name} ». Ton professeur l’imprimera.`);
+      toast(`Plans enregistrés : « ${rdc} » et « ${etage} ». Ton professeur les imprimera.`);
     } catch {
       toast('Impossible d’enregistrer ici : choisis le dossier de ton équipe.', undefined, 'warning');
     }

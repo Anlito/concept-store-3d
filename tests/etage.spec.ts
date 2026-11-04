@@ -83,7 +83,7 @@ test('l’étage peut être plus petit, jamais plus grand que le rez-de-chaussé
   await expect(page.locator('.lvl-add')).toBeVisible();
 });
 
-test('fichier : le rez-de-chaussée devant, même enregistré depuis l’étage ; plan A3 de deux pages', async ({ page }) => {
+test('fichier : le rez-de-chaussée devant, même enregistré depuis l’étage ; plan A3 : un PDF par niveau', async ({ page }) => {
   await poserEscalier(page);
   await page.locator('.lvl-add').click(); // on est à l'étage
   await page.evaluate(() => (window as any).cs3d.store.update((d: any) => { d.name = 'Deux niveaux'; }));
@@ -99,10 +99,18 @@ test('fichier : le rez-de-chaussée devant, même enregistré depuis l’étage 
   await page.getByLabel('Nom de l’équipe').fill('Les Bâtisseurs');
   await page.getByLabel('Prénoms').fill('Léa, Malik');
   await page.getByLabel('Classe').fill('4e B');
-  const pdf = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Enregistrer le PDF' }).click();
-  const bytes = readFileSync(await (await pdf).path(), 'latin1');
-  expect(bytes.match(/\/Type \/Page[^s]/g)?.length).toBe(2);
+  // Deux fichiers : le rez-de-chaussée, puis l'étage (un clic de plus)
+  const pdf1 = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Enregistrer les 2 PDF' }).click();
+  const d1 = await pdf1;
+  expect(d1.suggestedFilename()).toBe('Plan-A3-Lea_Malik-RDC.pdf');
+  expect(readFileSync(await d1.path(), 'latin1').match(/\/Type \/Page[^s]/g)?.length).toBe(1);
+  const pdf2 = page.waitForEvent('download');
+  await page.getByRole('dialog', { name: 'Plan du rez-de-chaussée enregistré' }).getByRole('button', { name: 'Enregistrer le plan de l’étage' }).click();
+  const d2 = await pdf2;
+  expect(d2.suggestedFilename()).toBe('Plan-A3-Lea_Malik-Etage.pdf');
+  expect(readFileSync(await d2.path(), 'latin1').match(/\/Type \/Page[^s]/g)?.length).toBe(1);
+  await expect(page.getByText('Plans enregistrés')).toBeVisible();
 });
 
 test('six sortes d’escaliers : chacun monte à l’étage et ouvre son plancher', async ({ page }) => {
