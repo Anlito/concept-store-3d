@@ -80,7 +80,7 @@ ul.pts li::before { content: ""; position: absolute; left: 4px; top: 12px; width
 .s-titre { background: var(--ink); color: #fff; padding: 0; flex-direction: row; }
 .s-titre .txt { flex: 1; padding: 80px 0 72px 88px; display: flex; flex-direction: column; justify-content: center; }
 .s-titre .kicker { color: #F0A58F; }
-.s-titre h1 { color: #fff; font-size: 104px; }
+.s-titre h1 { color: #fff; font-size: 92px; }
 .s-titre .lead { color: #D9D5CE; margin-top: 22px; font-size: 32px; }
 .s-titre .meta { margin-top: auto; display: flex; gap: 12px; flex-wrap: wrap; }
 .s-titre .meta span { border: 2px solid rgba(255,255,255,.25); border-radius: 99px; padding: 8px 18px; font-size: 19px; font-weight: 800; color: #F4F1EC; }
@@ -145,6 +145,49 @@ ul.pts li::before { content: ""; position: absolute; left: 4px; top: 12px; width
 
 .comp .card { padding: 18px 22px; } .comp .ic { width: 46px; height: 46px; margin-bottom: 8px; } .comp .ic svg { width: 26px; height: 26px; } .comp h3 { font-size: 23px; margin-bottom: 4px; } .comp .card p { font-size: 18px; }
 
+.livrable ul.mini { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.livrable ul.mini li { font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--ink-2); padding-left: 20px; position: relative; }
+.livrable ul.mini li::before { content: ""; position: absolute; left: 0; top: 8px; width: 9px; height: 9px; border-radius: 3px; background: currentColor; opacity: .35; }
+.objectif { margin-top: auto; display: flex; gap: 16px; align-items: center; background: var(--ink); color: #fff; border-radius: 16px; padding: 20px 26px; font-size: 25px; font-weight: 800; }
+.objectif svg { width: 34px; height: 34px; flex: none; color: #F0A58F; }
+.regle { display: flex; gap: 18px; align-items: center; background: var(--oak-soft); border-radius: 16px; padding: 18px 24px; margin-bottom: 22px; }
+.regle svg { width: 40px; height: 40px; flex: none; color: #8A5A3B; }
+.regle b { display: block; font-size: 16px; letter-spacing: .1em; text-transform: uppercase; color: #8A5A3B; }
+.regle span { font-size: 29px; font-weight: 900; color: var(--ink); }
+.defi { display: grid; grid-template-columns: 300px 1fr; gap: 26px; }
+.defi h3 { font-size: 18px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px; }
+.non { display: flex; flex-direction: column; gap: 10px; }
+.non div { background: #FBEAEA; border-radius: 14px; padding: 12px 16px; }
+.non b { display: flex; align-items: center; gap: 8px; font-size: 21px; color: #A3302A; }
+.non b::before { content: "✕"; font-size: 16px; width: 24px; height: 24px; border-radius: 50%; background: #A3302A; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.non span { display: block; font-size: 16.5px; font-weight: 700; color: var(--ink-2); margin-top: 2px; padding-left: 32px; }
+.idees { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.idees div { background: var(--sage-soft); border-radius: 14px; padding: 12px 16px; }
+.idees b { display: block; font-size: 20px; }
+.idees span { font-size: 16.5px; font-weight: 700; color: var(--ink-2); line-height: 1.35; }
+.roles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.role { min-height: 300px; border-radius: 18px; padding: 26px 22px; background: var(--cream); display: flex; flex-direction: column; gap: 8px; }
+.role .ic { margin-bottom: 8px; }
+.role h3 { font-size: 24px; }
+.role p { font-size: 19px; line-height: 1.4; font-weight: 700; color: var(--ink-2); }
+.role .outil { margin-top: auto; padding-top: 8px; font-size: 15px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.phases { display: grid; grid-template-columns: 1.3fr 1.3fr 2.1fr 1.3fr; gap: 12px; }
+.phase { border-radius: 16px; padding: 20px 18px; display: flex; flex-direction: column; gap: 6px; }
+.phase small { font-size: 15px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+.phase b { font-size: 23px; line-height: 1.2; }
+.phase span { font-size: 17px; line-height: 1.35; font-weight: 700; color: var(--ink-2); }
+.phase .seances { margin-top: auto; padding-top: 8px; font-size: 16px; font-weight: 900; color: var(--ink); }
+.pair { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.lettre { background: var(--cream); border-radius: 16px; padding: 18px 18px 16px; }
+.lettre i { font-style: normal; display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 14px; background: var(--accent); color: #fff; font-size: 30px; font-weight: 900; margin-bottom: 10px; }
+.lettre b { display: block; font-size: 21px; letter-spacing: .04em; }
+.lettre span { font-size: 18px; line-height: 1.35; font-weight: 700; color: var(--ink-2); }
+.repartition { margin-top: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.repartition div { border-radius: 14px; padding: 14px 16px; background: var(--slate-soft); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 19px; font-weight: 800; }
+.repartition em { font-style: normal; font-weight: 900; color: var(--slate); white-space: nowrap; }
+.repartition div.q { background: var(--sage-soft); }
+.repartition div.q em { color: var(--sage); }
+
 /* ---------- Petits écrans (téléphone en portrait) : les diapositives les unes sous les autres ---------- */
 body.liste { overflow: auto; }
 body.liste .stage { position: static; display: block; padding: 16px 16px 72px; }
@@ -167,13 +210,13 @@ body.liste .bar { display: none; }
 <div class="stage" id="stage">
 <main class="deck" id="deck" aria-live="polite">
 
-<!-- 1. Titre -->
+<!-- Titre -->
 <section class="slide s-titre" aria-label="Titre">
   <div class="txt">
-    <p class="kicker">Technologie · cycle 4</p>
-    <h1>Concept Store</h1>
-    <p class="lead">Imagine ta boutique, conçois-la en 3D,<br>construis sa maquette et présente-la.</p>
-    <div class="meta"><span>Projet en équipe</span><span>Modélisation 3D</span><span>Maquette carton</span><span>Site internet</span><span>Oral</span></div>
+    <p class="kicker">Projet de technologie · 4e / 3e</p>
+    <h1>Mon Concept Store <span style="color:#F0A58F">4.0</span></h1>
+    <p class="lead">Imaginez votre boutique, modélisez-la en 3D,<br>construisez sa maquette et convainquez un investisseur.</p>
+    <div class="meta"><span>Projet en équipe</span><span>Modélisation 3D</span><span>Maquette carton</span><span>Site internet</span><span>Pitch</span></div>
   </div>
   <div class="art" aria-hidden="true">
     <svg viewBox="-120 -70 240 150">
@@ -189,62 +232,97 @@ body.liste .bar { display: none; }
   </div>
 </section>
 
-<!-- 2. La mission -->
-<section class="slide" aria-label="La mission">
-  <p class="kicker">La mission</p>
-  <h2>Votre équipe ouvre une boutique.<br>À vous de la <span class="acc">concevoir</span>.</h2>
+<!-- Le scénario -->
+<section class="slide" aria-label="Le scénario">
+  <p class="kicker">Le scénario</p>
+  <h2>Vous êtes entrepreneurs.<br>Convainquez un <span class="acc">investisseur</span>.</h2>
   <div class="grid2" style="gap:44px; align-items:start">
-    <div><p class="big">Un <b>concept store</b> est un magasin construit autour d’une <b>idée</b> : un thème, un univers, une ambiance. Tout y raconte la même histoire : les produits, les couleurs, le mobilier, la vitrine.</p>
-      <div class="exemples" style="margin-top:18px" aria-label="Exemples de concepts">
-    <span>Boutique zéro déchet</span><span>Librairie-café</span><span>Magasin de sport outdoor</span><span>Atelier de vélos</span><span>Friperie vintage</span><span>Jeux et mangas</span>
-  </div>
-      <p class="foot" style="margin-top:12px">Quelques idées pour démarrer : le vôtre doit être original.</p></div>
+    <p class="big">Vous devez convaincre un investisseur de <b>financer l’ouverture de votre concept store</b> : un magasin construit autour d’une <b>idée</b>, avec un univers, une clientèle et une valeur ajoutée qui le démarque. Tout y raconte la même histoire : les produits, les couleurs, le mobilier, la vitrine.</p>
     <ul class="pts">
-      <li>Vous inventez le <b>concept</b> de votre magasin.</li>
-      <li>Vous concevez l’<b>espace de vente</b> : pièces, circulation, mobilier, décoration.</li>
-      <li>Vous le <b>modélisez</b> en 3D, puis vous le <b>construisez</b> en carton.</li>
-      <li>Vous le <b>présentez</b> : site internet et oral.</li>
+      <li><b>Imaginer</b> le concept.</li>
+      <li><b>Modéliser</b> la boutique en 3D, avec son plan à l’échelle.</li>
+      <li><b>Construire</b> la maquette en carton.</li>
+      <li><b>Créer</b> le site web, votre vitrine en ligne.</li>
     </ul>
   </div>
+  <div class="objectif"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>Objectif final : pitcher votre projet face à l’investisseur et obtenir son financement !</div>
+  <span class="num"></span>
 </section>
 
-<!-- 3. Ce que vous allez produire -->
+<!-- Le défi créatif -->
+<section class="slide" aria-label="Votre défi créatif">
+  <p class="kicker">Votre défi créatif</p>
+  <h2 style="margin-bottom:18px">Quelle boutique ouvrir ?</h2>
+  <div class="regle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><div><b>La règle d’or</b><span>Les clients doivent repartir avec quelque chose dans les mains.</span></div></div>
+  <div class="defi">
+    <div><h3 style="color:#A3302A">Pas de…</h3><div class="non">
+      <div><b>Restauration</b><span>restaurant, café, fast-food, bar…</span></div>
+      <div><b>Services purs</b><span>coiffeur, salle de sport, escape game…</span></div>
+      <div><b>Loisirs sans achat</b><span>cinéma, bowling, concert…</span></div></div></div>
+    <div><h3 style="color:var(--sage)">Des idées pour démarrer</h3><div class="idees">
+      <div><b>Gaming et manga</b><span>Figurines, cartes, goodies, mangas</span></div>
+      <div><b>Streetwear custom</b><span>Tee-shirts, casquettes brodées</span></div>
+      <div><b>Identité numérique physique</b><span>Ton avatar en figurine, ta playlist en affiche, tes stats gravées sur métal</span></div>
+      <div><b>K-beauty</b><span>Soins coréens, produits viraux</span></div>
+      <div><b>Photos et souvenirs</b><span>Photobooth K-pop, polaroïds, cadres</span></div>
+      <div><b>Art et DIY créatif</b><span>Carnets, kits créatifs, tote bags</span></div></div></div>
+  </div>
+  <span class="num"></span>
+</section>
+
+<!-- Le concept à valider -->
+<section class="slide" aria-label="Le concept à valider">
+  <p class="kicker">Phase 1 · brainstorming et concept</p>
+  <h2>Votre concept, en 6 questions</h2>
+  <div class="questions">
+    <div class="q"><span class="n">1</span><div><b>Quel nom ?</b><span>Court, facile à retenir, qui dit ce que vous vendez.</span></div></div>
+    <div class="q"><span class="n">2</span><div><b>Que vendez-vous ?</b><span>Les familles de produits, et peut-être un service (atelier, café, réparation…).</span></div></div>
+    <div class="q"><span class="n">3</span><div><b>Pour qui ?</b><span>Vos clients : âge, goûts, besoins. Ce qu’ils viennent chercher chez vous.</span></div></div>
+    <div class="q"><span class="n">4</span><div><b>Quelle ambiance ?</b><span>Des couleurs, des matières, une lumière, un style.</span></div></div>
+    <div class="q"><span class="n">5</span><div><b>Qu’est-ce qui vous rend unique ?</b><span>L’idée qui donne envie d’entrer plutôt que chez le voisin.</span></div></div>
+    <div class="q"><span class="n">6</span><div><b>Quel logo, quel slogan ?</b><span>Ils serviront sur la vitrine, la façade et le site.</span></div></div>
+  </div>
+  <p class="foot">Faites <b>valider votre concept par le professeur</b> avant de commencer la boutique.</p>
+  <span class="num"></span>
+</section>
+
+<!-- Ce que vous allez produire -->
 <section class="slide" aria-label="Ce que vous allez produire">
-  <p class="kicker">Ce que vous allez produire</p>
-  <h2>Quatre réalisations, une seule boutique</h2>
+  <p class="kicker">Les livrables et leurs contraintes techniques</p>
+  <h2>Ce que vous allez produire</h2>
   <div class="grid4" style="flex:1">
     <div class="livrable" style="background:var(--accent-soft)">
       <div class="ic t-acc" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></div>
       <h3>La modélisation 3D</h3>
-      <p>La boutique dessinée, meublée et décorée sur l’ordinateur. Elle donne aussi le <b>plan A3</b> à l’échelle.</p>
+      <ul class="mini" style="color:var(--accent)"><li>Boutique de 10 × 7 m au plus</li><li>Pièces, ouvertures, mobilier créé, décoration</li><li>Plan 2D : le plan A3 à l’échelle</li></ul>
       <p class="outil acc">Concept Store 3D</p>
     </div>
     <div class="livrable" style="background:var(--oak-soft)">
       <div class="ic t-oak" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 9 12 4l9 5-9 5z"/><path d="M3 9v7l9 5 9-5V9"/><path d="M12 14v7"/></svg></div>
       <h3>La maquette carton</h3>
-      <p>Les murs en carton collés sur le plan A3 imprimé, avec les pièces, les ouvertures et le mobilier.</p>
+      <ul class="mini" style="color:#8A5A3B"><li>Échelle 1 m = 3 cm</li><li>La façade et l’intérieur</li><li>Les murs collés sur le plan A3 imprimé</li></ul>
       <p class="outil" style="color:#8A5A3B">Plan A3 · carton · colle</p>
     </div>
     <div class="livrable" style="background:var(--slate-soft)">
       <div class="ic t-slate" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg></div>
       <h3>Le site internet</h3>
-      <p>Le site vitrine du magasin : logo, couleurs, pages, catalogue de produits, et votre travail 3D.</p>
+      <ul class="mini" style="color:var(--slate)"><li>3 pages au minimum</li><li>Logo et charte graphique</li><li>Des visuels de la 3D et de la maquette</li></ul>
       <p class="outil" style="color:var(--slate)">Vitrine</p>
     </div>
     <div class="livrable" style="background:var(--sage-soft)">
       <div class="ic t-sage" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
-      <h3>L’oral</h3>
-      <p>L’équipe présente son concept et explique ses choix, puis répond aux questions.</p>
-      <p class="outil" style="color:var(--sage)">En équipe</p>
+      <h3>Le pitch</h3>
+      <ul class="mini" style="color:var(--sage)"><li>5 min + 2 min de questions</li><li>Méthode P.A.I.R.</li><li>Face à l’investisseur</li></ul>
+      <p class="outil" style="color:var(--sage)">Toute l’équipe</p>
     </div>
   </div>
-  <span class="num">3</span>
+  <span class="num"></span>
 </section>
 
-<!-- 4. Les contraintes -->
+<!-- Les contraintes -->
 <section class="slide" aria-label="Les contraintes">
   <p class="kicker">Le cahier des charges</p>
-  <h2>Les règles à respecter</h2>
+  <h2>Les contraintes techniques de la boutique</h2>
   <div class="grid2" style="gap:30px 48px">
     <div class="contrainte"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 21h18M3 19.5v3M21 19.5v3"/></svg></div>
       <div><h3>10 × 7 m au plus</h3><p>La surface de vente tient dans un rectangle de 10 m sur 7 m (70 m²), pour que le plan tienne sur une feuille A3.</p></div></div>
@@ -256,10 +334,37 @@ body.liste .bar { display: none; }
       <div><h3>Un étage ? Possible</h3><p>Un seul étage, plus petit ou égal au rez-de-chaussée, jamais plus grand. Il faut alors un escalier.</p></div></div>
   </div>
   <p class="foot">Tout doit rester cohérent : la 3D, le plan, la maquette et le site montrent la même boutique.</p>
-  <span class="num">4</span>
+  <span class="num"></span>
 </section>
 
-<!-- 5. Les étapes -->
+<!-- Les rôles -->
+<section class="slide" aria-label="Les rôles">
+  <p class="kicker">Les rôles</p>
+  <h2>Chaque membre a une mission</h2>
+  <div class="roles" style="margin-top:10px">
+    <div class="role" style="background:var(--accent-soft)"><div class="ic t-acc" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/></svg></div><h3>Chef de projet</h3><p>Coordonne l’équipe et valide les choix.</p><p class="outil">Organisation</p></div>
+    <div class="role" style="background:var(--oak-soft)"><div class="ic t-oak" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg></div><h3>Architecte 3D</h3><p>Modélise la boutique et génère le plan A3.</p><p class="outil" style="color:#8A5A3B">Concept Store 3D</p></div>
+    <div class="role" style="background:var(--slate-soft)"><div class="ic t-slate" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 6.5h.01M10 6.5h.01"/></svg></div><h3>Webmaster</h3><p>Crée le site web du magasin.</p><p class="outil" style="color:var(--slate)">Vitrine</p></div>
+    <div class="role" style="background:var(--sage-soft)"><div class="ic t-sage" style="background:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></div><h3>Maker</h3><p>Construit la maquette carton à l’échelle.</p><p class="outil" style="color:var(--sage)">Carton · plan A3</p></div>
+  </div>
+  <p class="foot">Chacun a sa mission, mais le concept et le pitch se préparent ensemble.</p>
+  <span class="num"></span>
+</section>
+
+<!-- Le planning -->
+<section class="slide" aria-label="Le planning">
+  <p class="kicker">Le planning du projet</p>
+  <h2>12 séances, 3 phases</h2>
+  <div class="phases" style="min-height:390px">
+    <div class="phase" style="background:var(--cream)"><small>Séance 1</small><b>Prise en main commune</b><span>Tous les élèves découvrent Concept Store 3D (visite guidée, boutique exemple), puis choisissent leur rôle en connaissance de cause.</span><p class="seances">1 séance</p></div>
+    <div class="phase" style="background:var(--accent-soft)"><small style="color:var(--accent)">Phase 1 · séances 2 et 3</small><b>Brainstorming et concept</b><span>Trouver le concept, le faire valider par le professeur.</span><p class="seances">2 séances</p></div>
+    <div class="phase" style="background:var(--oak-soft)"><small style="color:#8A5A3B">Phase 2 · séances 4 à 10</small><b>Production spécialisée</b><span>Chacun dans son rôle : la boutique en 3D et le plan A3, la maquette carton, le site web. Les 7 étapes de l’outil guident la 3D.</span><p class="seances">7 séances</p></div>
+    <div class="phase" style="background:var(--sage-soft)"><small style="color:var(--sage)">Phase 3 · séances 11 et 12</small><b>Finalisation et pitch</b><span>Terminer, relire, répéter le pitch, puis le présenter.</span><p class="seances">2 séances</p></div>
+  </div>
+  <span class="num"></span>
+</section>
+
+<!-- Les étapes -->
 <section class="slide" aria-label="Les étapes">
   <p class="kicker">La démarche</p>
   <h2>Les 7 étapes du projet</h2>
@@ -274,26 +379,12 @@ body.liste .bar { display: none; }
   </div>
   <div class="legende-etapes"><span><i style="background:var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent)"></i>Point de contrôle avec le professeur</span><span>En parallèle : la maquette carton, puis le site internet et l’oral.</span></div>
   <p class="foot">Dans l’outil, le bouton orange <b>Étape</b> rappelle à tout moment où vous en êtes.</p>
-  <span class="num">5</span>
+  <span class="num"></span>
 </section>
 
-<!-- 6. Le concept à valider -->
-<section class="slide" aria-label="Le concept à valider">
-  <p class="kicker">Étape 1 · avant de toucher à l’ordinateur</p>
-  <h2>Votre concept, en 6 questions</h2>
-  <div class="questions">
-    <div class="q"><span class="n">1</span><div><b>Quel nom ?</b><span>Court, facile à retenir, qui dit ce que vous vendez.</span></div></div>
-    <div class="q"><span class="n">2</span><div><b>Que vendez-vous ?</b><span>Les familles de produits, et peut-être un service (atelier, café, réparation…).</span></div></div>
-    <div class="q"><span class="n">3</span><div><b>Pour qui ?</b><span>Vos clients : âge, goûts, besoins. Ce qu’ils viennent chercher chez vous.</span></div></div>
-    <div class="q"><span class="n">4</span><div><b>Quelle ambiance ?</b><span>Des couleurs, des matières, une lumière, un style.</span></div></div>
-    <div class="q"><span class="n">5</span><div><b>Qu’est-ce qui vous rend unique ?</b><span>L’idée qui donne envie d’entrer plutôt que chez le voisin.</span></div></div>
-    <div class="q"><span class="n">6</span><div><b>Quel logo, quel slogan ?</b><span>Ils serviront sur la vitrine, la façade et le site.</span></div></div>
-  </div>
-  <p class="foot">Faites <b>valider votre concept par le professeur</b> avant de commencer la boutique.</p>
-  <span class="num">6</span>
-</section>
 
-<!-- 7. Du plan à la maquette -->
+
+<!-- Du plan à la maquette -->
 <section class="slide" aria-label="Du plan à la maquette">
   <p class="kicker">Étape 3 · le lien entre l’écran et le carton</p>
   <h2>Le plan A3 : le gabarit de la maquette</h2>
@@ -325,10 +416,10 @@ body.liste .bar { display: none; }
       <li>Vous <b>collez vos murs en carton</b> directement sur les traits.</li>
     </ul>
   </div>
-  <span class="num">7</span>
+  <span class="num"></span>
 </section>
 
-<!-- 8. Les outils -->
+<!-- Les outils -->
 <section class="slide" aria-label="Les outils">
   <p class="kicker">Les outils</p>
   <h2>Deux outils, dans le navigateur</h2>
@@ -347,10 +438,10 @@ body.liste .bar { display: none; }
     </a>
   </div>
   <p class="foot">Chrome ou Edge conseillés. Bouton <b>Aide</b> dans chaque outil : questions fréquentes et visites guidées.</p>
-  <span class="num">8</span>
+  <span class="num"></span>
 </section>
 
-<!-- 9. Organisation et sauvegarde -->
+<!-- Organisation et sauvegarde -->
 <section class="slide" aria-label="Organisation et sauvegarde">
   <p class="kicker">S’organiser</p>
   <h2>Un dossier par équipe, et tout dedans</h2>
@@ -364,10 +455,31 @@ body.liste .bar { display: none; }
       <h3>Travailler en équipe</h3><p>Un seul ordinateur à la fois sur le projet. Répartissez-vous les rôles : 3D, maquette, site, préparation de l’oral.</p></div>
   </div>
   <p class="foot">Images : vos propres visuels ou des images libres de droits.</p>
-  <span class="num">9</span>
+  <span class="num"></span>
 </section>
 
-<!-- 10. L'évaluation -->
+<!-- Le grand pitch -->
+<section class="slide" aria-label="Le grand pitch">
+  <p class="kicker">Le grand pitch</p>
+  <h2>5 min de présentation + 2 min de questions</h2>
+  <p class="lead" style="margin:-10px 0 20px">La méthode <b>P.A.I.R.</b></p>
+  <div class="pair">
+    <div class="lettre"><i>P</i><b>PROBLÈME</b><span>À quel besoin votre boutique répond-elle ?</span></div>
+    <div class="lettre"><i>A</i><b>AMBITION</b><span>Quel univers voulez-vous créer ?</span></div>
+    <div class="lettre"><i>I</i><b>IDÉE</b><span>Produits, design, expérience client.</span></div>
+    <div class="lettre"><i>R</i><b>RÉALISATION</b><span>Montrez le site, la 3D et la maquette.</span></div>
+  </div>
+  <h3 style="margin:26px 0 0; font-size:22px">Répartition du temps</h3>
+  <div class="repartition" style="margin-top:12px" aria-label="Répartition du temps">
+    <div>Intro et concept <em>~1 min 30</em></div>
+    <div>Site + modélisation 3D <em>~1 min 30</em></div>
+    <div>Maquette carton <em>~1 min 30</em></div>
+    <div class="q">Questions <em>2 min</em></div>
+  </div>
+  <span class="num"></span>
+</section>
+
+<!-- L'évaluation -->
 <section class="slide" aria-label="L’évaluation">
   <p class="kicker">L’évaluation</p>
   <h2>Quatre parties notées sur 20</h2>
@@ -378,15 +490,15 @@ body.liste .bar { display: none; }
       <li>Respect du plan A3 et de l’échelle <em>5</em></li><li>Qualité de fabrication <em>5</em></li><li>Cloisons et ouvertures <em>3</em></li><li>Aménagement et mobilier <em>4</em></li><li>Cohérence avec la 3D <em>3</em></li></ul></div>
     <div class="card" style="background:var(--slate-soft)"><h3>Site internet <small>/20</small></h3><ul>
       <li>Charte graphique cohérente <em>3</em></li><li>Logo présent et lisible <em>2</em></li><li>3 pages au moins <em>2</em></li><li>Menu clair, liens <em>2</em></li><li>Textes rédigés et relus <em>3</em></li><li>Travail 3D présenté <em>3</em></li><li>Catalogue complet <em>3</em></li><li>Images décrites <em>2</em></li></ul></div>
-    <div class="card" style="background:var(--sage-soft)"><h3>Oral <small>/20</small></h3><ul>
+    <div class="card" style="background:var(--sage-soft)"><h3>Oral · pitch <small>/20</small></h3><ul>
       <li>Présentation du concept <em>4</em></li><li>Explication des choix <em>5</em></li><li>Vocabulaire technique <em>3</em></li><li>Expression : clarté, voix <em>4</em></li><li>Réponses aux questions <em>4</em></li></ul></div>
   </div>
-  <div class="formule"><span class="pill">Note du projet</span><span>moyenne des quatre parties, la même pour toute l’équipe</span></div>
+  <div class="formule"><span class="pill">Note du projet</span><span>moyenne des quatre parties : chaque partie compte autant</span></div>
   <div class="formule" style="margin-top:12px"><span class="pill acc">+ / −</span><span>bonus ou malus individuel, en points (investissement, comportement)</span></div>
-  <span class="num">10</span>
+  <span class="num"></span>
 </section>
 
-<!-- 11. Les compétences -->
+<!-- Les compétences -->
 <section class="slide" aria-label="Les compétences">
   <p class="kicker">Ce que vous allez apprendre</p>
   <h2>Les compétences travaillées</h2>
@@ -398,20 +510,20 @@ body.liste .bar { display: none; }
     <div class="card"><div class="ic t-sage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Communiquer</h3><p>Présenter un projet : site internet, oral, vocabulaire technique, justifier ses choix.</p></div>
     <div class="card"><div class="ic t-acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 2 6 5.5"/></svg></div><h3>Coopérer</h3><p>S’organiser en équipe, se répartir le travail, respecter les délais et les idées des autres.</p></div>
   </div>
-  <span class="num">11</span>
+  <span class="num"></span>
 </section>
 
-<!-- 12. C'est parti -->
+<!-- C'est parti -->
 <section class="slide s-fin" aria-label="C’est parti">
-  <p class="kicker">Aujourd’hui</p>
-  <h2>C’est parti !</h2>
+  <p class="kicker">Mon Concept Store 4.0</p>
+  <h2>À vos concepts !</h2>
   <ol>
     <li>Formez votre équipe.</li>
-    <li>Cherchez votre concept : répondez aux 6 questions.</li>
+    <li>Découvrez Concept Store 3D, puis choisissez vos rôles.</li>
+    <li>Cherchez votre concept : la règle d’or et les 6 questions.</li>
     <li>Faites-le valider par le professeur.</li>
-    <li>Ouvrez Concept Store 3D : Nouveau projet, vos prénoms, votre classe.</li>
   </ol>
-  <span class="num">12</span>
+  <span class="num"></span>
 </section>
 
 </main>
@@ -419,7 +531,7 @@ body.liste .bar { display: none; }
 
 <nav class="bar" aria-label="Navigation">
   <button type="button" id="prec" title="Diapositive précédente (←)" aria-label="Diapositive précédente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-  <span class="count" id="compte" aria-live="polite">1 / 12</span>
+  <span class="count" id="compte" aria-live="polite"></span>
   <button type="button" id="suiv" title="Diapositive suivante (→ ou espace)" aria-label="Diapositive suivante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
   <div class="prog" aria-hidden="true"><i id="barre"></i></div>
   <span class="hint">← → pour avancer · F plein écran</span>
