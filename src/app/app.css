@@ -596,3 +596,8 @@
 .np-where { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); font-size: 14px; line-height: 1.45; color: var(--ink); }
 .np-where .ic { color: var(--accent); font-size: 22px; flex: none; }
 .np-path { font-weight: 700; }
+
+/* Bibliothèque : nombre d'exemplaires à poser d'un coup */
+.lib-nb { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--text-2); flex: none; }
+.lib-nb-in { width: 62px; height: 44px; border: 1.5px solid var(--field-border); border-radius: 10px; text-align: center; font: inherit; font-size: 16px; font-weight: 800; color: var(--ink); }
+.lib-nb-in:focus { outline: none; border: 2px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

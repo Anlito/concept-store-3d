@@ -61,7 +61,19 @@ function archGeometry(L: number, H: number, P: number, t: number) {
 }
 
 const mats = new Map<string, THREE.MeshStandardMaterial>();
-const mat = (c: string) => { let m = mats.get(c); if (!m) { m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }); m.name = c; mats.set(c, m); } return m; };
+const mat = (c: string, matiere?: Volume['matiere']) => {
+  const k = c + '|' + (matiere ?? '');
+  let m = mats.get(k);
+  if (!m) {
+    // Verre : presque transparent, à peine teinté ; plexiglas : transparent, teinté de la couleur choisie.
+    m = matiere ? new THREE.MeshStandardMaterial({ color: c, roughness: 0.08, metalness: 0, transparent: true, opacity: matiere === 'verre' ? 0.22 : 0.5, depthWrite: false })
+      : new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
+    m.name = c; mats.set(k, m);
+  }
+  return m;
+};
+/** Matières proposées dans l'atelier. */
+export const MATIERES: { value: Volume['matiere'] | undefined; label: string }[] = [{ value: undefined, label: 'Opaque' }, { value: 'verre', label: 'Verre' }, { value: 'plexi', label: 'Plexiglas' }];
 
 /** Maille d'un volume, centrée sur son encombrement puis placée et tournée. */
 export function volumeMesh(v: Volume): THREE.Object3D {
@@ -99,11 +111,12 @@ export function volumeMesh(v: Volume): THREE.Object3D {
     case 'prisme': g = prismGeometry(v.w, v.d, v.h, v.turned); break;
   }
   centerGeometry(g);
-  const m = new THREE.Mesh(g, mat(v.color));
+  const m = new THREE.Mesh(g, mat(v.color, v.matiere));
   m.position.set(v.x + bw / 2, v.z + bh / 2, v.y + bd / 2);
   // Inclinaisons d'abord (dans le repère du volume), puis rotation vue de dessus.
   m.rotation.set(r(v.tiltX ?? 0), -r(v.rot), -r(v.tiltY ?? 0), 'YXZ');
-  m.castShadow = true; m.receiveShadow = true;
+  m.castShadow = !v.matiere; m.receiveShadow = true; // le verre ne fait pas d'ombre pleine
+  if (v.matiere) m.renderOrder = 2; // dessiné après les volumes opaques
   m.userData.volume = v.id;
   return m;
 }

@@ -25,7 +25,8 @@ export function selectObjects(ctx: Ctx, ids: string[], additive = false) {
 }
 
 /** Ajoute un meuble de la bibliothèque dans la boutique, à un endroit libre, et le sélectionne. */
-export async function addObject(ctx: Ctx, model: string) {
+/** Pose un meuble ; `nombre` > 1 : autant d'exemplaires côte à côte, en bloc (une réserve de cartons…), tous sélectionnés. */
+export async function addObject(ctx: Ctx, model: string, nombre = 1) {
   const item = getItem(model); if (!item) return;
   const proto = await loadProto(model);
   const { store } = ctx;
@@ -57,10 +58,25 @@ export async function addObject(ctx: Ctx, model: string) {
   }
   // Une création gardée sur ce poste est copiée dans le projet (le fichier reste complet).
   const creation = item.source === 'moi' && !store.doc.creations.some(c => c.id === model) ? findCreation(ctx, model) : undefined;
-  store.update(d => { if (creation) d.creations.push(structuredClone(creation)); d.objects.push(o); });
-  selectObjects(ctx, [id]);
-  toast(`« ${item.name} » posé dans la boutique : glisse-le pour le placer.`);
+  // Plusieurs exemplaires : un bloc presque carré, 2 cm entre deux meubles, centré là où se serait posé le premier.
+  const n = Math.max(1, Math.min(NOMBRE_MAX, Math.round(nombre)));
+  const copies: PlacedObject[] = [o];
+  if (n > 1) {
+    const cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), gap = 0.02;
+    const dx = o.size.w + gap, dy = o.size.d + gap, x0 = o.x - ((cols - 1) * dx) / 2, y0 = o.y - ((rows - 1) * dy) / 2;
+    copies.length = 0;
+    for (let k = 0; k < n; k++) copies.push({ ...o, size: { ...o.size }, id: k ? uid() : id, x: Math.round((x0 + (k % cols) * dx) * 1000) / 1000, y: Math.round((y0 + Math.floor(k / cols) * dy) * 1000) / 1000 });
+  }
+  store.update(d => { if (creation) d.creations.push(structuredClone(creation)); d.objects.push(...copies); });
+  selectObjects(ctx, copies.map(c => c.id));
+  if (n > 1) {
+    const cols = Math.ceil(Math.sqrt(n));
+    toast(`${n} « ${item.name} » posés en bloc (${cols} × ${Math.ceil(n / cols)}) : ils sont tous sélectionnés, glisse-les ensemble pour les placer.`);
+  } else toast(`« ${item.name} » posé dans la boutique : glisse-le pour le placer.`);
 }
+
+/** Nombre d'exemplaires posés d'un coup, au plus. */
+export const NOMBRE_MAX = 50;
 
 export function deleteObjects(ctx: Ctx) {
   const ids = selectedIds(ctx); if (!ids.length) return;

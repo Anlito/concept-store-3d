@@ -160,3 +160,27 @@ test('couleur exacte avec la palette, puis réutilisable en couleur récente', a
   o = d.objects[0];
   expect(o.color).toBe('#1E7F8C');
 });
+
+test('placer plusieurs exemplaires d’un coup : un bloc côte à côte, tous sélectionnés', async ({ page }) => {
+  const avant = (await doc(page)).objects.length;
+  await page.locator('.fc', { hasText: 'Cubes empilés' }).first().click();
+  const nb = page.getByLabel('Nombre d’exemplaires');
+  await expect(nb).toHaveValue('1');
+  await nb.fill('6');
+  await page.getByRole('button', { name: 'Placer les 6 dans la boutique' }).click();
+  await expect(page.getByText('6 « Cubes empilés » posés en bloc (3 × 2)')).toBeVisible();
+  const d = await doc(page);
+  const poses = d.objects.slice(avant);
+  expect(poses).toHaveLength(6);
+  expect(poses.every((o: any) => o.model === 'v-cubes')).toBe(true);
+  expect(new Set(poses.map((o: any) => `${o.x},${o.y}`)).size).toBe(6); // aucun l'un sur l'autre
+  // Côte à côte : 2 cm entre deux cubes de la même rangée
+  const rangee = poses.filter((o: any) => o.y === poses[0].y).sort((a: any, b: any) => a.x - b.x);
+  expect(rangee[1].x - rangee[0].x).toBeCloseTo(poses[0].size.w + 0.02, 3);
+  expect(await sel(page)).toMatchObject({ ids: expect.arrayContaining(poses.map((o: any) => o.id)) });
+  // Au-delà de 50 : ramené à 50
+  await page.locator('[data-tool="mobilier"]').click();
+  await page.locator('.fc', { hasText: 'Cubes empilés' }).first().click();
+  await nb.fill('500'); await nb.press('Tab');
+  await expect(nb).toHaveValue('50');
+});

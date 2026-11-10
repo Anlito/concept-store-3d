@@ -226,9 +226,33 @@ for (const autrePoste of [false, true]) test('un meuble de l’atelier posé dan
   await p2.getByTestId('open-project').click();
   await (await chooser).setFiles(file);
   p2.on('pageerror', e => errors.push(e.message));
-  await expect(p2.locator('.tb-name')).toBeVisible();
+  await expect(p2.locator('.tb-name')).toBeVisible({ timeout: 20_000 }); // nouveau navigateur : premier chargement plus long
   await p2.waitForTimeout(1500);
   expect(await fantomes(p2)).toBe(0);
   const o = (await doc(p2)).objects.find((x: any) => x.model.startsWith('c-'));
   expect(o).toBeTruthy();
+});
+
+test('matière d’un volume : verre ou plexiglas transparents, gardés dans la création', async ({ page }) => {
+  await openSample(page);
+  await page.getByTestId('library').getByRole('button', { name: 'Créer un meuble' }).click();
+  const panel = page.getByTestId('atelier-panel');
+  await page.getByRole('button', { name: 'Ajouter : Boîte', exact: true }).click();
+  await panel.getByRole('button', { name: 'Opaque' }).waitFor();
+  await expect(panel.getByRole('button', { name: 'Opaque' })).toHaveClass(/on/);
+  await panel.getByRole('button', { name: 'Verre' }).click();
+  await expect(panel.getByRole('button', { name: 'Verre' })).toHaveClass(/on/);
+  await page.getByRole('button', { name: 'Ajouter : Cylindre', exact: true }).click();
+  await panel.getByRole('button', { name: 'Plexiglas' }).click();
+  await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
+  const d = await doc(page);
+  expect(d.creations.at(-1).volumes.map((v: any) => v.matiere)).toEqual(['verre', 'plexi']);
+  // Posé dans la boutique : les volumes sont transparents en 3D
+  await page.locator('.fc', { hasText: 'Mon meuble' }).first().dblclick();
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const out: number[] = [];
+    (window as any).cs3d.editor.view3d.scene.getObjectByName('objets').traverse((c: any) => { if (c.isMesh && c.material?.transparent && c.material.opacity < 0.6) out.push(Math.round(c.material.opacity * 100)); });
+    return out.sort();
+  })).toEqual([22, 50]);
 });

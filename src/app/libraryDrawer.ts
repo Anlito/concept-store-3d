@@ -5,7 +5,7 @@ import { deleteCreation, importCreations, onCreationsChanged } from './creations
 import { thumbnail } from '../library/thumbs';
 import { HEAVY_MB, canPickFolder, corrections, hasRememberedFolder, onProfChanged, pickProfFolder, profStatus, restoreProfFolder, setCorrection } from '../library/profFolder';
 import { button, toast } from '../ui/components';
-import { addObject } from './objectActions';
+import { NOMBRE_MAX, addObject } from './objectActions';
 
 /* Tiroir « Bibliothèque de mobilier » (maquette 04) : onglets, catégories, recherche, cartes, « Placer ». */
 
@@ -26,7 +26,16 @@ export function libraryDrawer(ctx: Ctx) {
   const catsEl = h('div', { class: 'lib-cats' });
   const grid = h('div', { class: 'lib-grid', 'data-testid': 'library-grid' });
   const footName = h('div', { class: 'lib-sel-n' }), footDims = h('div', { class: 'lib-sel-d' });
-  const place = h('button', { class: 'btn btn-primary btn-lg', type: 'button', disabled: true, onclick: () => selected && doPlace(selected) }, icon('add_location_alt'), 'Placer dans la boutique');
+  // Nombre d'exemplaires à poser d'un coup (1 par défaut ; le double-clic sur une carte en pose toujours un).
+  let nombre = 1;
+  const nb = h('input', { type: 'number', min: 1, max: NOMBRE_MAX, step: 1, value: '1', class: 'lib-nb-in', 'aria-label': 'Nombre d’exemplaires' }) as HTMLInputElement;
+  const lireNombre = () => { const v = Math.round(Number(nb.value)); nombre = Number.isFinite(v) ? Math.max(1, Math.min(NOMBRE_MAX, v)) : 1; libellePlace(); };
+  nb.addEventListener('input', lireNombre);
+  nb.addEventListener('change', () => { lireNombre(); nb.value = String(nombre); });
+  nb.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' && selected) void doPlace(selected, nombre); });
+  const nbEl = h('label', { class: 'lib-nb', title: `Poser plusieurs exemplaires d’un coup, côte à côte (jusqu’à ${NOMBRE_MAX})` }, 'Nombre', nb);
+  const place = h('button', { class: 'btn btn-primary btn-lg', type: 'button', disabled: true, onclick: () => selected && doPlace(selected, nombre) }, icon('add_location_alt'), 'Placer dans la boutique');
+  function libellePlace() { place.replaceChildren(icon('add_location_alt'), nombre > 1 ? `Placer les ${nombre} dans la boutique` : 'Placer dans la boutique'); }
   const close = () => ctx.ui.set({ libraryOpen: false });
 
   const el = h('section', { class: 'lib', 'data-testid': 'library', 'aria-label': 'Bibliothèque de mobilier' },
@@ -38,9 +47,9 @@ export function libraryDrawer(ctx: Ctx) {
       h('button', { class: 'btn btn-secondary', type: 'button', 'data-tour': 'lib-create', onclick: () => ctx.openAtelier() }, icon('handyman'), 'Créer un meuble')),
     tabsEl,
     h('div', { class: 'lib-body' }, catsEl, grid),
-    h('div', { class: 'lib-foot' }, h('div', { class: 'lib-sel' }, footName, footDims), place));
+    h('div', { class: 'lib-foot' }, h('div', { class: 'lib-sel' }, footName, footDims), nbEl, place));
 
-  async function doPlace(it: LibItem) { await addObject(ctx, it.id); }
+  async function doPlace(it: LibItem, n = 1) { await addObject(ctx, it.id, n); }
 
   const items = () => libraryItems().filter(i => i.source === tab);
   function renderTabs() {

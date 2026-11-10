@@ -5,10 +5,10 @@ import type { Creation, Volume, VolumeType } from '../model/types';
 import { Store } from '../model/store';
 import { uid } from '../model/geometry';
 import { h, icon } from '../ui/dom';
-import { type Bound, alert, button, choose, numberField, section, swatches, toast, toggle } from '../ui/components';
+import { type Bound, alert, button, choose, numberField, section, segmented, swatches, toast, toggle } from '../ui/components';
 import { HEAVY_TRIANGLES, importObjFiles } from '../library/objImport';
 import { CATEGORIES } from '../library/library';
-import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh } from '../library/volumes3d';
+import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh, MATIERES } from '../library/volumes3d';
 import { saveCreation } from './creations';
 import { helpButton, offerTour } from './guide/guide';
 
@@ -139,6 +139,8 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
           h('p', { class: 'p-help' }, 'Un angle négatif penche vers l’arrière ou vers la gauche. Après une inclinaison, « Au sol » ou « Dessus » recalent le volume.'),
           button('Remettre droit', 'restart_alt', 'btn-ghost', () => edit(x => { x.rot = 0; x.tiltX = 0; x.tiltY = 0; }))),
         section('Couleur du volume', colorPicker(v)),
+        v.type === 'modele' ? null : section('Matière', b(segmented(MATIERES, () => vol()?.matiere, m => edit(x => { if (m) x.matiere = m; else delete x.matiere; }))),
+          h('p', { class: 'p-help' }, 'Verre ou plexiglas : le volume devient transparent (vitrine, présentoir, cloche, étagère…). Le plexiglas prend la couleur choisie.')),
         h('div', { class: 'g2' }, button('Dupliquer', 'content_copy', 'btn-secondary', () => duplicate()), button('Supprimer', 'delete', 'btn-danger', () => remove())),
       ];
     } else {

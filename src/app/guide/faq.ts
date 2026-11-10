@@ -63,6 +63,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Comment faire une ouverture sans porte entre deux espaces ?', a: 'Choisis **Porte**, style **Passage (sans porte)**, puis clique sur la cloison.' },
   ],
   mobilier: [
+    { q: 'Comment poser beaucoup d’objets identiques (30 cartons pour la réserve) ?', a: 'Dans la bibliothèque, choisis le meuble, écris le **Nombre** à côté de « Placer dans la boutique » (jusqu’à 50), puis clique : ils arrivent côte à côte, en bloc, tous sélectionnés. **Glisse-les ensemble** pour les placer.' },
     { q: 'Comment ajouter un meuble ?', a: 'Ouvre la **bibliothèque**, choisis un meuble et **glisse-le** dans la boutique, ou clique sur **Placer dans la boutique**.' },
     { q: 'Comment tourner un meuble ?', a: '[[R]] le tourne de 15° ([[Maj]]+[[R]] dans l’autre sens). Pour un angle précis : **Angle exact** dans le panneau.' },
     { q: 'Comment choisir plusieurs meubles ?', a: '[[Maj]] + clic sur chacun. Sur le plan, glisse dans le vide pour les entourer.' },
@@ -87,6 +88,7 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
     { q: 'Comment faire une image de mon rendu ?', a: 'Bouton **Photo** : choisis l’angle (façade, 3/4, intérieur, dessus ou les 4 en .zip), la taille et **PNG ou JPG**.' },
   ],
   atelier: [
+    { q: 'Comment faire une vitre, une cloche ou un présentoir transparent ?', a: 'Choisis le volume, puis **Matière** : **Verre** (presque transparent) ou **Plexiglas** (transparent, de la couleur choisie).' },
     { q: 'À quoi sert l’Atelier ?', a: 'À fabriquer un meuble avec des volumes. Il rejoint **Mes créations** et il est enregistré **dans le projet**.' },
     { q: 'Comment centrer ou aligner deux volumes ?', a: 'Choisis un volume, puis **Placer par rapport à…** : choisis le volume de référence et l’alignement.' },
     { q: 'Comment pencher ou tourner un volume ?', a: 'Section **Rotation et inclinaison** : tourner, pencher vers l’avant ou vers la droite. **Remettre droit** annule.' },

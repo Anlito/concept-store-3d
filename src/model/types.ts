@@ -148,6 +148,8 @@ export interface Volume {
   /** Inclinaison vers la droite (degrés ; négatif = vers la gauche). */
   tiltY?: number;
   color: string;
+  /** Matière : opaque (absente), verre (presque transparent) ou plexiglas (transparent teinté de la couleur). */
+  matiere?: 'verre' | 'plexi';
   /** Masqué dans l'atelier seulement (pour travailler sur les volumes cachés). */
   hidden?: boolean;
   /** Modèle importé (Tinkercad) : w, d, h = taille voulue ; color vide = couleurs d'origine. */
