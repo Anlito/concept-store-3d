@@ -20,19 +20,32 @@ async function fakeDisk(page: Page) {
       async queryPermission() { return 'granted'; }, async requestPermission() { return 'granted'; },
     });
     (window as any).showSaveFilePicker = async (o: any) => { fs.saveCalls.push(o.suggestedName); return mk(fs.saveQueue.shift() ?? o.suggestedName); };
-    // Dossiers : fs.files est indexé par chemin (« Lea_Malik/projet.json ») ; fs.dirQueue = dossiers choisis.
-    fs.dirQueue = [] as string[]; fs.dirCalls = 0;
+    // Dossiers : fs.files est indexé par chemin depuis CONCEPT STORE (« Lea_Malik/projet.json ») ; un autre dossier
+    // de la classe garde son chemin (« TECHNOLOGIE/… »). fs.dirQueue = dossiers choisis (« CONCEPT STORE/Lea_Malik »…).
+    fs.dirQueue = [] as string[]; fs.dirCalls = 0; fs.dirs = [] as string[];
+    const strip = (p: string) => (p.startsWith('CONCEPT STORE/') ? p.slice('CONCEPT STORE/'.length) : p);
+    const full = (k: string) => (k.startsWith('TECHNOLOGIE') ? k : 'CONCEPT STORE/' + k);
     const dir = (path: string): any => ({
       kind: 'directory', name: path.split('/').pop(),
-      async getDirectoryHandle(n: string) { return dir(path + '/' + n); },
+      async getDirectoryHandle(n: string, o?: { create?: boolean }) { if (o?.create && !fs.dirs.includes(strip(path + '/' + n))) fs.dirs.push(strip(path + '/' + n)); return dir(path + '/' + n); },
       async getFileHandle(n: string, o?: { create?: boolean }) {
-        const key = path.split('/').slice(2).concat(n).join('/');
+        const key = strip(path + '/' + n);
         if (!(key in fs.files) && !o?.create) throw new DOMException('Absent', 'NotFoundError');
         if (!(key in fs.files)) fs.files[key] = '';
         return mk(key);
       },
+      async *values() {
+        const vu = new Map<string, string>();
+        for (const k of [...Object.keys(fs.files), ...fs.dirs]) {
+          const p = full(k);
+          if (!p.startsWith(path + '/')) continue;
+          const reste = p.slice(path.length + 1).split('/');
+          vu.set(reste[0], reste.length > 1 || !(k in fs.files) ? 'directory' : 'file');
+        }
+        for (const [name, kind] of vu) yield { kind, name };
+      },
     });
-    (window as any).showDirectoryPicker = async () => { fs.dirCalls++; return dir('/' + (fs.dirQueue.shift() ?? 'CONCEPT STORE')); };
+    (window as any).showDirectoryPicker = async () => { fs.dirCalls++; return dir(fs.dirQueue.shift() ?? 'CONCEPT STORE'); };
     (window as any).showOpenFilePicker = async () => [mk(fs.openQueue.shift())];
   });
 }
@@ -110,7 +123,7 @@ test('le projet modèle du professeur n’est jamais écrasé', async ({ page })
   // Un élève ouvre le modèle
   await page.evaluate(() => { (window as any).__fs.openQueue.push('modele-boutique-a-completer.json'); });
   await page.locator('.tb-logo').click();
-  await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click().catch(() => { /* rien à enregistrer */ });
+  await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click({ timeout: 2000 }).catch(() => { /* rien à enregistrer */ });
   await page.getByTestId('template').click();
   await page.getByRole('button', { name: 'Modèle du professeur' }).click();
   await expect(page.locator('.tb-name')).toHaveValue('Boutique à compléter');
@@ -225,20 +238,48 @@ test('nouveau projet : l’équipe, le dossier CONCEPT STORE (l’outil crée ce
   await expect(page.getByText('Bureau › Classe › 4B › COMMUN › TECHNOLOGIE › CONCEPT STORE › Lea_Malik')).toBeVisible();
 });
 
-test('nouveau projet : le dossier de l’équipe choisi lui-même est refusé, un autre dossier demande confirmation', async ({ page }) => {
+test('un seul dossier par équipe : le dossier de l’équipe choisi lui-même, ou créé par Vitrine avec les prénoms dans l’autre ordre', async ({ page }) => {
   await fakeDisk(page);
   await page.goto(distUrl('index.html'));
-  await page.evaluate(() => { (window as any).__fs.dirQueue.push('Lea_Malik', 'TECHNOLOGIE'); });
+  const fsState = () => page.evaluate(() => (window as any).__fs);
+  // 1. L'élève choisit directement le dossier de son équipe : on enregistre dedans, sans sous-dossier
+  await page.evaluate(() => { (window as any).__fs.dirQueue.push('CONCEPT STORE/Lea_Malik'); });
   await nouveauProjet(page, { 'Prénoms de l’équipe': 'Léa, Malik', 'Nom de la boutique': 'Le Comptoir Vert' });
-  const refus = page.getByRole('dialog', { name: 'C’est le dossier de ton équipe' });
-  await expect(refus).toContainText('choisis le dossier qui le contient, « CONCEPT STORE »');
-  await refus.getByRole('button', { name: 'Choisir un autre dossier' }).click();
+  await expect(status(page)).toHaveText('Enregistré');
+  expect(Object.keys((await fsState()).files)).toEqual(['Lea_Malik/le-comptoir-vert.json']);
+  // 2. Une autre équipe : Vitrine a déjà créé « Malik_Hugo » ; ici les prénoms sont tapés « Hugo et Malik »
+  await page.evaluate(() => { const fs = (window as any).__fs; fs.files['Malik_Hugo/le-velo-rouge.vitrine'] = '{}'; fs.dirQueue.push('CONCEPT STORE'); });
+  await page.locator('.tb-logo').click();
+  await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click({ timeout: 2000 }).catch(() => { /* rien à enregistrer */ });
+  await nouveauProjet(page, { 'Prénoms de l’équipe': 'Hugo et Malik', 'Nom de la boutique': 'Le Vélo Rouge' });
+  await expect(status(page)).toHaveText('Enregistré');
+  const fs = await fsState();
+  expect(Object.keys(fs.files).sort()).toEqual(['Lea_Malik/le-comptoir-vert.json', 'Malik_Hugo/le-velo-rouge.json', 'Malik_Hugo/le-velo-rouge.vitrine']);
+  expect(fs.dirs).toEqual([]); // aucun dossier « Hugo_Malik » en plus
+});
+
+test('un autre dossier : on demande, et jamais de sous-dossier dans un dossier qui contient déjà un projet', async ({ page }) => {
+  await fakeDisk(page);
+  await page.goto(distUrl('index.html'));
+  // Un dossier vide au mauvais endroit : l'outil propose d'y créer le dossier de l'équipe
+  await page.evaluate(() => { (window as any).__fs.dirQueue.push('TECHNOLOGIE'); });
+  await nouveauProjet(page, { 'Prénoms de l’équipe': 'Léa, Malik', 'Nom de la boutique': 'Le Comptoir Vert' });
   const autre = page.getByRole('dialog', { name: 'Ce n’est pas le dossier attendu' });
   await expect(autre).toContainText('« TECHNOLOGIE »');
   await autre.getByRole('button', { name: 'Créer « Lea_Malik » dedans' }).click();
   await expect(status(page)).toHaveText('Enregistré');
+  expect(Object.keys((await page.evaluate(() => (window as any).__fs)).files)).toEqual(['TECHNOLOGIE/Lea_Malik/le-comptoir-vert.json']);
+  // Un dossier au nom inattendu qui contient déjà un projet : « Enregistrer ici », pas de sous-dossier
+  await page.evaluate(() => { const fs = (window as any).__fs; fs.files['TECHNOLOGIE/Groupe3/ancien.json'] = '{}'; fs.dirQueue.push('TECHNOLOGIE/Groupe3'); });
+  await page.locator('.tb-logo').click();
+  await page.getByRole('button', { name: 'Quitter sans enregistrer' }).click({ timeout: 2000 }).catch(() => { /* rien à enregistrer */ });
+  await nouveauProjet(page, { 'Prénoms de l’équipe': 'Inès, Tom', 'Nom de la boutique': 'Le Grenier' });
+  const travail = page.getByRole('dialog', { name: 'Ce dossier contient déjà un projet' });
+  await travail.getByRole('button', { name: 'Enregistrer ici' }).click();
+  await expect(status(page)).toHaveText('Enregistré');
   const fs = await page.evaluate(() => (window as any).__fs);
-  expect(Object.keys(fs.files)).toEqual(['Lea_Malik/le-comptoir-vert.json']);
+  expect(Object.keys(fs.files)).toContain('TECHNOLOGIE/Groupe3/le-grenier.json');
+  expect(fs.dirs).toEqual(['TECHNOLOGIE/Lea_Malik']);
 });
 
 test('nouveau projet : une sauvegarde déjà présente dans le dossier de l’équipe n’est jamais écrasée', async ({ page }) => {

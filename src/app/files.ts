@@ -5,11 +5,13 @@ import { sanitizeProject } from '../model/project';
 import { uid } from '../model/geometry';
 import { choose, toast } from '../ui/components';
 import { putBackup } from '../storage/backup';
+import { dossierDeLEquipe, type DossierRangement } from './rangement';
 import { cheminProjet, DOSSIER_PROJET } from './college';
 
 /* Enregistrer / ouvrir un projet (fichier .json unique).
    - Chrome / Edge : le premier enregistrement fait choisir le dossier CONCEPT STORE de la classe ; l'outil y
-     crée toujours lui-même le dossier de l'équipe (Lea_Malik), comme les autres outils de la classe.
+     retrouve le dossier de l'équipe (même créé par Vitrine, prénoms dans un autre ordre) ou le crée (Lea_Malik) :
+     un seul dossier par équipe (voir rangement.ts).
      « Enregistrer sous » et l'ouverture passent par showSaveFilePicker / showOpenFilePicker.
    - Ailleurs : le projet est téléchargé, et ouvert avec un sélecteur de fichier classique.
    Règle : un fichier modèle (isTemplate) n'est jamais écrasé. Un projet ouvert depuis un modèle
@@ -41,8 +43,9 @@ export const dossierEquipe = (members: string) => members.normalize('NFD').repla
 /** Même identifiant pour tous les sélecteurs : Chrome rouvre le dernier dossier choisi (celui de l'équipe). */
 export const PICKER_ID = 'cs3d-equipe';
 type SaveWindow = { showSaveFilePicker?: (o: object) => Promise<FileSystemFileHandle> };
-/** Enregistre un fichier en ouvrant l'explorateur (Chrome, Edge), sinon le télécharge. Renvoie le nom, ou null si annulé. */
-export async function saveBlob(name: string, blob: Blob, type: { description: string; accept: Record<string, string[]> }): Promise<string | null> {
+/** Enregistre un fichier en ouvrant l'explorateur (Chrome, Edge), sinon le télécharge. Renvoie le nom, ou null si annulé.
+    `aCote` : fichier du projet ; l'explorateur s'ouvre dans son dossier (celui de l'équipe), pas dans le dernier dossier utilisé. */
+export async function saveBlob(name: string, blob: Blob, type: { description: string; accept: Record<string, string[]> }, aCote?: FileSystemFileHandle | null): Promise<string | null> {
   const w = window as unknown as SaveWindow;
   if (typeof w.showSaveFilePicker !== 'function') {
     const url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -51,7 +54,7 @@ export async function saveBlob(name: string, blob: Blob, type: { description: st
     return name;
   }
   try {
-    const handle = await w.showSaveFilePicker({ id: PICKER_ID, suggestedName: name, types: [type] });
+    const handle = await w.showSaveFilePicker({ id: PICKER_ID, suggestedName: name, types: [type], ...(aCote ? { startIn: aCote } : {}) });
     const out = await (handle as FileSystemFileHandle & { createWritable(): Promise<FileSystemWritableFileStream> }).createWritable();
     await out.write(blob); await out.close();
     return handle.name;
@@ -64,38 +67,32 @@ export async function saveBlob(name: string, blob: Blob, type: { description: st
 /** Dossier d'équipe des élèves sur le réseau du collège (rappel affiché) : chemin des réglages du collège. */
 export const dossierEquipeComplet = (klass: string, members: string) => cheminProjet(klass) + ' › ' + (dossierEquipe(members) || 'Prénom_Prénom');
 
-const simple = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '').toLowerCase();
-/** Dossier choisi : « projet » (CONCEPT STORE), « equipe » (le dossier de l'équipe lui-même) ou « autre ». */
-export function sorteDeDossier(nom: string, members: string): 'projet' | 'equipe' | 'autre' {
-  if (simple(nom) === simple(dossierEquipe(members))) return 'equipe';
-  if (simple(nom) === simple(DOSSIER_PROJET)) return 'projet';
-  return 'autre';
-}
-
-/** Le dossier de l'équipe est toujours créé par l'outil : l'élève choisit le dossier CONCEPT STORE de sa classe.
+/** Un seul dossier par équipe (module rangement) : l'élève choisit le dossier CONCEPT STORE de sa classe (ou celui de son équipe).
     Renvoie le fichier du projet dans le dossier de l'équipe, ou null (annulé, ou projet déjà présent : jamais écrasé). */
 async function fichierDansDossierEquipe(p: Project): Promise<FileSystemFileHandle | null> {
   const equipe = dossierEquipe(p.team.members), chemin = cheminProjet(p.team.klass);
   for (;;) {
     const dir = await W.showDirectoryPicker!({ id: PICKER_ID, mode: 'readwrite' });
-    const sorte = sorteDeDossier(dir.name, p.team.members);
-    if (sorte === 'equipe') {
-      const c = await choose('C’est le dossier de ton équipe', `Tu as choisi « ${dir.name} ». L’outil crée lui-même le dossier de ton équipe : choisis le dossier qui le contient, « ${DOSSIER_PROJET} » (${chemin}).`,
-        [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
+    // Un seul dossier par équipe : retrouvé (même s'il a été créé par Vitrine, prénoms dans un autre ordre), sinon créé.
+    const r = await dossierDeLEquipe(dir as unknown as DossierRangement, p.team.members, equipe, DOSSIER_PROJET);
+    let dossier: FileSystemDirectoryHandle;
+    if ('dossier' in r) dossier = r.dossier as unknown as FileSystemDirectoryHandle;
+    else {
+      // Un dossier qui contient déjà un projet : sans doute un dossier d'équipe au nom inattendu, on n'y crée pas de sous-dossier.
+      const c = r.travail
+        ? await choose('Ce dossier contient déjà un projet', `« ${dir.name} » contient déjà un projet. Si c’est le dossier de ton équipe, enregistre ici. Sinon, choisis le dossier « ${DOSSIER_PROJET} » de ta classe (${chemin}).`,
+          [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: 'Enregistrer ici', value: 'ici' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }])
+        : await choose('Ce n’est pas le dossier attendu', `Le dossier choisi s’appelle « ${dir.name} ». Le dossier attendu est « ${DOSSIER_PROJET} » (${chemin}) : l’outil y range le dossier de ton équipe, « ${equipe} ».`,
+          [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: `Créer « ${equipe} » dedans`, value: 'creer' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
       if (c === 'autre') continue;
-      return null;
+      if (c === 'ici') dossier = dir;
+      else if (c === 'creer') dossier = await dir.getDirectoryHandle(equipe, { create: true });
+      else return null;
     }
-    if (sorte === 'autre') {
-      const c = await choose('Ce n’est pas le dossier attendu', `Le dossier choisi s’appelle « ${dir.name} ». Le dossier attendu est « ${DOSSIER_PROJET} » (${chemin}) : l’outil y crée le dossier « ${equipe} ».`,
-        [{ label: 'Annuler', value: 'non', cls: 'btn-ghost' }, { label: `Créer « ${equipe} » dedans`, value: 'creer' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
-      if (c === 'autre') continue;
-      if (c !== 'creer') return null;
-    }
-    const dossier = await dir.getDirectoryHandle(equipe, { create: true });
     const nom = suggestedName(p, 'projet');
     const existant = await dossier.getFileHandle(nom).catch(() => null);
     if (existant && (await existant.getFile()).size) {
-      const c = await choose('Ce projet existe déjà', `Le dossier « ${equipe} » contient déjà « ${nom} » : il n’a pas été touché. Pour continuer ce projet, ouvre-le avec « Ouvrir un projet ».`,
+      const c = await choose('Ce projet existe déjà', `Le dossier « ${dossier.name} » contient déjà « ${nom} » : il n’a pas été touché. Pour continuer ce projet, ouvre-le avec « Ouvrir un projet ».`,
         [{ label: 'Fermer', value: 'non', cls: 'btn-ghost' }, { label: 'Choisir un autre dossier', value: 'autre', cls: 'btn-primary', icon: 'folder_open' }]);
       if (c === 'autre') continue;
       return null;

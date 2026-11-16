@@ -128,20 +128,20 @@ export function exportScreen(ctx: Ctx, back: () => void): HTMLElement {
     const pdf = (x: typeof fs) => sheetPdf(x.map(y => y.lay), `${doc.name} · plan des murs${x.length === 1 && fs.length > 1 ? ' · ' + x[0].nom : ''}`).output('blob');
     try {
       if (fs.length === 1) {
-        const name = await saveBlob(`Plan-A3-${who}.pdf`, pdf(fs), type);
+        const name = await saveBlob(`Plan-A3-${who}.pdf`, pdf(fs), type, ctx.file.handle);
         if (!name) return; // explorateur fermé sans enregistrer
         markStep(ctx, 'plan');
         toast(`Plan enregistré : « ${name} ». Ton professeur l’imprimera.`);
         return;
       }
-      const rdc = await saveBlob(`Plan-A3-${who}-RDC.pdf`, pdf([fs[0]]), type);
+      const rdc = await saveBlob(`Plan-A3-${who}-RDC.pdf`, pdf([fs[0]]), type, ctx.file.handle);
       if (!rdc) return;
       const c = await choose('Plan du rez-de-chaussée enregistré', `« ${rdc} » est enregistré. Enregistre maintenant le plan de l’étage, dans le même dossier : ton professeur imprimera les deux.`, [
         { label: 'Plus tard', value: 'non', cls: 'btn-ghost' },
         { label: 'Enregistrer le plan de l’étage', value: 'oui', cls: 'btn-primary', icon: 'download' },
       ]);
       if (c !== 'oui') { toast('Le plan de l’étage n’est pas encore enregistré : « Enregistrer les 2 PDF » quand tu veux.', undefined, 'warning'); return; }
-      const etage = await saveBlob(`Plan-A3-${who}-Etage.pdf`, pdf([fs[1]]), type);
+      const etage = await saveBlob(`Plan-A3-${who}-Etage.pdf`, pdf([fs[1]]), type, ctx.file.handle);
       if (!etage) return;
       markStep(ctx, 'plan');
       toast(`Plans enregistrés : « ${rdc} » et « ${etage} ». Ton professeur les imprimera.`);

@@ -65,7 +65,7 @@ export function newProjectDialog(): Promise<NewProjectInfo | null> {
       err,
       h('div', { class: 'np-where' }, icon('folder_open'),
         pick ? h('span', null, `Ensuite, choisis le dossier « ${DOSSIER_PROJET} » de ta classe : `, h('span', { class: 'np-path' }, path, folder), '.',
-          h('br'), 'L’outil y crée lui-même le dossier de ton équipe. Ton projet y sera enregistré automatiquement.')
+          h('br'), 'Le dossier de ton équipe existe déjà (créé avec Vitrine) ? Choisis-le, ou CONCEPT STORE : l’outil le retrouve, sinon il le crée. Ton projet y sera enregistré automatiquement.')
           : h('span', null, 'Ton projet sera téléchargé : range-le dans ', h('span', { class: 'np-path' }, path, folder), '.')),
       h('div', { class: 'modal-btns' },
         button('Annuler', null, 'btn-ghost', () => done(false)),
