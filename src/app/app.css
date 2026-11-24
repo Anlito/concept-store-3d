@@ -312,7 +312,7 @@
 /* ---------- Atelier de création (maquette 05) ---------- */
 .at-left { width: 264px; flex: none; background: #fff; border-right: 1px solid var(--border); padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
 .at-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.at-tile { height: 72px; font-size: 12px !important; border: none; border-radius: 14px; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+.at-tile { height: 62px; font-size: 12px !important; border: none; border-radius: 14px; background: var(--bg-app); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   font: 700 13px var(--font); color: var(--ink); cursor: pointer; transition: background-color .14s ease-out; }
 .at-tile:hover { background: var(--accent-soft); color: var(--accent-hover); }
 .at-pic { display: flex; }
@@ -342,7 +342,7 @@
 .lib-tabbar { display: flex; gap: 8px; padding: 12px 20px 0 8px; grid-column: 1 / -1; }
 .at-import { white-space: normal; font-size: 13px; line-height: 1.2; padding: 0 12px; }
 .at-cat { border: none; outline: none; background: transparent; font: 800 15px var(--font); color: var(--ink); cursor: pointer; }
-.at-tile svg { width: 32px; height: 32px; }
+.at-tile svg { width: 28px; height: 28px; }
 .algn-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .algn { height: 54px; border: 1.5px solid var(--field-border); border-radius: 10px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; font: 700 12px var(--font); color: var(--ink); cursor: pointer; padding: 0 2px; white-space: nowrap; }
@@ -601,3 +601,22 @@
 .lib-nb { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--text-2); flex: none; }
 .lib-nb-in { width: 62px; height: 44px; border: 1.5px solid var(--field-border); border-radius: 10px; text-align: center; font: inherit; font-size: 16px; font-weight: 800; color: var(--ink); }
 .lib-nb-in:focus { outline: none; border: 2px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* Atelier : onglets Formes / Éléments, variantes, matières en vignettes, grand nuancier */
+.at-tabs { margin-bottom: 8px; }
+.at-tabs .seg-b { height: 36px; font-weight: 800; }
+.sws8 { display: grid; grid-template-columns: repeat(8, 28px); gap: 6px; }
+.sws8 .sw { width: 28px; height: 28px; }
+.chx-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.chx { height: 40px; border: 1.5px solid var(--field-border); border-radius: 10px; background: #fff; font: 700 13px var(--font); color: var(--ink); cursor: pointer; padding: 0 4px; }
+.chx:hover { background: var(--sel-bg); border-color: var(--accent); }
+.chx.on { background: var(--sel-bg); border-color: var(--accent); color: var(--accent-hover); box-shadow: inset 0 0 0 1px var(--accent); }
+.mt-g { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mt-g.mt-sm { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 8px; }
+.mt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border: 1.5px solid transparent; border-radius: 10px; background: transparent;
+  font: 700 12px var(--font); color: var(--text-2); cursor: pointer; }
+.mt:hover { background: var(--hover); }
+.mt.on { border-color: var(--accent); background: var(--sel-bg); color: var(--accent-hover); }
+.mt-pv { width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.14); }
+.mt-sm .mt-pv { width: 26px; height: 26px; }
+.mt-sm .mt { font-size: 11px; }

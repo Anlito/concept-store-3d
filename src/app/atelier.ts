@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Ctx } from './state';
-import type { Creation, Volume, VolumeType } from '../model/types';
+import type { Creation, Matiere, Poignee, Volume, VolumeType } from '../model/types';
 import { Store } from '../model/store';
 import { uid } from '../model/geometry';
 import { h, icon } from '../ui/dom';
 import { type Bound, alert, button, choose, numberField, section, segmented, swatches, toast, toggle } from '../ui/components';
 import { HEAVY_TRIANGLES, importObjFiles } from '../library/objImport';
 import { CATEGORIES } from '../library/library';
-import { VOLUME_LABEL, VOLUME_TYPES, buildVolumes, newVolume, totalSize, volumeBox, volumeMesh, MATIERES } from '../library/volumes3d';
+import { ELEMENT_TYPES, VOLUME_LABEL, VOLUME_TYPES, buildVolumes, isElement, newVolume, totalSize, volumeBox, volumeMesh, MATIERES } from '../library/volumes3d';
+import { type MatiereInfo, matierePreview } from '../library/matieres';
 import { saveCreation } from './creations';
 import { helpButton, offerTour } from './guide/guide';
 
@@ -16,11 +17,46 @@ import { helpButton, offerTour } from './guide/guide';
    plan, arche), règle leurs dimensions au clavier, leur couleur, puis enregistre le meuble dans
    « Mes créations ». L'atelier a son propre historique (annuler / rétablir). */
 
+/** Nuancier de l'atelier, une ligne par famille : bois, neutres, chauds, verts, bleus et violets, métaux. */
 const COLORS = [
-  { name: 'Noir', hex: '#2E2D2B' }, { name: 'Blanc cassé', hex: '#F6F4F0' }, { name: 'Chêne', hex: '#C9A97E' }, { name: 'Noyer', hex: '#8A5A3B' },
-  { name: 'Terracotta', hex: '#BF4E36' }, { name: 'Ocre', hex: '#D9A54A' }, { name: 'Sauge', hex: '#6E8B6B' }, { name: 'Vert sapin', hex: '#3F5E4A' },
-  { name: 'Bleu ardoise', hex: '#5B6B7A' }, { name: 'Bleu ciel', hex: '#BCD3DF' }, { name: 'Rose poudré', hex: '#E8C8BC' }, { name: 'Gris béton', hex: '#B8B4AD' },
+  { name: 'Bouleau', hex: '#E3CDA4' }, { name: 'Hêtre', hex: '#D9B88F' }, { name: 'Chêne', hex: '#C9A97E' }, { name: 'Bambou', hex: '#D8C27A' },
+  { name: 'Teck', hex: '#A87545' }, { name: 'Noyer', hex: '#8A5A3B' }, { name: 'Acajou', hex: '#7A3B2A' }, { name: 'Wengé', hex: '#4A3426' },
+  { name: 'Blanc pur', hex: '#FFFFFF' }, { name: 'Blanc cassé', hex: '#F6F4F0' }, { name: 'Lin', hex: '#E8DCC8' }, { name: 'Sable', hex: '#D8C7A8' },
+  { name: 'Greige', hex: '#BFB3A3' }, { name: 'Gris béton', hex: '#B8B4AD' }, { name: 'Anthracite', hex: '#4A4A4A' }, { name: 'Noir', hex: '#2E2D2B' },
+  { name: 'Rose poudré', hex: '#E8C8BC' }, { name: 'Corail', hex: '#E8836B' }, { name: 'Terracotta', hex: '#BF4E36' }, { name: 'Rouille', hex: '#9C4A26' },
+  { name: 'Rouge', hex: '#B3262E' }, { name: 'Bordeaux', hex: '#6E1F2B' }, { name: 'Ocre', hex: '#D9A54A' }, { name: 'Moutarde', hex: '#C99A2E' },
+  { name: 'Jaune soleil', hex: '#F2C94C' }, { name: 'Pistache', hex: '#C5D49A' }, { name: 'Sauge', hex: '#6E8B6B' }, { name: 'Olive', hex: '#7D7A3A' },
+  { name: 'Kaki', hex: '#6B6A4A' }, { name: 'Vert d’eau', hex: '#A8D5C8' }, { name: 'Émeraude', hex: '#1F7A5C' }, { name: 'Vert sapin', hex: '#3F5E4A' },
+  { name: 'Bleu ciel', hex: '#BCD3DF' }, { name: 'Bleu ardoise', hex: '#5B6B7A' }, { name: 'Bleu canard', hex: '#1F5F6B' }, { name: 'Bleu roi', hex: '#2F4FA2' },
+  { name: 'Marine', hex: '#1F2A44' }, { name: 'Lavande', hex: '#B9A9D4' }, { name: 'Lilas', hex: '#C8A2C8' }, { name: 'Prune', hex: '#5E2A4B' },
+  { name: 'Chromé', hex: '#D9DCDF' }, { name: 'Acier', hex: '#A7ABAF' }, { name: 'Graphite', hex: '#3A3B3D' }, { name: 'Laiton', hex: '#C9A54B' },
+  { name: 'Doré', hex: '#D4AF37' }, { name: 'Or rose', hex: '#D9A08B' }, { name: 'Cuivre', hex: '#B87333' }, { name: 'Bronze', hex: '#8C6A3F' },
 ];
+/** Couleurs des poignées, tringles et roues. */
+const ACCENT_COLORS = ['Noir', 'Graphite', 'Blanc pur', 'Chromé', 'Acier', 'Laiton', 'Doré', 'Or rose', 'Cuivre', 'Bronze', 'Chêne', 'Noyer']
+  .map(n => COLORS.find(c => c.name === n)!);
+const ACCENT_MATIERES = MATIERES.filter(m => [undefined, 'laque', 'metal', 'miroir', 'bois', 'cuir'].includes(m.value));
+/** Variantes des éléments de meuble. */
+const STYLES: Partial<Record<VolumeType, { value: string; label: string }[]>> = {
+  porte: [{ value: 'pleine', label: 'Pleine' }, { value: 'moulure', label: 'Moulurée' }, { value: 'vitree', label: 'Vitrée' }, { value: 'cannee', label: 'Cannée' }, { value: 'persienne', label: 'Persienne' }],
+  pieds: [{ value: 'rond', label: 'Ronds' }, { value: 'carre', label: 'Carrés' }, { value: 'fuseau', label: 'Fuseau' }, { value: 'compas', label: 'Compas' },
+    { value: 'epingle', label: 'Épingle' }, { value: 'boule', label: 'Boules' }, { value: 'roulette', label: 'Roulettes' }, { value: 'central', label: 'Pied central' }],
+  poignee: [{ value: 'bouton', label: 'Bouton' }, { value: 'barre', label: 'Barre' }, { value: 'longue', label: 'Longue' }, { value: 'coquille', label: 'Coquille' }],
+  rideau: [{ value: 'ferme', label: 'Fermé' }, { value: 'ouvert', label: 'Ouvert' }],
+  claustra: [{ value: 'lattes', label: 'Lattes' }, { value: 'ronds', label: 'Tasseaux ronds' }],
+  coussin: [{ value: 'galette', label: 'Galette' }, { value: 'boudin', label: 'Boudin' }],
+};
+const POIGNEES: { value: Poignee; label: string }[] = [{ value: 'aucune', label: 'Aucune' }, { value: 'bouton', label: 'Bouton' }, { value: 'barre', label: 'Barre' },
+  { value: 'longue', label: 'Longue' }, { value: 'coquille', label: 'Coquille' }];
+/** Aide affichée en haut du panneau d'un élément de meuble. */
+const ELEMENT_HELP: Partial<Record<VolumeType, string>> = {
+  porte: 'Astuce : choisis d’abord le caisson, puis ajoute la porte : elle se pose devant lui, à sa taille.',
+  pieds: 'Astuce : choisis d’abord le plateau (posé en hauteur), puis ajoute les pieds : ils se placent dessous, aux quatre coins.',
+  caisson: 'Un meuble ouvert : côtés, dessus, dessous et tablettes. Ajoute une porte ou des tiroirs devant.',
+  rideau: 'Pour une cabine d’essayage, une réserve ou une vitrine.',
+  claustra: 'Une cloison légère en lattes, pour séparer un coin de la boutique.',
+  portant: 'Un portant à vêtements : deux montants, une barre et deux pieds.',
+};
 const PICTO: Record<VolumeType, string> = {
   boite: '<path d="M8 15 24 7l16 8v18l-16 8-16-8z M8 15l16 8 16-8 M24 23v18"/>',
   cylindre: '<ellipse cx="24" cy="12" rx="12" ry="5"/><path d="M12 12v22c0 3 5 5 12 5s12-2 12-5V12"/>',
@@ -35,8 +71,49 @@ const PICTO: Record<VolumeType, string> = {
   demirond: '<path d="M8 14h32c0 7-7 11-16 11S8 21 8 14z"/><path d="M8 14v20c0 7 7 9 16 9s16-2 16-9V14"/>',
   prisme: '<path d="M6 38 20 12l22 6-14 26z"/><path d="M20 12l8 32"/>',
   modele: '',
+  porte: '<rect x="12" y="5" width="24" height="38" rx="1"/><rect x="16" y="9" width="16" height="30"/><path d="M29 21v6"/>',
+  tiroirs: '<rect x="8" y="7" width="32" height="34" rx="1"/><path d="M8 18.5h32M8 29.5h32M20 12.5h8M20 24h8M20 35h8"/>',
+  caisson: '<rect x="9" y="5" width="30" height="38"/><path d="M9 17h30M9 30h30"/>',
+  pieds: '<path d="M6 16h36v4H6z M11 20l-2 22 M37 20l2 22 M17 20l-1 16 M31 20l1 16"/>',
+  poignee: '<path d="M10 30V22h28v8"/><path d="M6 30h10M32 30h10"/>',
+  rideau: '<path d="M6 7h36"/><path d="M10 7c-2 12 2 24-2 36h10c-3-12 1-24-2-36 M38 7c2 12-2 24 2 36H30c3-12-1-24 2-36"/>',
+  claustra: '<path d="M10 6v36M17 6v36M24 6v36M31 6v36M38 6v36"/>',
+  portant: '<path d="M10 42V8h28v34 M4 42h12M32 42h12"/><path d="M18 8v6l-4 6h8l-4-6 M30 8v6l-4 6h8l-4-6"/>',
+  coussin: '<path d="M8 18c0-6 32-6 32 0v12c0 6-32 6-32 0z"/><path d="M8 24c10 3 22 3 32 0"/>',
 };
 const cmStr = (m: number) => String(Math.round(m * 100));
+
+/** Grille de choix (variante d'un élément, type de poignée). */
+function choiceGrid<T>(opts: { value: T; label: string }[], get: () => T, set: (v: T) => void): Bound {
+  const btns = opts.map(o => h('button', { class: 'chx', type: 'button', onclick: () => set(o.value) }, o.label));
+  const refresh = () => btns.forEach((b, i) => b.classList.toggle('on', opts[i].value === get()));
+  refresh();
+  return { el: h('div', { class: 'chx-g' }, btns), refresh };
+}
+/** Matières en vignettes, teintées de la couleur du volume. */
+function matierePicker(list: MatiereInfo[], get: () => Matiere | undefined, set: (m: Matiere | undefined) => void, color: () => string, small = false): Bound {
+  const pv = list.map(() => h('span', { class: 'mt-pv' }));
+  const btns = list.map((m, i) => h('button', { class: 'mt', type: 'button', title: m.label, onclick: () => set(m.value) }, pv[i], h('span', null, m.label)));
+  const look = (m: Matiere | undefined, c: string) => {
+    const img = m ? matierePreview(m) : null;
+    if (img) return { background: `url(${img}) center / cover, ${c}`, blend: 'multiply' };
+    switch (m) {
+      case 'laque': return { background: `radial-gradient(circle at 32% 28%, #fff 0 12%, transparent 34%), ${c}`, blend: 'normal' };
+      case 'metal': return { background: `linear-gradient(135deg, #fff, #777 45%, #fff 60%, #555), ${c}`, blend: 'multiply' };
+      case 'miroir': return { background: `linear-gradient(160deg, #fff 0 30%, #9aa 31% 55%, #fff 56% 62%, #667), ${c}`, blend: 'multiply' };
+      case 'verre': return { background: 'linear-gradient(135deg, rgba(220,235,238,.5), rgba(255,255,255,.9) 50%, rgba(200,220,225,.5)), repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 10px 10px', blend: 'normal' };
+      case 'plexi': return { background: `linear-gradient(135deg, transparent, rgba(255,255,255,.7) 50%, transparent), linear-gradient(${c}99, ${c}99), repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 10px 10px`, blend: 'normal' };
+      default: return { background: c, blend: 'normal' };
+    }
+  };
+  const refresh = () => {
+    const cur = get(), c = color();
+    btns.forEach((b, i) => b.classList.toggle('on', list[i].value === cur));
+    pv.forEach((p, i) => { const l = look(list[i].value, c); p.style.background = l.background; p.style.backgroundBlendMode = l.blend; });
+  };
+  refresh();
+  return { el: h('div', { class: 'mt-g' + (small ? ' mt-sm' : '') }, btns), refresh };
+}
 
 export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () => void; done: (id: string) => void }) {
   const editing = !!opts.creation;
@@ -58,8 +135,14 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     const pic = h('span', { class: 'at-pic' }); pic.innerHTML = `<svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">${PICTO[t]}</svg>`;
     return h('button', { class: 'at-tile', type: 'button', title: 'Ajouter : ' + VOLUME_LABEL[t], 'aria-label': 'Ajouter : ' + VOLUME_LABEL[t], onclick: () => addVolume(t) }, pic, VOLUME_LABEL[t]);
   };
+  // Deux onglets : formes simples, ou éléments de meuble tout faits (porte, tiroirs, pieds, rideau…)
+  let tab: 'formes' | 'elements' = 'formes';
+  const tiles = h('div', { class: 'at-tiles', 'data-testid': 'at-tiles' });
+  const tabs = segmented([{ value: 'formes' as const, label: 'Formes' }, { value: 'elements' as const, label: 'Éléments' }], () => tab, t => { tab = t; renderTiles(); }, 'at-tabs');
+  const renderTiles = () => { tiles.replaceChildren(...(tab === 'formes' ? VOLUME_TYPES : ELEMENT_TYPES).map(addTile)); tabs.refresh(); };
+  renderTiles();
   const left = h('aside', { class: 'at-left' },
-    section('Ajouter un volume', h('div', { class: 'at-tiles' }, ...VOLUME_TYPES.map(addTile))),
+    section('Ajouter', tabs.el, tiles),
     h('div', { class: 'p-sec', style: { flex: '1', minHeight: '0' } }, listTitle, list),
     h('div', { class: 'p-sec' },
       h('button', { class: 'btn at-import', type: 'button', onclick: () => pickObj() }, icon('upload_file'), 'Importer un fichier Tinkercad (OBJ)'),
@@ -67,10 +150,20 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
 
   function addVolume(t: VolumeType) {
     const n = st.doc.volumes.filter(v => v.type === t).length + 1;
-    const v = newVolume(t, n, vol()?.color ?? '#C9A97E');
-    if (st.doc.volumes.length) { const s = totalSize(st.doc.volumes); v.x = Math.round((s.w + 0.1) * 100) / 100; }
+    const cur = vol();
+    const v = newVolume(t, n, cur?.color || '#C9A97E');
+    // Porte devant le volume choisi, pieds sous le plateau choisi : à sa taille.
+    let fitted = '';
+    if (cur && (t === 'porte' || t === 'pieds')) {
+      const B = bbox(cur), s = B.getSize(new THREE.Vector3());
+      if (t === 'porte' && s.y >= 0.05) Object.assign(v, { w: r3(s.x), h: r3(s.y), x: r3(B.min.x), y: r3(B.max.z), z: r3(Math.max(0, B.min.y)) }), fitted = `devant « ${cur.name} »`;
+      if (t === 'pieds' && B.min.y >= 0.05) Object.assign(v, { w: r3(s.x), d: r3(s.z), h: r3(B.min.y), x: r3(B.min.x), y: r3(B.min.z), z: 0 }), fitted = `sous « ${cur.name} »`;
+    }
+    if (!fitted && st.doc.volumes.length) { const s = totalSize(st.doc.volumes); v.x = Math.round((s.w + 0.1) * 100) / 100; }
     st.update(d => { d.volumes.push(v); });
+    if (cur) prevSel = cur.id;
     sel = v.id; renderAll();
+    if (fitted) toast(`${VOLUME_LABEL[t]} posée ${fitted}, à sa taille.`.replace('Pieds posée', 'Pieds posés'));
     view.frame();
   }
   function renderList() {
@@ -88,7 +181,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   const saveBtn = h('button', { class: 'btn btn-primary btn-xl', type: 'button', onclick: () => void save() }, icon('bookmark_add'), editing ? 'Enregistrer le meuble' : 'Ajouter à Mes créations');
   function renderPanel() {
     const v = vol();
-    const key = v ? `${v.id}|${v.type}|${v.turned}|${st.doc.volumes.map(x => x.id + x.name).join()}` : 'meuble';
+    const key = v ? `${v.id}|${v.type}|${v.turned}|${v.style}|${v.poignee}|${v.fond}|${st.doc.volumes.map(x => x.id + x.name).join()}` : 'meuble';
     saveBtn.disabled = !st.doc.volumes.length;
     if (key === panelKey) { binds.forEach(b => b.refresh()); return; }
     panelKey = key; binds = [];
@@ -97,6 +190,8 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
     const b = <T extends Bound>(x: T) => { binds.push(x); return x.el; };
     const nf = (label: string, k: 'w' | 'd' | 'h' | 't' | 'x' | 'y' | 'z', min = 1, max = 400) => b(numberField({ label, unit: 'cm', min, max,
       get: () => (vol()?.[k] ?? 0) * 100, set: val => edit(x => { x[k] = val / 100; fixArch(x); }) }));
+    const intf = (label: string, k: 'n' | 'n2', min: number, max: number, def: number) => b(numberField({ label, unit: '', min, max,
+      get: () => vol()?.[k] ?? def, set: val => edit(x => { x[k] = Math.round(val); }) }));
     let body: (Node | null)[];
     if (v) {
       const dims: Record<VolumeType, () => HTMLElement> = {
@@ -113,6 +208,17 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
         demirond: () => h('div', { class: 'g2' }, nf('Diamètre', 'w'), nf(v.turned ? 'Longueur' : 'Hauteur', 'h')),
         prisme: () => h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')),
         modele: () => modelDims(),
+        porte: () => h('div', { class: 'g3' }, nf('Largeur', 'w'), nf('Hauteur', 'h'), nf('Épaisseur', 't', 1, 10)),
+        tiroirs: () => h('div', { class: 'p-sec' }, h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')), h('div', { class: 'g2' }, intf('Nombre de tiroirs', 'n', 1, 10, 3))),
+        caisson: () => h('div', { class: 'p-sec' }, h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')),
+          h('div', { class: 'g3' }, nf('Planches', 't', 1, 10), intf('Tablettes', 'n', 0, 15, 3), intf('Séparations', 'n2', 0, 10, 0))),
+        pieds: () => h('div', { class: 'p-sec' }, h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')), h('div', { class: 'g2' }, nf('Section du pied', 't', 1, 30))),
+        poignee: () => h('div', { class: 'g2' }, nf('Longueur', 'w', 2, 200)),
+        rideau: () => h('div', { class: 'g3' }, nf('Largeur', 'w'), nf('Hauteur', 'h'), nf('Plis', 't', 1, 30)),
+        claustra: () => h('div', { class: 'p-sec' }, h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Hauteur', 'h'), nf('Profondeur', 'd', 1, 30)),
+          h('div', { class: 'g2' }, nf('Largeur des lattes', 't', 1, 30), intf('Nombre de lattes', 'n', 2, 80, 12))),
+        portant: () => h('div', { class: 'p-sec' }, h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Hauteur', 'h')), h('div', { class: 'g2' }, nf('Diamètre du tube', 't', 1, 8))),
+        coussin: () => v.style === 'boudin' ? h('div', { class: 'g2' }, nf('Longueur', 'w'), nf('Diamètre', 'h')) : h('div', { class: 'g3' }, nf('Longueur', 'w'), nf('Profondeur', 'd'), nf('Épaisseur', 'h', 1, 100)),
       };
       const nameIn = h('input', { value: v.name, 'aria-label': 'Nom du volume', maxLength: 40 });
       nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') nameIn.blur(); });
@@ -120,11 +226,28 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
       const turn = v.type === 'cylindre' || v.type === 'tube' || v.type === 'demirond' ? toggle('Couché', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
         : v.type === 'plan' ? toggle('Debout', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
         : v.type === 'prisme' ? toggle('En coin (triangle droit)', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
-        : v.type === 'demiboule' ? toggle('À l’envers (côté plat en haut)', 'swap_vert', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
+        : v.type === 'demiboule' ? toggle('À l’envers (côté plat en haut)', 'swap_vert', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'porte' ? toggle('Poignée à gauche', 'swap_horiz', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'tiroirs' ? toggle('Tiroirs côte à côte', 'view_column', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'claustra' ? toggle('Lattes horizontales', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; }))
+        : v.type === 'poignee' ? toggle('Verticale', 'rotate_right', () => !!vol()?.turned, val => edit(x => { x.turned = val; })) : null;
+      const fond = v.type === 'caisson' ? toggle('Avec un fond', 'check_box_outline_blank', () => !!vol()?.fond, val => edit(x => { x.fond = val; }))
+        : v.type === 'rideau' ? toggle('Avec une tringle', 'horizontal_rule', () => vol()?.fond !== false, val => edit(x => { x.fond = val; }))
+        : v.type === 'portant' ? toggle('Avec une tablette en bas', 'shelves', () => !!vol()?.fond, val => edit(x => { x.fond = val; })) : null;
+      const styles = STYLES[v.type];
+      const hasHandle = v.type === 'porte' || v.type === 'tiroirs';
+      const accentFor = hasHandle ? ((v.poignee ?? 'barre') !== 'aucune' ? 'Couleur des poignées' : '')
+        : v.type === 'rideau' ? (v.fond !== false ? 'Couleur de la tringle' : '')
+        : v.type === 'pieds' ? (v.style === 'roulette' ? 'Couleur des roues' : '')
+        : v.type === 'portant' ? (v.fond ? 'Couleur de la tablette' : '') : '';
       body = [
         h('label', { class: 'tf' }, 'Nom du volume', nameIn),
+        ELEMENT_HELP[v.type] ? h('p', { class: 'p-help' }, ELEMENT_HELP[v.type]!) : null,
+        styles ? section('Modèle', b(choiceGrid(styles, () => vol()?.style ?? styles[0].value, s => edit(x => { x.style = s; })))) : null,
         section('Dimensions', dims[v.type]()),
         turn ? b(turn) : null,
+        fond ? b(fond) : null,
+        hasHandle ? section('Poignées', b(choiceGrid(POIGNEES, () => vol()?.poignee ?? 'barre', p => edit(x => { x.poignee = p; })))) : null,
         section('Position (depuis le coin du meuble)', h('div', { class: 'g3' }, nf('X', 'x', -500, 500), nf('Y', 'y', -500, 500), nf('Z (hauteur)', 'z', 0, 500))),
         placeRelative(v),
         section('Rotation et inclinaison (en degrés)',
@@ -138,9 +261,11 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
             b(numberField({ label: 'Pencher vers la droite', unit: '°', min: -180, max: 180, get: () => vol()?.tiltY ?? 0, set: a => edit(x => { x.tiltY = a; }) }))),
           h('p', { class: 'p-help' }, 'Un angle négatif penche vers l’arrière ou vers la gauche. Après une inclinaison, « Au sol » ou « Dessus » recalent le volume.'),
           button('Remettre droit', 'restart_alt', 'btn-ghost', () => edit(x => { x.rot = 0; x.tiltX = 0; x.tiltY = 0; }))),
-        section('Couleur du volume', colorPicker(v)),
-        v.type === 'modele' ? null : section('Matière', b(segmented(MATIERES, () => vol()?.matiere, m => edit(x => { if (m) x.matiere = m; else delete x.matiere; }))),
-          h('p', { class: 'p-help' }, 'Verre ou plexiglas : le volume devient transparent (vitrine, présentoir, cloche, étagère…). Le plexiglas prend la couleur choisie.')),
+        section(isElement(v.type) ? 'Couleur' : 'Couleur du volume', colorPicker(v)),
+        v.type === 'modele' ? null : section('Matière', b(matierePicker(MATIERES, () => vol()?.matiere, m => edit(x => { if (m) x.matiere = m; else delete x.matiere; }), () => vol()?.color || '#C9A97E')),
+          h('p', { class: 'p-help' }, 'La couleur teinte la matière : un bois « Noyer », un marbre « Noir », un métal « Laiton »… Verre ou plexiglas : le volume devient transparent.')),
+        accentFor ? section(accentFor, h('div', { 'data-testid': 'accent' }, b(swatches(ACCENT_COLORS, () => vol()?.color2 ?? '#2E2D2B', c => edit(x => { x.color2 = c; }), 'sws8')),
+          b(matierePicker(ACCENT_MATIERES, () => vol()?.matiere2 ?? 'metal', m => edit(x => { x.matiere2 = m; }), () => vol()?.color2 || '#2E2D2B', true)))) : null,
         h('div', { class: 'g2' }, button('Dupliquer', 'content_copy', 'btn-secondary', () => duplicate()), button('Supprimer', 'delete', 'btn-danger', () => remove())),
       ];
     } else {
@@ -165,7 +290,7 @@ export function atelierScreen(ctx: Ctx, opts: { creation?: Creation; back: () =>
   }
   /** Pastilles de couleur ; un modèle importé peut garder ses couleurs d'origine (couleur vide). */
   function colorPicker(v: Volume): HTMLElement {
-    const sw = swatches(COLORS, () => vol()?.color ?? '', c => edit(x => { x.color = c; }), 'sws6');
+    const sw = swatches(COLORS, () => vol()?.color ?? '', c => edit(x => { x.color = c; }), 'sws8');
     binds.push(sw);
     if (v.type === 'modele') {
       const orig = h('button', { type: 'button', class: 'sw orig', title: 'Couleurs d’origine', 'aria-label': 'Couleurs d’origine', onclick: () => edit(x => { x.color = ''; }) });

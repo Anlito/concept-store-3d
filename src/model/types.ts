@@ -124,7 +124,12 @@ export interface PlacedObject {
 }
 
 /* ---------- Atelier de création (niveau B) ---------- */
-export type VolumeType = 'boite' | 'arrondie' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'demiboule' | 'cone' | 'pyramide' | 'tube' | 'demirond' | 'prisme' | 'modele';
+export type VolumeType = 'boite' | 'arrondie' | 'cylindre' | 'plan' | 'arche' | 'boule' | 'demiboule' | 'cone' | 'pyramide' | 'tube' | 'demirond' | 'prisme' | 'modele'
+  // Éléments de meuble tout faits
+  | 'porte' | 'tiroirs' | 'caisson' | 'pieds' | 'poignee' | 'rideau' | 'claustra' | 'portant' | 'coussin';
+export type Poignee = 'aucune' | 'bouton' | 'barre' | 'longue' | 'coquille';
+/** Matière d'un volume (absente = peinture mate). Verre et plexiglas sont transparents ; le cannage est ajouré. */
+export type Matiere = 'laque' | 'bois' | 'metal' | 'miroir' | 'marbre' | 'terrazzo' | 'beton' | 'tissu' | 'velours' | 'cuir' | 'cannage' | 'verre' | 'plexi';
 
 /** Volume simple d'une création. Longueurs en mètres, repère du meuble : x et y au sol, z vers le haut. */
 export interface Volume {
@@ -148,8 +153,26 @@ export interface Volume {
   /** Inclinaison vers la droite (degrés ; négatif = vers la gauche). */
   tiltY?: number;
   color: string;
-  /** Matière : opaque (absente), verre (presque transparent) ou plexiglas (transparent teinté de la couleur). */
-  matiere?: 'verre' | 'plexi';
+  /** Matière : peinture mate (absente), bois, métal, marbre, tissu…, verre (presque transparent) ou plexiglas (transparent teinté). */
+  matiere?: Matiere;
+  /* ---------- Éléments de meuble ----------
+     Porte : w × h, t = épaisseur. Tiroirs : caisson w × d × h, n façades. Caisson (étagère) : w × d × h, t = planches,
+     n tablettes, n2 séparations. Pieds : quatre pieds dans w × d, hauteur h, t = section. Poignée : w = longueur, t = section.
+     Rideau : w × h, t = profondeur des plis. Claustra : w × h, d = profondeur des lattes, t = largeur, n lattes.
+     Portant : w × d × h, t = diamètre du tube. Coussin : w × d × h. */
+  /** Variante de l'élément (porte vitrée, pieds compas, rideau ouvert…). */
+  style?: string;
+  /** Nombre de tiroirs, de tablettes ou de lattes. */
+  n?: number;
+  /** Nombre de séparations verticales (caisson). */
+  n2?: number;
+  /** Poignée d'une porte ou des tiroirs. */
+  poignee?: Poignee;
+  /** Couleur et matière des accessoires (poignées, tringle). */
+  color2?: string;
+  matiere2?: Matiere;
+  /** Caisson avec un fond ; rideau avec sa tringle. */
+  fond?: boolean;
   /** Masqué dans l'atelier seulement (pour travailler sur les volumes cachés). */
   hidden?: boolean;
   /** Modèle importé (Tinkercad) : w, d, h = taille voulue ; color vide = couleurs d'origine. */

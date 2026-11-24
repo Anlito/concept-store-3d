@@ -256,3 +256,44 @@ test('matière d’un volume : verre ou plexiglas transparents, gardés dans la 
     return out.sort();
   })).toEqual([22, 50]);
 });
+
+test('éléments de meuble (pieds, étagère, porte, tiroirs, rideau…) et matières, gardés dans la boutique', async ({ page }) => {
+  await openSample(page);
+  await page.getByTestId('library').getByRole('button', { name: 'Créer un meuble' }).click();
+  const panel = page.getByTestId('atelier-panel');
+  // Un plateau en hauteur, puis des pieds : ils se placent dessous, à sa taille
+  await page.getByRole('button', { name: 'Ajouter : Plan' }).click();
+  await setField(page, 'Longueur', 120); await setField(page, 'Largeur', 60); await setField(page, 'Z (hauteur)', 45);
+  await panel.getByRole('button', { name: 'Marbre' }).click();
+  await page.getByTestId('at-tiles').locator('..').getByRole('button', { name: 'Éléments' }).click();
+  await page.getByRole('button', { name: 'Ajouter : Pieds' }).click();
+  await panel.getByRole('button', { name: 'Compas' }).click();
+  await expect(panel.getByLabel('Longueur', { exact: true })).toHaveValue('120');
+  await expect(panel.getByLabel('Hauteur', { exact: true })).toHaveValue('45');
+  // Une étagère, une porte devant elle, des tiroirs, un rideau, un claustra, un portant, un coussin, une poignée
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Ajouter : Étagère' }).click();
+  await page.getByRole('button', { name: 'Ajouter : Porte' }).click();
+  await expect(panel.getByLabel('Hauteur', { exact: true })).toHaveValue('120');
+  await panel.getByRole('button', { name: 'Vitrée' }).click();
+  await panel.getByRole('button', { name: 'Bouton' }).click();
+  await panel.getByTestId('accent').getByRole('button', { name: 'Laiton' }).click();
+  for (const t of ['Tiroirs', 'Rideau', 'Claustra', 'Portant', 'Coussin', 'Poignée']) await page.getByRole('button', { name: 'Ajouter : ' + t, exact: true }).click();
+  await panel.getByRole('button', { name: 'Bois', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajouter à Mes créations' }).click();
+  const d = await doc(page);
+  const vols = d.creations.at(-1).volumes;
+  expect(vols.map((x: any) => x.type)).toEqual(['plan', 'pieds', 'caisson', 'porte', 'tiroirs', 'rideau', 'claustra', 'portant', 'coussin', 'poignee']);
+  expect(vols[0].matiere).toBe('marbre');
+  expect(vols[1]).toMatchObject({ style: 'compas', w: 1.2, d: 0.6, h: 0.45, z: 0 });
+  expect(vols[3]).toMatchObject({ style: 'vitree', poignee: 'bouton', color2: '#C9A54B', h: 1.2 });
+  expect(vols.at(-1).matiere).toBe('bois');
+  // Posé dans la boutique : textures et brillance gardées
+  await page.locator('.fc', { hasText: 'Mon meuble' }).first().dblclick();
+  await page.getByRole('button', { name: 'Vue 3D' }).click();
+  await expect.poll(() => page.evaluate(() => {
+    let tex = 0, metal = 0;
+    (window as any).cs3d.editor.view3d.scene.getObjectByName('objets').traverse((c: any) => { if (c.isMesh && c.material?.userData?.atelier) { if (c.material.map) tex++; if (c.material.metalness > 0.5) metal++; } });
+    return tex > 0 && metal > 0;
+  })).toBe(true);
+});

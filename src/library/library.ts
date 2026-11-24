@@ -133,7 +133,8 @@ function prepare(root: THREE.Object3D): THREE.MeshStandardMaterial | null {
       let r = replaced.get(src);
       if (!r) {
         const s = src as THREE.MeshStandardMaterial;
-        r = new THREE.MeshStandardMaterial({ color: s.color ?? new THREE.Color(0xffffff), map: s.map ?? null, roughness: 0.85, metalness: 0,
+        // Matières de l'atelier (bois, métal, miroir…) : gardées telles quelles
+        r = src.userData.atelier ? s.clone() : new THREE.MeshStandardMaterial({ color: s.color ?? new THREE.Color(0xffffff), map: s.map ?? null, roughness: 0.85, metalness: 0,
           transparent: s.transparent, opacity: s.opacity ?? 1 });
         r.name = src.name; replaced.set(src, r);
       }

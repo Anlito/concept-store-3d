@@ -89,6 +89,8 @@ export const FAQ: Record<FaqGroup, Faq[]> = {
   ],
   atelier: [
     { q: 'Comment faire une vitre, une cloche ou un présentoir transparent ?', a: 'Choisis le volume, puis **Matière** : **Verre** (presque transparent) ou **Plexiglas** (transparent, de la couleur choisie).' },
+    { q: 'Comment ajouter une porte, des tiroirs, des pieds ou un rideau ?', a: 'Onglet **Éléments** (à gauche) : porte, tiroirs, étagère, pieds, poignée, rideau, claustra, portant, coussin. Choisis d’abord le caisson (ou le plateau) : la **porte** se pose devant lui, les **pieds** dessous, à sa taille.' },
+    { q: 'Comment faire du bois, du métal, du marbre ou du velours ?', a: 'Choisis le volume, puis **Matière**. La **couleur** teinte la matière : bois « Noyer », métal « Laiton », marbre « Blanc pur »… Les poignées et la tringle ont leur propre couleur.' },
     { q: 'À quoi sert l’Atelier ?', a: 'À fabriquer un meuble avec des volumes. Il rejoint **Mes créations** et il est enregistré **dans le projet**.' },
     { q: 'Comment centrer ou aligner deux volumes ?', a: 'Choisis un volume, puis **Placer par rapport à…** : choisis le volume de référence et l’alignement.' },
     { q: 'Comment pencher ou tourner un volume ?', a: 'Section **Rotation et inclinaison** : tourner, pencher vers l’avant ou vers la droite. **Remettre droit** annule.' },

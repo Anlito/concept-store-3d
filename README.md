@@ -39,7 +39,7 @@ même depuis un dossier réseau du collège. Aucune donnée n'est envoyée en li
 3. **Plan A3** : PDF à l'échelle 1 m = 3 cm (murs de 10 cm = carton de 3 mm), cartouche obligatoire,
    enregistrement dans le dossier de l'équipe.
 4. **Sol** et **Murs** : revêtements pièce par pièce ou pan de mur par pan de mur, façade côté rue.
-5. **Mobilier** : bibliothèque de meubles, **Atelier** pour créer les siens (volumes ou fichier Tinkercad OBJ).
+5. **Mobilier** : bibliothèque de meubles, **Atelier** pour créer les siens : volumes simples, éléments tout faits (porte, tiroirs, étagère, pieds, poignée, rideau, claustra, portant, coussin), 48 couleurs et 14 matières (bois, métal, marbre, velours, cannage, verre…), ou fichier Tinkercad OBJ.
 6. **Images** : affiches, tapisseries, tapis, logos sur la vitrine (PNG ou JPG).
 7. **Vue 3D** et **photos** du rendu (PNG ou JPG) pour la présentation.
 

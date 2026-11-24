@@ -82,10 +82,10 @@ export function tourSteps(part: Part, ctx: Ctx): TourStep[] {
       { at: '.vp-zoom', title: 'Zoom et recentrer', text: 'Le bouton du milieu remet toute la boutique dans l’écran.' },
     ];
     case 'atelier': return [
-      { at: '.at-left', title: 'Ajouter des volumes', text: 'Boîte, cylindre, demi-boule, pyramide, arche, cône… Clique sur une forme pour l’ajouter à ton meuble.' },
+      { at: '.at-left', title: 'Ajouter des volumes', text: '**Formes** : boîte, cylindre, arche, cône… **Éléments** : porte, tiroirs, étagère, pieds, rideau, portant… Clique pour l’ajouter à ton meuble.' },
       { at: '.at-import', title: 'Importer de Tinkercad', text: 'Ton modèle Tinkercad exporté en **OBJ** (ou le .zip téléchargé) devient un meuble.' },
       { at: '.vp', title: 'Assembler', text: '**Glisse** un volume pour le déplacer ([[Maj]] : au centimètre). Glisse le fond pour tourner la vue.' },
-      { at: '[data-testid=atelier-panel]', title: 'Régler le volume choisi', text: 'Dimensions, position, rotation et inclinaison, couleur. **Placer par rapport à…** centre ou aligne deux volumes.' },
+      { at: '[data-testid=atelier-panel]', title: 'Régler le volume choisi', text: 'Dimensions, position, rotation et inclinaison, couleur et **matière** (bois, métal, marbre, velours…). **Placer par rapport à…** centre ou aligne deux volumes.' },
       { at: '.at-pills', title: 'Nom et rangement', text: 'Donne un nom à ton meuble et choisis sa catégorie dans la bibliothèque.' },
       { at: '[data-testid=atelier-panel] .pn-f', title: 'Ajouter à Mes créations', text: 'Ton meuble rejoint la bibliothèque. Il est enregistré **dans le projet**.' },
     ];
